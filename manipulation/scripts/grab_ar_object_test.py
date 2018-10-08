@@ -1,4 +1,4 @@
-from src.include.manipulation_header import *
+from manipulation.src.manipulation.manipulation_header import *
 from tmc_manipulation_msgs.msg import CollisionObject
 import numpy as np
 import rospy
@@ -58,10 +58,10 @@ def main():
     whole_body.looking_hand_constraint = True
 
     # Set collision map
-    getCollisionMap(robot)
+    get_collision_map(robot)
 
     # Get the object pose to subtract from collision map
-    goal_object_pose = get_Object_Pose(_OBJECT_TF)
+    goal_object_pose = get_object_pose(_OBJECT_TF)
     upper_bounds = goal_object_pose + exclusion_bounds
     lower_bounds = goal_object_pose - exclusion_bounds
     print("Bounds have been set")
@@ -72,7 +72,7 @@ def main():
     rospy.sleep(2)
 
     # Set up listener to find the bottle
-    checkForObject(_OBJECT_TF)
+    check_for_object(_OBJECT_TF)
 
     # Turn on collision checking
     whole_body.collision_world = collision_world

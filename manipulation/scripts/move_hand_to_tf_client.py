@@ -8,19 +8,20 @@ import actionlib
 
 # Brings in the messages used by the fibonacci action, including the
 # goal message and the result message.
-from  manipulation.msg import *
 
-def moveHandToTf_client(goal_tf):
+from manipulation.msg import *
+
+def move_hand_to_tf_client(goal_tf):
     # Creates the SimpleActionClient, passing the type of the action
     # (FibonacciAction) to the constructor.
-    client = actionlib.SimpleActionClient('moveToTf_server_node', manipulation.msg.moveHandToTfAction)
+    client = actionlib.SimpleActionClient('move_hand_to_tf_server_node', MoveHandToTfAction)
 
     # Waits until the action server has started up and started
     # listening for goals.
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal_msg = manipulation.msg.moveHandToTfGoal(goal_tf=goal_tf)
+    goal_msg = MoveHandToTfGoal(goal_tf=goal_tf)
 
     # Sends the goal to the action server.
     client.send_goal(goal_msg)
@@ -35,9 +36,9 @@ if __name__ == '__main__':
     try:
         # Initializes a rospy node so that the SimpleActionClient can
         # publish and subscribe over ROS.
-        rospy.init_node('moveHandToTf_client_py')
+        rospy.init_node('move_hand_to_tf_client_py')
         goal_tf = 'ar_marker/4000'
-        result = moveHandToTf_client(goal_tf)
+        result = move_hand_to_tf_client(goal_tf)
         print("Result:", ', '.join([str(n) for n in result.sequence]))
     except rospy.ROSInterruptException:
         print("Problem.")

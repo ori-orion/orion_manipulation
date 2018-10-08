@@ -17,7 +17,9 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
 )
 
-add_action_files(DIRECTORY action FILES moveHandToTf.action)
+add_action_files(DIRECTORY action FILES MoveHandToTf.action)
+
+catkin_python_setup()
 
 generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
 
@@ -28,7 +30,7 @@ generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+
 
 ################################################
 ## Declare ROS messages, services and actions ##

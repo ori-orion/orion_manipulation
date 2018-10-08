@@ -1,24 +1,21 @@
-from tmc_manipulation_msgs.msg import CollisionObject
 import numpy as np
 from std_srvs.srv import Empty
 import rospy
-import hsrb_interface
 import tf
 
 
-def checkForObject(object_tf):
+def check_for_object(object_tf):
     tf_listener = tf.TransformListener()
     foundMarker = False
     while not foundMarker:
         all_frames = tf_listener.getFrameStrings()
-        print all_frames
         foundMarker = object_tf in all_frames
     print "Found the object."
 
 
-def get_Object_Pose(object_tf):
+def get_object_pose(object_tf):
     print "Checking object is in sight..."
-    checkForObject(object_tf)
+    check_for_object(object_tf)
 
     print "Checking object is in sight..."
     tf_listener = tf.TransformListener()
@@ -33,7 +30,7 @@ def get_Object_Pose(object_tf):
     return np.array([trans[0], trans[1], trans[2]])
 
 
-def resetCollisionMapBuild():
+def reset_collision_map_build():
     rospy.wait_for_service('/tmc_reconstruction/system/reset')
     try:
         reset_service = rospy.ServiceProxy('/tmc_reconstruction/system/reset', Empty)
@@ -42,7 +39,7 @@ def resetCollisionMapBuild():
     except rospy.ServiceException, e:
         print "Service call failed: %s" % e
 
-def startCollisionMapBuild():
+def start_collision_map_build():
     rospy.wait_for_service('/tmc_reconstruction/system/start')
     try:
         start_service = rospy.ServiceProxy('/tmc_reconstruction/system/start', Empty)
@@ -52,7 +49,7 @@ def startCollisionMapBuild():
         print "Service call failed: %s" % e
 
 
-def stopCollisionMapBuild():
+def stop_collision_map_build():
     rospy.wait_for_service('/tmc_reconstruction/system/stop')
     try:
         stop_service = rospy.ServiceProxy('/tmc_reconstruction/system/stop', Empty)
@@ -62,23 +59,23 @@ def stopCollisionMapBuild():
         print "Service call failed: %s" % e
 
 
-def removeAllCollisionObjects(robot):
+def remove_all_collision_objects(robot):
     collision_world = robot.try_get('global_collision_world')
     collision_world.remove_all()
 
-def getCollisionMap(robot):
+def get_collision_map(robot):
 
     # Clear objects
-    removeAllCollisionObjects(robot)
+    remove_all_collision_objects(robot)
 
     # Reset reconstruction
-    resetCollisionMapBuild()
+    reset_collision_map_build()
 
     # Clear objects again to be sure
-    removeAllCollisionObjects(robot)
+    remove_all_collision_objects(robot)
 
     # Start reconstruction
-    startCollisionMapBuild()
+    start_collision_map_build()
 
     # Wait for map to populate
     sleep_time = 3
@@ -86,4 +83,4 @@ def getCollisionMap(robot):
     rospy.sleep(sleep_time)
 
     # Stop reconstruction
-    stopCollisionMapBuild()
+    stop_collision_map_build()

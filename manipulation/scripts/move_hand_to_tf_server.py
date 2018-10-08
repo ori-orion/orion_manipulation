@@ -1,37 +1,28 @@
 #! /usr/bin/env python
 
-import rospy
-
 # import roslib; roslib.load_manifest('manipulation')
-
-import actionlib
-
-# import devel.share.manipulation.msg as msg
-from  manipulation.msg import *
-
-from src.include.manipulation_header import *
-from tmc_manipulation_msgs.msg import CollisionObject
-import numpy as np
-import rospy
 import hsrb_interface
 import hsrb_interface.geometry as geometry
-import tf
+import numpy as np
+import rospy
+import actionlib
 
+from manipulation.manipulation_header import *
+from tmc_manipulation_msgs.msg import CollisionObject
+from manipulation.msg import *
 
-class moveHandToTfAction(object):
+class MoveHandToTfAction(object):
     # create messages that are used to publish feedback/result
-    _feedback = manipulation.msg.moveHandToTfActionFeedback()
-    _result = manipulation.msg.moveHandToTfActionResult()
-
-
+    _feedback = MoveHandToTfActionFeedback()
+    _result = MoveHandToTfActionResult()
 
     def __init__(self, name):
         self._action_name = name
-        self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.moveHandToTfAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.MoveHandToTfAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
-        # Put bounds about the tf frame of object to remove from map
+        # Put bounds about the tf frrmame of object to remove from map
         self.exclusion_bounds = np.array([0.07, 0.07, 0.07])
 
         # Preparation for using the robot functions
@@ -73,7 +64,7 @@ class moveHandToTfAction(object):
 
     def execute_cb(self, goal_msg):
         # helper variables
-        r = rospy.Rate(1)
+        # r = rospy.Rate(1)
         success = True
 
         goal_tf = goal_msg.goal_tf
@@ -102,12 +93,12 @@ class moveHandToTfAction(object):
 
         # Set collision map
         rospy.loginfo('%s: Getting Collision Map.' % (self._action_name))
-        getCollisionMap(self.robot)
+        get_collision_map(self.robot)
         rospy.loginfo('%s: Collision Map generated.' % (self._action_name))
 
         # Get the object pose to subtract from collision map
         rospy.loginfo('%s: Getting object pose.' % (self._action_name))
-        goal_object_pose = get_Object_Pose(goal_tf)
+        goal_object_pose = get_object_pose(goal_tf)
         upper_bounds = goal_object_pose + self.exclusion_bounds
         lower_bounds = goal_object_pose - self.exclusion_bounds
 
@@ -122,7 +113,7 @@ class moveHandToTfAction(object):
 
         rospy.loginfo('%s: Finding object.' % (self._action_name))
         # Set up listener to find the bottle
-        checkForObject(goal_tf)
+        check_for_object(goal_tf)
 
         rospy.loginfo('%s: Exectuting grasp procedure.' % (self._action_name))
         # Turn on collision checking
@@ -160,6 +151,6 @@ class moveHandToTfAction(object):
 
 
 if __name__ == '__main__':
-    rospy.init_node('moveToTf_server_node')
-    server = moveHandToTfAction(rospy.get_name())
+    rospy.init_node('move_hand_to_tf_server_node')
+    server = MoveHandToTfAction(rospy.get_name())
     rospy.spin()
