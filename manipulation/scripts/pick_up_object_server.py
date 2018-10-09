@@ -6,7 +6,7 @@ import numpy as np
 import rospy
 import actionlib
 import json
-
+import rospkg
 
 from actionlib_msgs.msg import GoalStatus
 from tmc_suction.msg import (
@@ -24,8 +24,7 @@ class PickUpObjectAction(object):
 
     def __init__(self, name):
         self._action_name = name
-        self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.PickUpObjectAction,
-                                                execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Put bounds about the tf frame of object to remove from map
@@ -44,10 +43,14 @@ class PickUpObjectAction(object):
 	# Define the vacuum timeouts
 	self._CONNECTION_TIMEOUT = 10.0
 	self._SUCTION_TIMEOUT = rospy.Duration(20.0)
-	
-	with open('manipulation/config.json') as f:
-	    self.config = json.load(f)
-	    f.close()
+
+	# Load the config file
+	rospack = rospkg.RosPack()
+	pkg_path = rospack.get_path('manipulation')
+	config_path = pkg_path + 'src/manipulation/config.json'
+	with open(config_path) as f:
+		self.config = json.load(f)
+		f.close()
 
 
     def callback(msg):
@@ -84,17 +87,17 @@ class PickUpObjectAction(object):
 	if grasp_type == 'horizontal':
 		chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
 		chosen_grasp_pose = geometry.pose(z=-0.02, ek=-1.57)
-	else if grasp_type == 'horizontal_rotate':
+	elif grasp_type == 'horizontal_rotate':
 		chosen_pregrasp_pose = geometry.pose(z=0.6, ei=1.57)
 		chosen_grasp_pose = geometry.pose(z=0.6, ei=1.57)
-	else if grasp_type == 'above':
+	elif grasp_type == 'above':
 		chosen_pregrasp_pose = geometry.pose(z=0.10, ei=3.14)
 		chosen_grasp_pose =geometry.pose(z=0.05, ei=3.14)
-	else if grasp_type == 'above_offset':
+	elif grasp_type == 'above_offset':
 		grasp_offset = config[goal_tf]['offset']
 		chosen_pregrasp_pose = geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57)
 		chosen_grasp_pose = geometry.pose(y=grasp_offset, z=-0.02, ek=-1.57)
-	else if grasp_type == 'suction':
+	elif grasp_type == 'suction':
 		chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
 		chosen_grasp_pose = geometry.pose(z=0.002, ei=3.14)
 		self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
