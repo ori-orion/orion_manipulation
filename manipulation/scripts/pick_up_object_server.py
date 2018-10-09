@@ -147,12 +147,14 @@ class PickUpObjectAction(object):
 
         # Turn on collision checking
         self.whole_body.collision_world = self.collision_world
+	rospy.sleep(2)
 
 	# Move to pregrasp
-        rospy.loginfo('%s: Exectuting grasp procedure.' % (self._action_name))
+        rospy.loginfo('%s: Executing grasp procedure.' % (self._action_name))
 	self.whole_body.move_end_effector_pose(chosen_pregrasp_pose, goal_tf)
 
 	# Turn off collision checking to get close and grasp
+	rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
 	self.whole_body.collision_world = None
 	self.whole_body.move_end_effector_pose(chosen_grasp_pose, goal_tf)
 	
