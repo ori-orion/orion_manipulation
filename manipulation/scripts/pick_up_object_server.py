@@ -47,7 +47,7 @@ class PickUpObjectAction(object):
 	# Load the config file
 	rospack = rospkg.RosPack()
 	pkg_path = rospack.get_path('manipulation')
-	config_path = pkg_path + 'src/manipulation/config.json'
+	config_path = pkg_path + '/src/manipulation/config.json'
 	with open(config_path) as f:
 		self.config = json.load(f)
 		f.close()
@@ -81,7 +81,7 @@ class PickUpObjectAction(object):
 	self.whole_body.end_effector_frame = 'hand_palm_link'
 
 	# Get the grasp type from the config file
-	grasp_type = config[goal_tf]['grasp_pose']
+	grasp_type = self.config[goal_tf]['grasp_pose']
 
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	if grasp_type == 'horizontal':
@@ -94,12 +94,12 @@ class PickUpObjectAction(object):
 		chosen_pregrasp_pose = geometry.pose(z=0.10, ei=3.14)
 		chosen_grasp_pose =geometry.pose(z=0.05, ei=3.14)
 	elif grasp_type == 'above_offset':
-		grasp_offset = config[goal_tf]['offset']
+		grasp_offset = self.config[goal_tf]['offset']
 		chosen_pregrasp_pose = geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57)
 		chosen_grasp_pose = geometry.pose(y=grasp_offset, z=-0.02, ek=-1.57)
 	elif grasp_type == 'suction':
 		chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
-		chosen_grasp_pose = geometry.pose(z=0.002, ei=3.14)
+		chosen_grasp_pose = geometry.pose(z=0.005, ei=3.14)
 		self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
 
         # publish info to the console for the user
