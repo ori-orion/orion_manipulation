@@ -1,0 +1,242 @@
+{
+
+	"ar_marker/201":{
+		"grasp_pose": "suction"
+	},
+
+	"dog_plush_toy":{
+		"grasp_pose": "horizontal"
+	},
+
+	"rabbit_plush_toy":{
+		"grasp_pose": "horizontal"
+	},
+
+	"hedgehog_plush_toy":{
+		"grasp_pose": "horizontal"
+	},
+
+	"postcard_with_moon_image":{
+		"grasp_pose": "suction"
+	},
+
+	"postcard_with_temple_image":{
+		"grasp_pose": "suction"
+	},
+
+	"postcard_with_waterfall_image":{
+		"grasp_pose": "suction"
+	},
+
+
+	"bus_toy_car":{
+		"grasp_pose": "above"
+	},
+
+
+	"fire_engine_toy_car":{
+		"grasp_pose": "above"
+	},
+
+
+	"police_toy_car":{
+		"grasp_pose": "above"
+	},
+
+
+	"whistle_sound_toy":{
+		"grasp_pose": "above"
+	},
+
+
+	"shaker_sound_toy":{
+		"grasp_pose": "above"
+	},
+
+
+	"horn_sound_toy":{
+		"grasp_pose": "above"
+	},
+
+
+	"cube_block":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"triangular_block":{
+		"grasp_pose":  "horizontal"
+	},
+
+
+	"cylinder_block":{
+		"grasp_pose":  "horizontal"
+	},
+
+
+	"wooden_bowl":{
+		"grasp_pose": "above_offset",	
+		"offset": 0.05
+	},
+
+
+	"brown_pail":{
+		"grasp_pose": "above_offset",	
+		"offset": 0.10
+	},
+
+
+	"mixed_nuts":{
+		"grasp_pose": "above"
+	},
+
+
+	"blue_cup":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"pink_cup":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"orange_biscuits":{
+		"grasp_pose": "above"
+	},
+
+
+	"yellow_biscuits":{
+		"grasp_pose": "above"
+	},
+
+
+	"watering_can":{
+		"grasp_pose": "above"
+	},
+
+
+	"flashlight":{
+		"grasp_pose": "above"
+	},
+
+
+	"blue_fork":{
+		"grasp_pose": "above"
+	},
+
+
+	"green_fork":{
+		"grasp_pose": "above"
+	},
+
+
+	"gray_knife":{
+		"grasp_pose": "above"
+	},
+
+
+	"pink_biscuits":{
+		"grasp_pose": "above"
+	},
+
+
+	"yellow_clock":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"aluminum_foil":{
+		"grasp_pose": "above"
+	},
+
+
+	"green_dish":{
+		"grasp_pose": "horizontal_rotate"
+	},
+
+
+	"yellow_dish":{
+		"grasp_pose": "horizontal_rotate"
+	},
+
+
+	"pink_bowl":{
+		"grasp_pose": "above_offset"
+	},
+
+
+	"blue_bowl":{
+		"grasp_pose": "above_offset"
+	},
+
+
+	"mineral_water":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"oolong_tea":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"ketchup":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"canned_mustard":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"orange_drink":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"green_drink":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"tomato":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"potato":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"plant":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"spray":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"water_bottle":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"blueberry_drink":{
+		"grasp_pose": "horizontal"
+	},
+
+
+	"eggplant":{
+		"grasp_pose": "above"
+	}
+
+
+
+
+
+}
