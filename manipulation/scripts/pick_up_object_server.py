@@ -27,9 +27,6 @@ class PickUpObjectAction(object):
         self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
-        # Put bounds about the tf frame of object to remove from map
-        self.exclusion_bounds = np.array([0.07, 0.07, 0.07])
-
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
@@ -82,6 +79,9 @@ class PickUpObjectAction(object):
 
 	# Get the grasp type from the config file
 	grasp_type = self.config[goal_tf]['grasp_pose']
+	
+	# Put bounds about the tf frame of object to remove from map
+        exclusion_bounds = np.array([0.07, 0.07, 0.07])
 
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	if grasp_type == 'horizontal':
@@ -90,6 +90,7 @@ class PickUpObjectAction(object):
 	elif grasp_type == 'horizontal_rotate':
 		chosen_pregrasp_pose = geometry.pose(z=0.6, ei=1.57)
 		chosen_grasp_pose = geometry.pose(z=0.6, ei=1.57)
+		exclusion_bounds = np.array([0.05, 0.05, 0.02])
 	elif grasp_type == 'above':
 		chosen_pregrasp_pose = geometry.pose(z=0.10, ei=3.14)
 		chosen_grasp_pose =geometry.pose(z=0.05, ei=3.14)
@@ -101,6 +102,7 @@ class PickUpObjectAction(object):
 		chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
 		chosen_grasp_pose = geometry.pose(z=0.005, ei=3.14)
 		self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
+		exclusion_bounds = np.array([0, 0, 0])
 
         # publish info to the console for the user
         rospy.loginfo('%s: Executing procedure to move end effector to %s using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
@@ -130,8 +132,8 @@ class PickUpObjectAction(object):
         # Get the object pose to subtract from collision map
         rospy.loginfo('%s: Getting object pose.' % (self._action_name))
         goal_object_pose = get_object_pose(goal_tf)
-        upper_bounds = goal_object_pose + self.exclusion_bounds
-        lower_bounds = goal_object_pose - self.exclusion_bounds
+        upper_bounds = goal_object_pose + exclusion_bounds
+        lower_bounds = goal_object_pose - exclusion_bounds
 
         rospy.loginfo('%s: Bounds have been set' % self._action_name)
 
