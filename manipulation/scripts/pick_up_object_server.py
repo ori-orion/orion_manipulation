@@ -92,35 +92,36 @@ class PickUpObjectAction(object):
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	if grasp_type == 'horizontal':
 		chosen_pregrasp_pose = geometry.pose(x=-0.05, z=0.05, ek=-1.57)
-		chosen_grasp_pose = geometry.pose(x=-0.02,z=0.05, ek=-1.57)
+		chosen_grasp_pose = geometry.pose(z=0.03)
 	elif grasp_type == 'horizontal_rotate':
 		chosen_pregrasp_pose = geometry.pose(z=0.6, ei=1.57)
-		chosen_grasp_pose = geometry.pose(z=0.6, ei=1.57)
+		chosen_grasp_pose = geometry.pose(z=0.0)
 		exclusion_bounds = np.array([0.05, 0.05, 0.02])
 	elif grasp_type == 'above':
 		chosen_pregrasp_pose = geometry.pose(z=0.10, ei=3.14)
-		chosen_grasp_pose =geometry.pose(z=0.05, ei=3.14)
+		chosen_grasp_pose = geometry.pose(z=0.05)
 	elif grasp_type == 'above_offset':
 		grasp_offset = self.config[goal_tf]['offset']
 		chosen_pregrasp_pose = geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57)
-		chosen_grasp_pose = geometry.pose(y=grasp_offset, z=-0.02, ek=-1.57)
+		chosen_grasp_pose = geometry.pose(z=0.03)
 	elif grasp_type == 'suction':
 		chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
-		chosen_grasp_pose = geometry.pose(z=0.005, ei=3.14)
+		chosen_grasp_pose = geometry.pose(z=0.045)
 		self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
 		exclusion_bounds = np.array([0.0, 0.0, 0.0])
 	elif grasp_type == 'ar':
 		chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
-		chosen_grasp_pose = geometry.pose(z=-0.02, ek=-1.57)
-
+		chosen_grasp_pose = geometry.pose(z=0.03)
+	
+	
         # publish info to the console for the user
-        rospy.loginfo('%s: Executing procedure to move end effector to %s using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
+        rospy.loginfo('%s: Planning to reach %s using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
 
         global pub, lower_bounds, upper_bounds
 
         # ---------------------------------- Now begin the actual actions --------------------
-        rospy.loginfo('%s: Getting in move_to_go position.' % ( self._action_name))
-	self.whole_body.move_to_go()
+        #rospy.loginfo('%s: Getting in move_to_go position.' % ( self._action_name))
+	#self.whole_body.move_to_go()
 	
 	# Look at the object - this is to make sure that we get all of the necessary collision map
 	rospy.loginfo('%s: Moving head to look at the object.' % ( self._action_name))
@@ -172,7 +173,7 @@ class PickUpObjectAction(object):
 	rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
 	self.whole_body.collision_world = None
 	rospy.loginfo('%s: Moving to grasp position.' % (self._action_name))	
-	self.whole_body.move_end_effector_pose(chosen_grasp_pose, goal_tf)
+	self.whole_body.move_end_effector_pose(chosen_grasp_pose, self.whole_body.end_effector_frame)
 	
 	# Use suction or gripper to grab the object
 	if grasp_type == 'suction':
