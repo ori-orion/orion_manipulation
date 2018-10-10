@@ -109,6 +109,9 @@ class PickUpObjectAction(object):
 		chosen_grasp_pose = geometry.pose(z=0.005, ei=3.14)
 		self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
 		exclusion_bounds = np.array([0.0, 0.0, 0.0])
+	elif grasp_type == 'ar':
+		chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
+		chosen_grasp_pose = geometry.pose(z=-0.02, ek=-1.57)
 
         # publish info to the console for the user
         rospy.loginfo('%s: Executing procedure to move end effector to %s using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))

@@ -1,0 +1,7 @@
+# Define the goal
+---
+# Define the result
+bool goal_complete
+---
+# Define a feedback message
+

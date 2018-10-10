@@ -24,7 +24,8 @@ add_action_files(DIRECTORY
 		GrabHorizontalDoorHandleAction.action
 		OpenDrawer.action
 		OpenFridge.action
-		PickUpObject.action)
+		PickUpObject.action
+		GiveObjectToOperator.action)
 
 catkin_python_setup()
 

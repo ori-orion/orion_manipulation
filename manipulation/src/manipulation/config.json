@@ -1,8 +1,8 @@
 {
 
 	"ar_marker/201":{
-		"grasp_pose": "suction",
-		"estimated_halfsize": [0.06,0.06,0.0005]
+		"grasp_pose": "ar",
+		"estimated_halfsize": [0.07,0.07,0.07]
 	},
 
 	"dog_plush_toy":{
