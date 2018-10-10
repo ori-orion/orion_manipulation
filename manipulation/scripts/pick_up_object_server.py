@@ -50,7 +50,7 @@ class PickUpObjectAction(object):
 		f.close()
 
 
-    def callback(msg):
+    def callback(self, msg):
         # Get the message
         message = msg
 
