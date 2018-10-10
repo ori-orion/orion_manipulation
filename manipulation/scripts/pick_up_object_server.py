@@ -159,17 +159,19 @@ class PickUpObjectAction(object):
 	rospy.sleep(2)
 
 	# Move to pregrasp
-        rospy.loginfo('%s: Executing grasp procedure.' % (self._action_name))
+        rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
 	self.whole_body.move_end_effector_pose(chosen_pregrasp_pose, goal_tf)
 
 	# Turn off collision checking to get close and grasp
 	rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
 	self.whole_body.collision_world = None
+	rospy.loginfo('%s: Moving to grasp position.' % (self._action_name))	
 	self.whole_body.move_end_effector_pose(chosen_grasp_pose, goal_tf)
 	
 	# Use suction or gripper to grab the object
 	if grasp_type == 'suction':
-		
+		rospy.loginfo('%s: Turning on on the suction...' % (self._action_name))
+
 	        # Create action client to control suction
 	        suction_action = '/hsrb/suction_control'
 	        suction_control_client = actionlib.SimpleActionClient(
@@ -185,7 +187,7 @@ class PickUpObjectAction(object):
 		    sys.exit(1)
 
 	        # Send a goal to start suction
-	        rospy.loginfo('Suction will start')
+	        rospy.loginfo('%s: Suction server found. Activating suction...' % (self._action_name))
 	        suction_on_goal = SuctionControlGoal()
 	        suction_on_goal.timeout = _SUCTION_TIMEOUT
 	        suction_on_goal.suction_on.data = True
