@@ -38,8 +38,11 @@ class PickUpObjectAction(object):
         self._GRASP_FORCE = 0.2
 
 	# Define the vacuum timeouts
-	self._CONNECTION_TIMEOUT = 10.0
+	self._CONNECTION_TIMEOUT = 15.0
 	self._SUCTION_TIMEOUT = rospy.Duration(20.0)
+
+	# Increase planning timeout. Default is 10s
+	self.whole_body.planning_timeout = 20.0
 
 	# Load the config file
 	rospack = rospkg.RosPack()
@@ -102,7 +105,7 @@ class PickUpObjectAction(object):
 		chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
 		chosen_grasp_pose = geometry.pose(z=0.005, ei=3.14)
 		self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
-		exclusion_bounds = np.array([0, 0, 0])
+		exclusion_bounds = np.array([0.0, 0.0, 0.0])
 
         # publish info to the console for the user
         rospy.loginfo('%s: Executing procedure to move end effector to %s using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
@@ -112,8 +115,12 @@ class PickUpObjectAction(object):
         # ---------------------------------- Now begin the actual actions --------------------
         rospy.loginfo('%s: Getting in move_to_go position.' % ( self._action_name))
 	self.whole_body.move_to_go()
-
-        # Open or close gripper
+	
+	# Look at the object - this is to make sure that we get all of the necessary collision map
+	rospy.loginfo('%s: Moving head to look at the object.' % ( self._action_name))
+	self.whole_body.gaze_point(ref_frame_id=goal_tf)
+        
+	# Open or close gripper
 	if grasp_type == 'suction':
 		rospy.loginfo('%s: Closing gripper.' % (self._action_name))
 		self.gripper.command(0.1)
