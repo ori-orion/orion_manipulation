@@ -81,15 +81,18 @@ class PickUpObjectAction(object):
 	self.whole_body.end_effector_frame = 'hand_palm_link'
 
 	# Get the grasp type from the config file
-	grasp_type = self.config[goal_tf]['grasp_pose']
-	
-	# Put bounds about the tf frame of object to remove from map
+	try:
+		grasp_type = self.config[goal_tf]['grasp_pose']
+	except:
+		grasp_type = 'horizontal'
+
+	# Put default poses and bounds about the tf frame of object to remove from map
         exclusion_bounds = np.array([0.07, 0.07, 0.07])
 
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	if grasp_type == 'horizontal':
-		chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
-		chosen_grasp_pose = geometry.pose(z=-0.02, ek=-1.57)
+		chosen_pregrasp_pose = geometry.pose(x=-0.05, z=0.05, ek=-1.57)
+		chosen_grasp_pose = geometry.pose(x=-0.02,z=0.05, ek=-1.57)
 	elif grasp_type == 'horizontal_rotate':
 		chosen_pregrasp_pose = geometry.pose(z=0.6, ei=1.57)
 		chosen_grasp_pose = geometry.pose(z=0.6, ei=1.57)
