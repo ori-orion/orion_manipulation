@@ -14,10 +14,9 @@ def check_for_object(object_tf):
 
 
 def get_object_pose(object_tf):
-    print "Checking object is in sight..."
-    check_for_object(object_tf)
+    #print "Checking object is in sight..."
+    #check_for_object(object_tf)
 
-    print "Checking object is in sight..."
     tf_listener = tf.TransformListener()
     foundTrans = False
     while not foundTrans:

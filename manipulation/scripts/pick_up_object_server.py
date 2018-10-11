@@ -55,6 +55,9 @@ class PickUpObjectAction(object):
 	# Remove any collsion markers further than this specification away from the object	
 	self.excess_bounds = np.array([2.0, 2.0, 2.0])
 
+	# Set up publisher for the collision map
+	self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
+
     def callback(self, msg):
         # Get the message
         message = msg
@@ -78,7 +81,7 @@ class PickUpObjectAction(object):
             del message.poses[index], message.shapes[index]
 
         # Publish the filtered message
-        pub.publish(message)
+        self.pub.publish(message)
 
 
     def execute_cb(self, goal_msg):
@@ -117,40 +120,20 @@ class PickUpObjectAction(object):
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	chosen_pregrasp_pose = grasp_pose_dict[grasp_type][0]
 	chosen_grasp_pose = grasp_pose_dict[grasp_type][1]
-
-	# Get the appropriate grasp and pre-grasp poses depending on the type of object
-	#if grasp_type == 'horizontal':
-	#	chosen_pregrasp_pose = geometry.pose(x=-0.05, z=0.05, ek=-1.57)
-	#	chosen_grasp_pose = geometry.pose(z=0.03)
-	#elif grasp_type == 'horizontal_rotate':
-	#	chosen_pregrasp_pose = geometry.pose(x=-0.07, z=0.02, ei=1.57)
-	#	chosen_grasp_pose = geometry.pose(z=0.02)
-	#	exclusion_bounds = np.array([0.07, 0.07, 0.02])
-	#elif grasp_type == 'above':
-	#	chosen_pregrasp_pose = geometry.pose(z=0.10, ei=3.14)
-	#	chosen_grasp_pose = geometry.pose(z=0.05)
-	#elif grasp_type == 'above_offset':
-	#	grasp_offset = self.config[goal_tf]['offset']
-	#	chosen_pregrasp_pose = geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57)
-	#	chosen_grasp_pose = geometry.pose(z=0.03)
-	#elif grasp_type == 'suction':
-	#	chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
-	#	chosen_grasp_pose = geometry.pose(z=0.045)
-	#	self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
-	#elif grasp_type == 'ar':
-	#	chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
-	#	chosen_grasp_pose = geometry.pose(z=0.03)
-	
 	
         # publish info to the console for the user
         rospy.loginfo('%s: Planning to reach %s using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
 
-        global pub, lower_bounds, upper_bounds, excess_lower_bounds, excess_upper_bounds
+        global lower_bounds, upper_bounds, excess_lower_bounds, excess_upper_bounds
 
         # ---------------------------------- Now begin the actual actions --------------------
         #rospy.loginfo('%s: Getting in move_to_go position.' % ( self._action_name))
 	#self.whole_body.move_to_go()
 	
+	# Chech the object is in sight
+	rospy.loginfo('%s: Checking object is in sight...' % ( self._action_name))
+	check_for_object(goal_tf)
+
 	# Look at the object - this is to make sure that we get all of the necessary collision map
 	rospy.loginfo('%s: Moving head to look at the object.' % ( self._action_name))
 	self.whole_body.gaze_point(ref_frame_id=goal_tf)
@@ -172,19 +155,21 @@ class PickUpObjectAction(object):
         rospy.loginfo('%s: Collision Map generated.' % (self._action_name))
 
         # Get the object pose to subtract from collision map
-        rospy.loginfo('%s: Getting object pose.' % (self._action_name))
+	rospy.loginfo('%s: Checking object is still in sight...' % ( self._action_name))
+	check_for_object(goal_tf)
+
+	rospy.loginfo('%s: Getting object pose.' % (self._action_name))
         goal_object_pose = get_object_pose(goal_tf)
-        upper_bounds = goal_object_pose + exclusion_bounds
+        
+	# Alter collision map
+	upper_bounds = goal_object_pose + exclusion_bounds
         lower_bounds = goal_object_pose - exclusion_bounds
-	
  	excess_lower_bounds = goal_object_pose - self.excess_bounds 
 	excess_upper_bounds = goal_object_pose + self.excess_bounds 
-
         rospy.loginfo('%s: Bounds have been set' % self._action_name)
 
         # Remove object from map and publish to correct topic
         rospy.loginfo('%s: Modifying collision map.' % (self._action_name))
-        pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
         rospy.Subscriber("known_object_pre_filter", CollisionObject, self.callback)
         rospy.sleep(2)
        
