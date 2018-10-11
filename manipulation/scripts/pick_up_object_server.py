@@ -24,7 +24,7 @@ class PickUpObjectAction(object):
 
     def __init__(self, name):
         self._action_name = name
-        self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(self._action_name, 	manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Preparation for using the robot functions
@@ -52,18 +52,25 @@ class PickUpObjectAction(object):
 		self.config = json.load(f)
 		f.close()
 
+	# Remove any collsion markers further than this specification away from the object	
+	self.excess_bounds = np.array([2.0, 2.0, 2.0])
 
     def callback(self, msg):
         # Get the message
         message = msg
-
-        # Find which boxes to removes
+	
+	rospy.loginfo('%s: Removing excess collision space.' % ( self._action_name))
+        
+	# Find which boxes to removes
         inds_to_remove = []
         for i in range(len(message.poses)):
             pose = message.poses[i]
-            if (pose.position.x <= upper_bounds[0] and pose.position.x >= lower_bounds[0] and
+            if ((pose.position.x <= upper_bounds[0] and pose.position.x >= lower_bounds[0] and
                     pose.position.y <= upper_bounds[1] and pose.position.y >= lower_bounds[1] and
-                    pose.position.z <= upper_bounds[2] and pose.position.z >= lower_bounds[2]):
+                    pose.position.z <= upper_bounds[2] and pose.position.z >= lower_bounds[2]) or 
+		(pose.position.x <= excess_lower_bounds[0] or pose.position.x >= excess_upper_bounds[0] or
+                    pose.position.y <= excess_lower_bounds[1] or pose.position.y >= excess_upper_bounds[1] or
+                    pose.position.z <= excess_lower_bounds[2] or pose.position.z >= excess_upper_bounds[2])):
                 inds_to_remove.append(i)
 
         # Remove the boxes
@@ -85,39 +92,58 @@ class PickUpObjectAction(object):
 		grasp_type = self.config[goal_tf]['grasp_pose']
 	except:
 		grasp_type = 'horizontal'
+	
+	# Put default poses and bounds about the tf frame of object to remove from map
+	try:
+		grasp_type = self.config[goal_tf]['estimated_halfsize']
+	except:
+		exclusion_bounds = np.array([0.07, 0.07, 0.07])
 
 	# Put default poses and bounds about the tf frame of object to remove from map
-        exclusion_bounds = np.array([0.07, 0.07, 0.07])
+	try:
+		grasp_offset = self.config[goal_tf]['offset']
+	except:
+		grasp_offset = 0
+
+	grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.05, ek=-1.57), geometry.pose(z=0.03)], 
+				'horizontal_rotate':[geometry.pose(x=-0.07, z=0.02, ei=1.57) , geometry.pose(z=0.02)], 
+				'above': [geometry.pose(z=0.10, ei=3.14), geometry.pose(z=0.05)], 
+				'above_offset':[geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
+				'suction':[geometry.pose(z=0.05, ei=3.14), geometry.pose(z=0.045)], 
+				'ar':[geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)]}
 
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
-	if grasp_type == 'horizontal':
-		chosen_pregrasp_pose = geometry.pose(x=-0.05, z=0.05, ek=-1.57)
-		chosen_grasp_pose = geometry.pose(z=0.03)
-	elif grasp_type == 'horizontal_rotate':
-		chosen_pregrasp_pose = geometry.pose(z=0.6, ei=1.57)
-		chosen_grasp_pose = geometry.pose(z=0.0)
-		exclusion_bounds = np.array([0.05, 0.05, 0.02])
-	elif grasp_type == 'above':
-		chosen_pregrasp_pose = geometry.pose(z=0.10, ei=3.14)
-		chosen_grasp_pose = geometry.pose(z=0.05)
-	elif grasp_type == 'above_offset':
-		grasp_offset = self.config[goal_tf]['offset']
-		chosen_pregrasp_pose = geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57)
-		chosen_grasp_pose = geometry.pose(z=0.03)
-	elif grasp_type == 'suction':
-		chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
-		chosen_grasp_pose = geometry.pose(z=0.045)
-		self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
-		exclusion_bounds = np.array([0.0, 0.0, 0.0])
-	elif grasp_type == 'ar':
-		chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
-		chosen_grasp_pose = geometry.pose(z=0.03)
+	chosen_pregrasp_pose = grasp_pose_dict[grasp_type][0]
+	chosen_grasp_pose = grasp_pose_dict[grasp_type][1]
+
+	# Get the appropriate grasp and pre-grasp poses depending on the type of object
+	#if grasp_type == 'horizontal':
+	#	chosen_pregrasp_pose = geometry.pose(x=-0.05, z=0.05, ek=-1.57)
+	#	chosen_grasp_pose = geometry.pose(z=0.03)
+	#elif grasp_type == 'horizontal_rotate':
+	#	chosen_pregrasp_pose = geometry.pose(x=-0.07, z=0.02, ei=1.57)
+	#	chosen_grasp_pose = geometry.pose(z=0.02)
+	#	exclusion_bounds = np.array([0.07, 0.07, 0.02])
+	#elif grasp_type == 'above':
+	#	chosen_pregrasp_pose = geometry.pose(z=0.10, ei=3.14)
+	#	chosen_grasp_pose = geometry.pose(z=0.05)
+	#elif grasp_type == 'above_offset':
+	#	grasp_offset = self.config[goal_tf]['offset']
+	#	chosen_pregrasp_pose = geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57)
+	#	chosen_grasp_pose = geometry.pose(z=0.03)
+	#elif grasp_type == 'suction':
+	#	chosen_pregrasp_pose = geometry.pose(z=0.05, ei=3.14)
+	#	chosen_grasp_pose = geometry.pose(z=0.045)
+	#	self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
+	#elif grasp_type == 'ar':
+	#	chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
+	#	chosen_grasp_pose = geometry.pose(z=0.03)
 	
 	
         # publish info to the console for the user
         rospy.loginfo('%s: Planning to reach %s using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
 
-        global pub, lower_bounds, upper_bounds
+        global pub, lower_bounds, upper_bounds, excess_lower_bounds, excess_upper_bounds
 
         # ---------------------------------- Now begin the actual actions --------------------
         #rospy.loginfo('%s: Getting in move_to_go position.' % ( self._action_name))
@@ -148,6 +174,9 @@ class PickUpObjectAction(object):
         goal_object_pose = get_object_pose(goal_tf)
         upper_bounds = goal_object_pose + exclusion_bounds
         lower_bounds = goal_object_pose - exclusion_bounds
+	
+ 	excess_lower_bounds = goal_object_pose - self.excess_bounds 
+	excess_upper_bounds = goal_object_pose + self.excess_bounds 
 
         rospy.loginfo('%s: Bounds have been set' % self._action_name)
 
@@ -170,10 +199,14 @@ class PickUpObjectAction(object):
 	self.whole_body.move_end_effector_pose(chosen_pregrasp_pose, goal_tf)
 
 	# Turn off collision checking to get close and grasp
-	rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
-	self.whole_body.collision_world = None
-	rospy.loginfo('%s: Moving to grasp position.' % (self._action_name))	
-	self.whole_body.move_end_effector_pose(chosen_grasp_pose, self.whole_body.end_effector_frame)
+	try: 
+		rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
+		self.whole_body.collision_world = None
+		rospy.loginfo('%s: Moving to grasp position.' % (self._action_name))	
+		self.whole_body.move_end_effector_pose(chosen_grasp_pose, self.whole_body.end_effector_frame)
+	except:
+		rospy.loginfo('%s: Error in trying to grasp. Returning to neutral pose.' % (self._action_name))
+		self.whole_body.move_to_neutral()	
 	
 	# Use suction or gripper to grab the object
 	if grasp_type == 'suction':
@@ -204,11 +237,6 @@ class PickUpObjectAction(object):
 		    rospy.loginfo('Suction succeeded. Object picked up')
 	        else:
 		    rospy.loginfo('Suction failed')
-
- 		# Send a goal to stop suction
-		#suction_off_goal = SuctionControlGoal()
-		#suction_off_goal.suction_on.data = False
-		#suction_control_client.send_goal_and_wait(suction_off_goal)
 
 	else:
 		# Specify the force to grasp
