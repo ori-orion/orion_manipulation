@@ -78,7 +78,6 @@ def get_collision_map(robot):
 
     # Wait for map to populate
     sleep_time = 3
-    print "Waiting for " + str(sleep_time) + " seconds..."
     rospy.sleep(sleep_time)
 
     # Stop reconstruction

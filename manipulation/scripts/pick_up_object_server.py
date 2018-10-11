@@ -108,6 +108,7 @@ class PickUpObjectAction(object):
 	except:
 		grasp_offset = 0
 
+
 	grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.05, ek=-1.57), geometry.pose(z=0.03)], 
 				'horizontal_rotate':[geometry.pose(x=-0.07, z=0.02, ei=1.57) , geometry.pose(z=0.02)], 
 				'above': [geometry.pose(z=0.10, ei=3.14), geometry.pose(z=0.05)], 
@@ -126,7 +127,6 @@ class PickUpObjectAction(object):
 
         global lower_bounds, upper_bounds, excess_lower_bounds, excess_upper_bounds
 
-        # ---------------------------------- Now begin the actual actions --------------------
         #rospy.loginfo('%s: Getting in move_to_go position.' % ( self._action_name))
 	#self.whole_body.move_to_go()
 	
@@ -153,7 +153,8 @@ class PickUpObjectAction(object):
         rospy.loginfo('%s: Getting Collision Map.' % (self._action_name))
         get_collision_map(self.robot)
         rospy.loginfo('%s: Collision Map generated.' % (self._action_name))
-
+	rospy.sleep(2)	
+	
         # Get the object pose to subtract from collision map
 	rospy.loginfo('%s: Checking object is still in sight...' % ( self._action_name))
 	check_for_object(goal_tf)
@@ -171,28 +172,30 @@ class PickUpObjectAction(object):
         # Remove object from map and publish to correct topic
         rospy.loginfo('%s: Modifying collision map.' % (self._action_name))
         rospy.Subscriber("known_object_pre_filter", CollisionObject, self.callback)
-        rospy.sleep(2)
        
         # Set up listener to find the object
         rospy.loginfo('%s: Finding object.' % (self._action_name))
 	check_for_object(goal_tf)
 
         # Turn on collision checking
+	rospy.sleep(1)
         self.whole_body.collision_world = self.collision_world
 	rospy.sleep(2)
 
-	# Move to pregrasp
-        rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
-	self.whole_body.move_end_effector_pose(chosen_pregrasp_pose, goal_tf)
-
-	# Turn off collision checking to get close and grasp
+	
 	try: 
+		# Move to pregrasp
+        	rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
+		self.whole_body.move_end_effector_pose(chosen_pregrasp_pose, goal_tf)
+
+		# Turn off collision checking to get close and grasp
 		rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
 		self.whole_body.collision_world = None
 		rospy.loginfo('%s: Moving to grasp position.' % (self._action_name))	
 		self.whole_body.move_end_effector_pose(chosen_grasp_pose, self.whole_body.end_effector_frame)
-	except:
-		rospy.loginfo('%s: Error in trying to grasp. Returning to neutral pose.' % (self._action_name))
+	except Exception as e:
+		rospy.loginfo('%s: Encountered exception %s.' % self._action_name, str(e))
+		rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
 		self.whole_body.move_to_neutral()	
 	
 	# Use suction or gripper to grab the object
