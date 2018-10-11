@@ -38,8 +38,9 @@ if __name__ == '__main__':
         # publish and subscribe over ROS.
         rospy.init_node('pick_up_object_client_py')
 	
-	if len(sys.argv) == 1:
-		goal_tf = sys.argv[0]
+	print("Provided {0} arguments to client.".format(len(sys.argv)))
+	if len(sys.argv) == 2:
+		goal_tf = sys.argv[1]
 	else:
 		print("Failed to provide tf frame as argument to pick up.")
 		sys.exit(1)
