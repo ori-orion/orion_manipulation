@@ -116,8 +116,6 @@ class PickUpObjectAction(object):
 				'suction':[geometry.pose(z=0.05, ei=3.14), geometry.pose(z=0.045)], 
 				'ar':[geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)]}
 	
-	rospy.loginfo('%s: Chosen grasp type - "%s" of type "%s".' % ( self._action_name,grasp_type, type(grasp_type)))
-
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	chosen_pregrasp_pose = grasp_pose_dict[grasp_type][0]
 	chosen_grasp_pose = grasp_pose_dict[grasp_type][1]
@@ -127,9 +125,7 @@ class PickUpObjectAction(object):
 
         global lower_bounds, upper_bounds, excess_lower_bounds, excess_upper_bounds
 
-        #rospy.loginfo('%s: Getting in move_to_go position.' % ( self._action_name))
-	#self.whole_body.move_to_go()
-	
+
 	# Chech the object is in sight
 	rospy.loginfo('%s: Checking object is in sight...' % ( self._action_name))
 	check_for_object(goal_tf)
@@ -196,6 +192,7 @@ class PickUpObjectAction(object):
 	except Exception as e:
 		rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
 		rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
+		self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_neutral()	
 	
 	# Use suction or gripper to grab the object
@@ -244,7 +241,8 @@ class PickUpObjectAction(object):
 		self.whole_body.move_to_go()
 	except Exception as e:
 		rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
-		rospy.loginfo('%s: Moving back and attempting to move to go again.' % self._action_name)
+		rospy.loginfo('%s: Moving back and attempting to move to go again without collision detection.' % self._action_name)
+		self.whole_body.collision_world = None
 		self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_go()
 
