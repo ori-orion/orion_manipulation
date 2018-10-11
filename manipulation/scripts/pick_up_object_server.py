@@ -240,7 +240,7 @@ class PickUpObjectAction(object):
 		rospy.loginfo('%s: Try to move to go.' % self._action_name)
 		self.whole_body.move_to_go()
 	except Exception as e:
-		rospy.loginfo('%s: Encountered exception %s.' % self._action_name, e)
+		rospy.loginfo('%s: Encountered exception %s.' % self._action_name, str(e))
 		rospy.loginfo('%s: Moving back and attempting to move to go again.' % self._action_name)
 		self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_go()
