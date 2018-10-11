@@ -200,8 +200,9 @@ class PickUpObjectAction(object):
 		self.whole_body.move_end_effector_pose(chosen_grasp_pose, self.whole_body.end_effector_frame)
 	except Exception as e:
 		rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
+		self.whole_body.collision_world = None
 		rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
-		self.omni_base.go_rel(-0.3,0,0)
+		#self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_neutral()	
 	
 	# Use suction or gripper to grab the object

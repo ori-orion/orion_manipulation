@@ -81,3 +81,4 @@ def get_collision_map(robot):
 
     # Stop reconstruction
     stop_collision_map_build()
+    rospy.sleep(1)
