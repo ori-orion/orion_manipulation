@@ -55,7 +55,7 @@ class PickUpObjectAction(object):
 		f.close()
 
 	# Remove any collsion markers further than this specification away from the object	
-	self.excess_bounds = np.array([1.5, 1.5, 1.5])
+	self.excess_bounds = np.array([1.0, 1.0, 1.0])
 
 	# Set up publisher for the collision map
 	self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
@@ -115,8 +115,8 @@ class PickUpObjectAction(object):
 		grasp_offset = 0
 
 
-	grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.05, ek=-1.57), geometry.pose(z=0.03)], 
-				'horizontal_rotate':[geometry.pose(x=-0.07, z=0.02, ei=1.57) , geometry.pose(z=0.02)], 
+	grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.08, ek=-1.57), geometry.pose(z=0.03)], 
+				'horizontal_rotate':[geometry.pose(x=-0.07, z=0.04, ei=1.57) , geometry.pose(z=0.02)], 
 				'above': [geometry.pose(z=0.10, ei=3.14), geometry.pose(z=0.05)], 
 				'above_offset':[geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
 				'suction':[geometry.pose(z=0.05, ei=3.14), geometry.pose(z=0.045)], 
@@ -169,7 +169,7 @@ class PickUpObjectAction(object):
 	rospy.sleep(1)
         
 	# Alter collision map
-	inaccuracy_offset = np.array([0,0,0.05])
+	inaccuracy_offset = np.array([0,0,0.08])
 	upper_bounds = goal_object_pose + exclusion_bounds + inaccuracy_offset
         lower_bounds = goal_object_pose - exclusion_bounds + inaccuracy_offset
  	excess_lower_bounds = goal_object_pose - self.excess_bounds + inaccuracy_offset
