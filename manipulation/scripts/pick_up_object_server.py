@@ -96,6 +96,7 @@ class PickUpObjectAction(object):
         goal_tf = goal_msg.goal_tf
 	self.whole_body.end_effector_frame = 'hand_palm_link'
 
+
 	# Get the grasp type from the config file
 	try:
 		grasp_type = self.config[goal_tf]['grasp_pose']
@@ -106,7 +107,7 @@ class PickUpObjectAction(object):
 	try:
 		exclusion_bounds = self.config[goal_tf]['estimated_halfsize']
 	except:
-		exclusion_bounds = np.array([0.07, 0.07, 0.07])
+		exclusion_bounds = np.array([0.06, 0.06, 0.08])
 
 	# Put default poses and bounds about the tf frame of object to remove from map
 	try:
@@ -188,8 +189,16 @@ class PickUpObjectAction(object):
 	rospy.sleep(1)
         self.whole_body.collision_world = self.collision_world
 	rospy.sleep(2)
-
 	
+	# Give opportunity to preempt
+	if self._as.is_preempt_requested():
+        	rospy.loginfo('%s: Preempted' % self._action_name)
+           	self._as.set_preempted()
+           	success = False
+	  	# Reset callback counter
+		self.callback_counter = 0
+           	return
+
 	try: 
 		# Move to pregrasp
         	rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
@@ -208,6 +217,9 @@ class PickUpObjectAction(object):
 		self.whole_body.move_to_neutral()
 		self._as.set_aborted("Failed to move to the object. Aborted.")	
 		success = False
+		# Reset callback counter
+		self.callback_counter = 0
+           	return
 	
 	# Use suction or gripper to grab the object
 	if grasp_type == 'suction':
@@ -265,9 +277,10 @@ class PickUpObjectAction(object):
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self._as.set_succeeded("Object successfully grasped.")
-	    self._result.goal_complete = 1
-
-	self.callback_counter == 0
+	    _result.goal_complete = 1
+	
+	# Reset callback counter
+	self.callback_counter = 0
 
 
 if __name__ == '__main__':
