@@ -42,7 +42,7 @@ if __name__ == '__main__':
 		goal_tf = sys.argv[0]
 	else:
 		print("Failed to provide tf frame as argument to pick up.")
-		return
+		sys.exit(1)
 
         result = pick_up_object_client(goal_tf)
         print("Result:", ', '.join([str(n) for n in result.sequence]))
