@@ -12,6 +12,8 @@ from tmc_suction.msg import (
     SuctionControlGoal
 )
 
+from manipulation.msg import *
+
 class GiveObjectToOperatorAction(object):
     # create messages that are used to publish feedback/result
     _feedback = GiveObjectToOperatorActionFeedback()

@@ -59,6 +59,7 @@ class PickUpObjectAction(object):
 
 	# Set up publisher for the collision map
 	self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
+	rospy.loginfo('%s: Initialised. Ready for clients.' % ( self._action_name))
 
     def callback(self, msg):
         # Get the message
