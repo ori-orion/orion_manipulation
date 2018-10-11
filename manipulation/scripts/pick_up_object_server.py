@@ -40,6 +40,8 @@ class PickUpObjectAction(object):
 	# Define the vacuum timeouts
 	self._CONNECTION_TIMEOUT = 15.0
 	self._SUCTION_TIMEOUT = rospy.Duration(20.0)
+	
+	self.callback_counter = 0
 
 	# Increase planning timeout. Default is 10s
 	self.whole_body.planning_timeout = 20.0
@@ -60,28 +62,31 @@ class PickUpObjectAction(object):
 
     def callback(self, msg):
         # Get the message
-        message = msg
 	
-	rospy.loginfo('%s: Removing excess collision space.' % ( self._action_name))
-        
-	# Find which boxes to removes
-        inds_to_remove = []
-        for i in range(len(message.poses)):
-            pose = message.poses[i]
-            if ((pose.position.x <= upper_bounds[0] and pose.position.x >= lower_bounds[0] and
-                    pose.position.y <= upper_bounds[1] and pose.position.y >= lower_bounds[1] and
-                    pose.position.z <= upper_bounds[2] and pose.position.z >= lower_bounds[2]) or 
-		(pose.position.x <= excess_lower_bounds[0] or pose.position.x >= excess_upper_bounds[0] or
-                    pose.position.y <= excess_lower_bounds[1] or pose.position.y >= excess_upper_bounds[1] or
-                    pose.position.z <= excess_lower_bounds[2] or pose.position.z >= excess_upper_bounds[2])):
-                inds_to_remove.append(i)
+	if self.callback_counter == 0:
+		self.callback_counter +=1			
+		message = msg
+	
+		rospy.loginfo('%s: Removing excess collision space.' % ( self._action_name))
+		
+		# Find which boxes to removes
+		inds_to_remove = []
+		for i in range(len(message.poses)):
+		    pose = message.poses[i]
+		    if ((pose.position.x <= upper_bounds[0] and pose.position.x >= lower_bounds[0] and
+		            pose.position.y <= upper_bounds[1] and pose.position.y >= lower_bounds[1] and
+		            pose.position.z <= upper_bounds[2] and pose.position.z >= lower_bounds[2]) or 
+			(pose.position.x <= excess_lower_bounds[0] or pose.position.x >= excess_upper_bounds[0] or
+		            pose.position.y <= excess_lower_bounds[1] or pose.position.y >= excess_upper_bounds[1] or
+		            pose.position.z <= excess_lower_bounds[2] or pose.position.z >= excess_upper_bounds[2])):
+		        inds_to_remove.append(i)
 
-        # Remove the boxes
-        for index in sorted(inds_to_remove, reverse=True):
-            del message.poses[index], message.shapes[index]
+		# Remove the boxes
+		for index in sorted(inds_to_remove, reverse=True):
+		    del message.poses[index], message.shapes[index]
 
-        # Publish the filtered message
-        self.pub.publish(message)
+		# Publish the filtered message
+		self.pub.publish(message)
 
 
     def execute_cb(self, goal_msg):
@@ -125,8 +130,9 @@ class PickUpObjectAction(object):
 
         global lower_bounds, upper_bounds, excess_lower_bounds, excess_upper_bounds
 
+	# ------------------------------------------------------------------------------
 
-	# Chech the object is in sight
+	# Check the object is in sight
 	rospy.loginfo('%s: Checking object is in sight...' % ( self._action_name))
 	check_for_object(goal_tf)
 
@@ -148,8 +154,10 @@ class PickUpObjectAction(object):
         # Set collision map
         rospy.loginfo('%s: Getting Collision Map.' % (self._action_name))
         get_collision_map(self.robot)
-        rospy.loginfo('%s: Collision Map generated.' % (self._action_name))
-	rospy.sleep(2)	
+        rospy.sleep(2)
+
+	rospy.loginfo('%s: Collision Map generated.' % (self._action_name))
+		
 	
         # Get the object pose to subtract from collision map
 	rospy.loginfo('%s: Checking object is still in sight...' % ( self._action_name))
@@ -157,6 +165,7 @@ class PickUpObjectAction(object):
 
 	rospy.loginfo('%s: Getting object pose.' % (self._action_name))
         goal_object_pose = get_object_pose(goal_tf)
+	rospy.sleep(1)
         
 	# Alter collision map
 	upper_bounds = goal_object_pose + exclusion_bounds
@@ -251,6 +260,8 @@ class PickUpObjectAction(object):
             rospy.loginfo('%s: Succeeded' % self._action_name)
             # self._as.set_succeeded(self._result)
             self._as.set_succeeded(1)
+
+	self.callback_counter == 0
 
 
 if __name__ == '__main__':
