@@ -55,7 +55,7 @@ class PickUpObjectAction(object):
 		f.close()
 
 	# Remove any collsion markers further than this specification away from the object	
-	self.excess_bounds = np.array([2.0, 2.0, 2.0])
+	self.excess_bounds = np.array([1.5, 1.5, 1.5])
 
 	# Set up publisher for the collision map
 	self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
@@ -169,10 +169,11 @@ class PickUpObjectAction(object):
 	rospy.sleep(1)
         
 	# Alter collision map
-	upper_bounds = goal_object_pose + exclusion_bounds
-        lower_bounds = goal_object_pose - exclusion_bounds
- 	excess_lower_bounds = goal_object_pose - self.excess_bounds 
-	excess_upper_bounds = goal_object_pose + self.excess_bounds 
+	inaccuracy_offset = np.array([0,0,0.05])
+	upper_bounds = goal_object_pose + exclusion_bounds + inaccuracy_offset
+        lower_bounds = goal_object_pose - exclusion_bounds + inaccuracy_offset
+ 	excess_lower_bounds = goal_object_pose - self.excess_bounds + inaccuracy_offset
+	excess_upper_bounds = goal_object_pose + self.excess_bounds + inaccuracy_offset
         rospy.loginfo('%s: Bounds have been set' % self._action_name)
 
         # Remove object from map and publish to correct topic
@@ -206,6 +207,7 @@ class PickUpObjectAction(object):
 		#self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_neutral()
 		self._as.set_aborted("Failed to move to the object. Aborted.")	
+		success = False
 	
 	# Use suction or gripper to grab the object
 	if grasp_type == 'suction':
@@ -259,7 +261,7 @@ class PickUpObjectAction(object):
 		self.whole_body.move_to_go()
 
 
-	success = True
+	
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self._as.set_succeeded("Object successfully grasped.")
