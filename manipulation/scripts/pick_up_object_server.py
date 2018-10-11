@@ -95,7 +95,7 @@ class PickUpObjectAction(object):
 	
 	# Put default poses and bounds about the tf frame of object to remove from map
 	try:
-		grasp_type = self.config[goal_tf]['estimated_halfsize']
+		exclusion_bounds = self.config[goal_tf]['estimated_halfsize']
 	except:
 		exclusion_bounds = np.array([0.07, 0.07, 0.07])
 
@@ -111,6 +111,8 @@ class PickUpObjectAction(object):
 				'above_offset':[geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
 				'suction':[geometry.pose(z=0.05, ei=3.14), geometry.pose(z=0.045)], 
 				'ar':[geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)]}
+	
+	rospy.loginfo('%s: Chosen grasp type - "%s" of type "%s".' % ( self._action_name,grasp_type, type(grasp_type)))
 
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	chosen_pregrasp_pose = grasp_pose_dict[grasp_type][0]
