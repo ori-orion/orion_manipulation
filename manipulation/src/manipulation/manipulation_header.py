@@ -20,7 +20,9 @@ def get_object_pose(object_tf):
     foundTrans = False
     while not foundTrans:
         try:
-            (trans, rot) = tf_listener.lookupTransform('/map', object_tf, rospy.Time(0))
+	    t = tf_listener.getLatestCommonTime("/map", object_tf)
+	    (trans, rot) = tf_listener.lookupTransform('/map', object_tf, t)
+            #(trans, rot) = tf_listener.lookupTransform('/map', object_tf, rospy.Time(0))
             foundTrans = True
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             continue
