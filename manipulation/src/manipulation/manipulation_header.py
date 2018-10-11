@@ -10,7 +10,6 @@ def check_for_object(object_tf):
     while not foundMarker:
         all_frames = tf_listener.getFrameStrings()
         foundMarker = object_tf in all_frames
-    print "Found the object."
 
 
 def get_object_pose(object_tf):
@@ -34,7 +33,7 @@ def reset_collision_map_build():
     try:
         reset_service = rospy.ServiceProxy('/tmc_reconstruction/system/reset', Empty)
         reset_service()
-        print "tmc_reconstruction reset."
+        #print "tmc_reconstruction reset."
     except rospy.ServiceException, e:
         print "Service call failed: %s" % e
 
@@ -43,7 +42,7 @@ def start_collision_map_build():
     try:
         start_service = rospy.ServiceProxy('/tmc_reconstruction/system/start', Empty)
         start_service()
-        print "tmc_reconstruction started."
+        #print "tmc_reconstruction started."
     except rospy.ServiceException, e:
         print "Service call failed: %s" % e
 
@@ -53,7 +52,7 @@ def stop_collision_map_build():
     try:
         stop_service = rospy.ServiceProxy('/tmc_reconstruction/system/stop', Empty)
         stop_service()
-        print "tmc_reconstruction stopped."
+        #print "tmc_reconstruction stopped."
     except rospy.ServiceException, e:
         print "Service call failed: %s" % e
 
