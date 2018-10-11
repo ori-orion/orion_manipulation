@@ -41,7 +41,8 @@ if __name__ == '__main__':
 	if len(sys.argv) == 1:
 		goal_tf = sys.argv[0]
 	else:
-		goal_tf = 'ar_marker/201'
+		print("Failed to provide tf frame as argument to pick up.")
+		return
 
         result = pick_up_object_client(goal_tf)
         print("Result:", ', '.join([str(n) for n in result.sequence]))

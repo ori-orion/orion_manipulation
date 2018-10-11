@@ -19,7 +19,7 @@ from manipulation.msg import *
 
 class PickUpObjectAction(object):
     # create messages that are used to publish feedback/result
-    _feedback = PickUpObjectActionFeedback()
+    #_feedback = PickUpObjectActionFeedback()
     _result = PickUpObjectActionResult()
 
     def __init__(self, name):
@@ -204,7 +204,8 @@ class PickUpObjectAction(object):
 		self.whole_body.collision_world = None
 		rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
 		#self.omni_base.go_rel(-0.3,0,0)
-		self.whole_body.move_to_neutral()	
+		self.whole_body.move_to_neutral()
+		self._as.set_aborted("Failed to move to the object. Aborted.")	
 	
 	# Use suction or gripper to grab the object
 	if grasp_type == 'suction':
@@ -218,16 +219,16 @@ class PickUpObjectAction(object):
 	        # Wait for connection
 	        try:
 		    if not suction_control_client.wait_for_server(
-			    rospy.Duration(_CONNECTION_TIMEOUT)):
+			    rospy.Duration(self._CONNECTION_TIMEOUT)):
 		        raise Exception(suction_action + ' does not exist')
 	        except Exception as e:
 		    rospy.logerr(e)
-		    sys.exit(1)
+		    #sys.exit(1)
 
 	        # Send a goal to start suction
 	        rospy.loginfo('%s: Suction server found. Activating suction...' % (self._action_name))
 	        suction_on_goal = SuctionControlGoal()
-	        suction_on_goal.timeout = _SUCTION_TIMEOUT
+	        suction_on_goal.timeout = self._SUCTION_TIMEOUT
 	        suction_on_goal.suction_on.data = True
 	        
 		if (suction_control_client.send_goal_and_wait(suction_on_goal) ==
@@ -257,11 +258,12 @@ class PickUpObjectAction(object):
 		self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_go()
 
+
+	success = True
         if success:
-            # self._result.sequence = self._feedback.sequence
             rospy.loginfo('%s: Succeeded' % self._action_name)
-            # self._as.set_succeeded(self._result)
-            self._as.set_succeeded(1)
+            self._as.set_succeeded("Object successfully grasped.")
+	    self._result.goal_complete = 1
 
 	self.callback_counter == 0
 
