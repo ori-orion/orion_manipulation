@@ -251,8 +251,14 @@ class PickUpObjectAction(object):
 	rospy.sleep(0.5)
 
 	# Now return to moving position
-	rospy.loginfo('%s: Try to move to go.' % self._action_name)
-	self.whole_body.move_to_go()
+	try:
+		rospy.loginfo('%s: Try to move to go.' % self._action_name)
+		self.whole_body.move_to_go()
+	except Exception as e:
+		rospy.loginfo('%s: Encountered exception %s.' % self._action_name, e)
+		rospy.loginfo('%s: Moving back and attempting to move to go again.' % self._action_name)
+		self.omni_base.go_rel(-0.3,0,0)
+		self.whole_body.move_to_go()
 
         if success:
             # self._result.sequence = self._feedback.sequence
