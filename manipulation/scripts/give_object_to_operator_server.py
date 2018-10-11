@@ -59,7 +59,7 @@ class GiveObjectToOperatorAction(object):
 	rospy.loginfo('%s: Connecting to suction server...' % (self._action_name))
         try:
 	    if not suction_control_client.wait_for_server(
-		    rospy.Duration(_CONNECTION_TIMEOUT)):
+		    rospy.Duration(self._CONNECTION_TIMEOUT)):
 	        raise Exception(suction_action + ' does not exist')
         except Exception as e:
 	    rospy.logerr(e)
