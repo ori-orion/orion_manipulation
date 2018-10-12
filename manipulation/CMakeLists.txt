@@ -17,7 +17,15 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
 )
 
-add_action_files(DIRECTORY action FILES MoveHandToTf.action)
+add_action_files(DIRECTORY 
+		action 
+		FILES 
+		MoveHandToTf.action 
+		GrabHorizontalDoorHandleAction.action
+		OpenDrawer.action
+		OpenFridge.action
+		PickUpObject.action
+		GiveObjectToOperator.action)
 
 catkin_python_setup()
 
