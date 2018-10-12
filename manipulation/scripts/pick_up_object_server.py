@@ -101,7 +101,8 @@ class PickUpObjectAction(object):
 	try:
 		grasp_type = self.config[goal_tf]['grasp_pose']
 		rospy.loginfo('%s: Found in the config. Using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
-	except:
+	except Exception as e:
+		rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
 		grasp_type = 'horizontal'
 	
 	# Put default poses and bounds about the tf frame of object to remove from map
