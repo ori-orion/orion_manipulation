@@ -100,6 +100,7 @@ class PickUpObjectAction(object):
 	# Get the grasp type from the config file
 	try:
 		grasp_type = self.config[goal_tf]['grasp_pose']
+		rospy.loginfo('%s: Found in the config. Using grasp type "%s".' % ( self._action_name, goal_tf,grasp_type))
 	except:
 		grasp_type = 'horizontal'
 	
