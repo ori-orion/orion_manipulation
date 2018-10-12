@@ -116,13 +116,20 @@ class PickUpObjectAction(object):
 		grasp_offset = 0
 
 
-	grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.08, ek=-1.57), geometry.pose(z=0.03)], 
+	#grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.08, ek=-1.57), geometry.pose(z=0.03)], 
+	#			'horizontal_rotate':[geometry.pose(x=-0.07, z=0.04, ei=1.57) , geometry.pose(z=0.02)], 
+	#			'above': [geometry.pose(z=0.10, ei=3.14), geometry.pose(z=0.05)], 
+	#			'above_offset':[geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
+	#			'suction':[geometry.pose(z=0.05, ei=3.14), geometry.pose(z=0.045)], 
+	#			'ar':[geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)]}
+	
+	grasp_pose_dict = {'horizontal': [geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
 				'horizontal_rotate':[geometry.pose(x=-0.07, z=0.04, ei=1.57) , geometry.pose(z=0.02)], 
 				'above': [geometry.pose(z=0.10, ei=3.14), geometry.pose(z=0.05)], 
 				'above_offset':[geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
 				'suction':[geometry.pose(z=0.05, ei=3.14), geometry.pose(z=0.045)], 
 				'ar':[geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)]}
-	
+
 	# Get the appropriate grasp and pre-grasp poses depending on the type of object
 	chosen_pregrasp_pose = grasp_pose_dict[grasp_type][0]
 	chosen_grasp_pose = grasp_pose_dict[grasp_type][1]
@@ -170,7 +177,8 @@ class PickUpObjectAction(object):
 	rospy.sleep(1)
         
 	# Alter collision map
-	inaccuracy_offset = np.array([0,0,0.08])
+	#inaccuracy_offset = np.array([0,0,0.08])
+	inaccuracy_offset = np.array([0,0,0.0,0.0])
 	upper_bounds = goal_object_pose + exclusion_bounds + inaccuracy_offset
         lower_bounds = goal_object_pose - exclusion_bounds + inaccuracy_offset
  	excess_lower_bounds = goal_object_pose - self.excess_bounds + inaccuracy_offset
