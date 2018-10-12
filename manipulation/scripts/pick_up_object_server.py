@@ -23,7 +23,8 @@ class PickUpObjectAction(object):
     _result = PickUpObjectActionResult()
 
     def __init__(self, name):
-        self._action_name = name
+        #self._action_name = name
+        self._action_name = 'grasp_object_action'
         self._as = actionlib.SimpleActionServer(self._action_name, 	manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
@@ -228,7 +229,7 @@ class PickUpObjectAction(object):
 		rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
 		#self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_neutral()
-		self._as.set_aborted("Failed to move to the object. Aborted.")	
+		self._as.set_aborted()
 		success = False
 		# Reset callback counter
 		self.callback_counter = 0
@@ -289,8 +290,8 @@ class PickUpObjectAction(object):
 	
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
-            self._as.set_succeeded("Object successfully grasped.")
-	    _result.goal_complete = 1
+            _result.goal_complete = 1
+            self._as.set_succeeded(_result)
 	
 	# Reset callback counter
 	self.callback_counter = 0
