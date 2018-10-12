@@ -123,7 +123,7 @@ class PickUpObjectAction(object):
 	#			'suction':[geometry.pose(z=0.05, ei=3.14), geometry.pose(z=0.045)], 
 	#			'ar':[geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)]}
 	
-	grasp_pose_dict = {'horizontal': [geometry.pose(z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
+	grasp_pose_dict = {'horizontal': [geometry.pose(z=-0.05, ei=-1.57), geometry.pose(z=0.03)], 
 				'horizontal_rotate':[geometry.pose(x=-0.07, z=0.04, ei=1.57) , geometry.pose(z=0.02)], 
 				'above': [geometry.pose(z=0.10, ei=3.14), geometry.pose(z=0.05)], 
 				'above_offset':[geometry.pose(y=grasp_offset, z=-0.05, ek=-1.57), geometry.pose(z=0.03)], 
