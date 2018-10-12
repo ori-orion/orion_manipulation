@@ -193,6 +193,10 @@
 		"estimated_halfsize": [0.10,0.10,0.02]
 	},
 
+	"bowl":{
+		"grasp_pose": "above_offset",
+		"estimated_halfsize": [0.08,0.08,0.06]
+	},
 
 	"pink_bowl":{
 		"grasp_pose": "above_offset",
