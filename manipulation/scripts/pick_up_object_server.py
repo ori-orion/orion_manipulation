@@ -115,7 +115,7 @@ class PickUpObjectAction(object):
 	try:
 		grasp_offset = float(self.config[goal_tf]['offset'])
 	except:
-		grasp_offset = 0.0
+		grasp_offset = float(0.0)
 
 	rospy.loginfo('%s: Using grasp offset "%f".' % ( self._action_name, goal_tf,grasp_offset))
 	#grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.08, ek=-1.57), geometry.pose(z=0.03)], 
