@@ -113,11 +113,11 @@ class PickUpObjectAction(object):
 
 	# Put default poses and bounds about the tf frame of object to remove from map
 	try:
-		grasp_offset = self.config[goal_tf]['offset']
+		grasp_offset = float(self.config[goal_tf]['offset'])
 	except:
-		grasp_offset = 0
+		grasp_offset = 0.0
 
-
+	rospy.loginfo('%s: Using grasp offset "%f".' % ( self._action_name, goal_tf,grasp_offset))
 	#grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.08, ek=-1.57), geometry.pose(z=0.03)], 
 	#			'horizontal_rotate':[geometry.pose(x=-0.07, z=0.04, ei=1.57) , geometry.pose(z=0.02)], 
 	#			'above': [geometry.pose(z=0.10, ei=3.14), geometry.pose(z=0.05)], 
