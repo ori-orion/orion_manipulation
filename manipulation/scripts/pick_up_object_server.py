@@ -178,7 +178,7 @@ class PickUpObjectAction(object):
         
 	# Alter collision map
 	#inaccuracy_offset = np.array([0,0,0.08])
-	inaccuracy_offset = np.array([0,0,0.0,0.0])
+	inaccuracy_offset = np.array([0.0,0.0,0.0])
 	upper_bounds = goal_object_pose + exclusion_bounds + inaccuracy_offset
         lower_bounds = goal_object_pose - exclusion_bounds + inaccuracy_offset
  	excess_lower_bounds = goal_object_pose - self.excess_bounds + inaccuracy_offset
