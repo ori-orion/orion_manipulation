@@ -118,6 +118,7 @@ class PickUpObjectAction(object):
 		grasp_offset = float(0.0)
 
 	print(type(grasp_offset))
+	print(grasp_offset)
 
 	rospy.loginfo('{0}: Using grasp offset "{1}".'.format( self._action_name, goal_tf,str(grasp_offset)))
 	#grasp_pose_dict = {'horizontal': [geometry.pose(x=-0.05, z=0.08, ek=-1.57), geometry.pose(z=0.03)], 
