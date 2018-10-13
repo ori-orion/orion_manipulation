@@ -23,7 +23,7 @@ class PickUpObjectAction(object):
     _result = PickUpObjectActionResult()
 
     def __init__(self, name):
-        self._action_name = name
+        self._action_name = 'pick_up_object'
         self._as = actionlib.SimpleActionServer(self._action_name, 	manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 

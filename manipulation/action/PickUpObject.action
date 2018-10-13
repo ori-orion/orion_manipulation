@@ -2,7 +2,7 @@
 string goal_tf 
 ---
 # Define the result
-uint32 goal_complete
+bool goal_complete
 ---
 # Define a feedback message
 
