@@ -289,7 +289,7 @@ class PickUpObjectAction(object):
 	
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
-            _result.goal_complete = 1
+            _result.goal_complete = True
             self._as.set_succeeded(_result)
 	
 	# Reset callback counter
