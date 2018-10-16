@@ -11,6 +11,14 @@ def check_for_object(object_tf):
         all_frames = tf_listener.getFrameStrings()
         foundMarker = object_tf in all_frames
 
+def get_similar_tf(tf_frame):
+   
+    tf_listener = tf.TransformListener()
+    all_frames = tf_listener.getFrameStrings()
+    foundMarker = False
+    for object_tf in all_frames:
+        if tf_frame == object_tf.split('-')[0]:
+		return tf_frame	 
 
 def get_object_pose(object_tf):
     #print "Checking object is in sight..."

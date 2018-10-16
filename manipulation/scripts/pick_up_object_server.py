@@ -90,11 +90,20 @@ class PickUpObjectAction(object):
 		self.pub.publish(message)
 
 
+    
+
     def execute_cb(self, goal_msg):
 
         success = True
         goal_tf = goal_msg.goal_tf
-	self.whole_body.end_effector_frame = 'hand_palm_link'
+	goal_tf = get_similar_tf(goal_tf)
+        rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
+	if goal_tf is None:
+		self._as.set_aborted()
+                rospy.loginfo('{0}: Found no similar tf frame. Aborting.'.format(self._action_name))
+		return
+
+        self.whole_body.end_effector_frame = 'hand_palm_link'
 
 
 	# Get the grasp type from the config file
