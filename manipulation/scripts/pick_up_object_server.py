@@ -20,13 +20,16 @@ from manipulation.msg import *
 class PickUpObjectAction(object):
     # create messages that are used to publish feedback/result
     #_feedback = PickUpObjectActionFeedback()
-    _result = PickUpObjectActionResult()
+    #global _result 
+    #_result = PickUpObjectActionResult()
 
     def __init__(self, name):
         self._action_name = 'pick_up_object'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
+        #self._action_name = name
+	print("Name is: " + name)        
+	self._as = actionlib.SimpleActionServer(self._action_name, 	manipulation.msg.PickUpObjectAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
-
+	
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
@@ -93,7 +96,7 @@ class PickUpObjectAction(object):
     
 
     def execute_cb(self, goal_msg):
-
+	
         success = True
         goal_tf = goal_msg.goal_tf
 	goal_tf = get_similar_tf(goal_tf)
@@ -286,6 +289,7 @@ class PickUpObjectAction(object):
 	# Now return to moving position
 	try:
 		rospy.loginfo('%s: Try to move to go.' % self._action_name)
+		self.omni_base.go_rel(-0.3,0,0)
 		self.whole_body.move_to_go()
 	except Exception as e:
 		rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
@@ -297,6 +301,7 @@ class PickUpObjectAction(object):
 
 	
         if success:
+	    _result = PickUpObjectActionResult()
             rospy.loginfo('%s: Succeeded' % self._action_name)
             _result.goal_complete = True
             self._as.set_succeeded(_result)

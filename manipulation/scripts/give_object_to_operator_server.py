@@ -20,7 +20,7 @@ class GiveObjectToOperatorAction(object):
     _result = GiveObjectToOperatorActionResult()
 
     def __init__(self, name):
-        self._action_name = name
+        self._action_name = 'give_something'
         self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.GiveObjectToOperatorAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
@@ -40,7 +40,7 @@ class GiveObjectToOperatorAction(object):
 
 	# Increase planning timeout. Default is 10s
 	self.whole_body.planning_timeout = 20.0
-
+	rospy.loginfo('%s: Initialised. Ready for clients.' % ( self._action_name))
 
     def execute_cb(self, goal_msg):
 

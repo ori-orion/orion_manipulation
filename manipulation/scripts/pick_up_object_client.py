@@ -18,7 +18,9 @@ def pick_up_object_client(goal_tf):
 
     # Waits until the action server has started up and started
     # listening for goals.
+    print("Waiting for server")
     client.wait_for_server()
+    print("Finished waiting for server")
 
     # Creates a goal to send to the action server.
     goal_msg = PickUpObjectGoal(goal_tf=goal_tf)

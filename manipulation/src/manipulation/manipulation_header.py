@@ -14,11 +14,16 @@ def check_for_object(object_tf):
 def get_similar_tf(tf_frame):
    
     tf_listener = tf.TransformListener()
+    rospy.sleep(3)
     all_frames = tf_listener.getFrameStrings()
-    foundMarker = False
+    print(all_frames)
     for object_tf in all_frames:
-        if tf_frame == object_tf.split('-')[0]:
-		return tf_frame	 
+		print '----------------'
+		print object_tf
+		print object_tf.split('-')[0]
+		print '----------------'
+		if tf_frame == object_tf.split('-')[0]:
+			return object_tf	 
 
 def get_object_pose(object_tf):
     #print "Checking object is in sight..."
