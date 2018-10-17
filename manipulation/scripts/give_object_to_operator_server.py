@@ -15,9 +15,8 @@ from tmc_suction.msg import (
 from manipulation.msg import *
 
 class GiveObjectToOperatorAction(object):
-    # create messages that are used to publish feedback/result
-    _feedback = GiveObjectToOperatorActionFeedback()
-    _result = GiveObjectToOperatorActionResult()
+
+    
 
     def __init__(self, name):
         self._action_name = 'give_something'
@@ -72,11 +71,11 @@ class GiveObjectToOperatorAction(object):
 	suction_off_goal.suction_on.data = False
 	suction_control_client.send_goal_and_wait(suction_off_goal)
 
-        if success:
-            # self._result.sequence = self._feedback.sequence
-            rospy.loginfo('%s: Succeeded' % self._action_name)
-            # self._as.set_succeeded(self._result)
-            self._as.set_succeeded(1)
+	rospy.loginfo('%s: Succeeded' % self._action_name)
+
+	_result = GiveObjectToOperatorResult()
+	_result.goal_complete = True
+        self._as.set_succeeded(_result)
 
 
 if __name__ == '__main__':
