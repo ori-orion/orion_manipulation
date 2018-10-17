@@ -43,7 +43,21 @@ class GiveObjectToOperatorAction(object):
 
     def execute_cb(self, goal_msg):
 
-        success = True
+	# Create action client to speech confirmation
+        #speech_confirm_action = 'wait_for_confirmation'
+        #speech_confirm_client = actionlib.SimpleActionClient(
+	#    suction_action, SuctionControlAction)
+
+
+	#rospy.loginfo('%s: Connecting to speech confirmation server...' % (self._action_name))
+        #try:
+	#    if not speech_confirm_client.wait_for_server(
+	#	    rospy.Duration(self._CONNECTION_TIMEOUT)):
+	#        raise Exception(speech_confirm_action + ' does not exist')
+        #except Exception as e:
+        #    rospy.loginfo('%s: Could not connect to speech. Giving operator object anyway...' % (self._action_name))
+	#    pass
+
         
 	rospy.loginfo('%s: Opening gripper.' % (self._action_name))
 	self.gripper.command(1.2)
