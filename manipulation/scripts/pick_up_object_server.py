@@ -38,7 +38,7 @@ class PickUpObjectAction(object):
         self.gripper = self.robot.try_get('gripper')
 
         self._HAND_TF = 'hand_palm_link'
-        self._GRASP_FORCE = 0.5
+        self._GRASP_FORCE = 0.8
 
 	# Define the vacuum timeouts
 	self._CONNECTION_TIMEOUT = 15.0
@@ -293,12 +293,21 @@ class PickUpObjectAction(object):
 		self.whole_body.move_to_go()
 	except Exception as e:
 		rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
-		rospy.loginfo('%s: Moving back and attempting to move to go again without collision detection.' % self._action_name)
-		self.whole_body.collision_world = None
-		self.omni_base.go_rel(-0.3,0,0)
-		self.whole_body.move_to_go()
-
-
+                try:
+			rospy.loginfo('%s: Moving back and attempting to move to go again without collision detection.' % self._action_name)
+			try:
+				self.omni_base.go_rel(-0.3,0,0)
+			except:
+				try:
+					self.omni_base.go_rel(0,0.3,0)	
+				except:
+					self.omni_base.go_rel(0,-0.3,0)	
+			self.whole_body.move_to_go()
+		except:
+			self.whole_body.collision_world = None
+			self.omni_base.go_rel(-0.3,0,0)
+			self.whole_body.move_to_go()
+			
 	_result = PickUpObjectResult()
         rospy.loginfo('%s: Succeeded' % self._action_name)
         _result.goal_complete = True
