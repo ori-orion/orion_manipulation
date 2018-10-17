@@ -38,7 +38,7 @@ class PickUpObjectAction(object):
         self.gripper = self.robot.try_get('gripper')
 
         self._HAND_TF = 'hand_palm_link'
-        self._GRASP_FORCE = 0.2
+        self._GRASP_FORCE = 0.5
 
 	# Define the vacuum timeouts
 	self._CONNECTION_TIMEOUT = 15.0
@@ -299,12 +299,10 @@ class PickUpObjectAction(object):
 		self.whole_body.move_to_go()
 
 
-	
-        if success:
-	    _result = PickUpObjectActionResult()
-            rospy.loginfo('%s: Succeeded' % self._action_name)
-            _result.goal_complete = True
-            self._as.set_succeeded(_result)
+	_result = PickUpObjectResult()
+        rospy.loginfo('%s: Succeeded' % self._action_name)
+        _result.goal_complete = True
+	self._as.set_succeeded(_result)
 	
 	# Reset callback counter
 	self.callback_counter = 0
