@@ -22,7 +22,7 @@ def get_similar_tf(tf_frame):
 		print object_tf
 		print object_tf.split('-')[0]
 		print '----------------'
-		if tf_frame == object_tf.split('-')[0]:
+		if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
 			return object_tf	 
 
 def get_object_pose(object_tf):
