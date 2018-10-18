@@ -119,7 +119,7 @@ class OpenDoorAction(object):
 			    pose = message.poses[i]
 			    if (pose.position.y < min_y or pose.position.y > max_y or
 				 pose.position.z < min_z or pose.position.z > max_z or
-				((pose.position.x <= mode_x + 0.030) and (pose.position.x >= mode_x - 0.030))):
+				((pose.position.x <= mode_x + 0.040) and (pose.position.x >= mode_x - 0.040))):
 			        inds_to_remove.append(i)
 
 		if max(comp_list) == mode_y:
@@ -134,7 +134,7 @@ class OpenDoorAction(object):
 			    pose = message.poses[i]
 			    if (pose.position.x < min_x or pose.position.x > max_x or
 				 pose.position.z < min_z or pose.position.z > max_z or
-				((pose.position.y <= mode_y + 0.030) and (pose.position.y >= mode_y - 0.030))):
+				((pose.position.y <= mode_y + 0.040) and (pose.position.y >= mode_y - 0.040))):
 				inds_to_remove.append(i)
 
 		if max(comp_list) == mode_z:
@@ -149,7 +149,7 @@ class OpenDoorAction(object):
 			    pose = message.poses[i]
 			    if (pose.position.y < min_y or pose.position.y > max_y or
 				 pose.position.x < min_x or pose.position.x > max_x or
-				((pose.position.z <= mode_z + 0.030) and (pose.position.z >= mode_z - 0.030))):
+				((pose.position.z <= mode_z + 0.040) and (pose.position.z >= mode_z - 0.040))):
 			        inds_to_remove.append(i)
 
 		rospy.loginfo('%s: Removing indices.' % ( self._action_name))
@@ -227,14 +227,14 @@ class OpenDoorAction(object):
 	get_collision_map(self.robot)
 
 	# Publish the tf of the destination
-	rospy.loginfo('%s: Suscribing to the collision environment and activating callback.' % ( self._action_name))
+	rospy.loginfo('%s: Subcribing to the collision environment and activating callback.' % ( self._action_name))
         rospy.Subscriber("known_object", CollisionObject, self.callback)
        
 	self.whole_body.collision_world = None
 	#self.whole_body.move_end_effector_pose(geometry.pose(y=-0.3, z=0.05, x=0.2, ek=3.14,ej=1.57))
 	#self.whole_body.move_end_effector_pose(geometry.pose(y=-0.06, z=0.05, x=0.2, ek=3.14,ej=1.57), 'handle')
 
-	self.whole_body.move_end_effector_pose(geometry.pose(y=-0.07, z=0.08, x=0.03, ek=1.57, ej=1.57), 'handle')
+	self.whole_body.move_end_effector_pose(geometry.pose(y=-0.12, z=0.05, x=0.03, ek=1.57, ej=1.57), 'handle')
 
 	self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
 	self.whole_body.move_end_effector_pose(geometry.pose(z=1.0), 'hand_palm_link')

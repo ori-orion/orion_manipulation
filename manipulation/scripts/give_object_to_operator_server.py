@@ -13,6 +13,8 @@ from tmc_suction.msg import (
 )
 
 from manipulation.msg import *
+from orion_hri.msg import WaitForConfirmationAction, WaitForConfirmationGoal, WaitForConfirmationResult
+
 
 class GiveObjectToOperatorAction(object):
 
@@ -44,24 +46,34 @@ class GiveObjectToOperatorAction(object):
     def execute_cb(self, goal_msg):
 
 	# Create action client to speech confirmation
-        #speech_confirm_action = 'wait_for_confirmation'
-        #speech_confirm_client = actionlib.SimpleActionClient(
-	#    suction_action, SuctionControlAction)
+        speech_confirm_action = 'wait_for_confirmation'
+        speech_confirm_client = actionlib.SimpleActionClient(
+	    speech_confirm_action, WaitForConfirmationAction)
 
+	rospy.loginfo(' Connecting to speech confirmation server...')
+        try:
+	    if not speech_confirm_client.wait_for_server(
+		    rospy.Duration(self._CONNECTION_TIMEOUT)):
+	        raise Exception(speech_confirm_action + ' does not exist')
 
-	#rospy.loginfo('%s: Connecting to speech confirmation server...' % (self._action_name))
-        #try:
-	#    if not speech_confirm_client.wait_for_server(
-	#	    rospy.Duration(self._CONNECTION_TIMEOUT)):
-	#        raise Exception(speech_confirm_action + ' does not exist')
-        #except Exception as e:
-        #    rospy.loginfo('%s: Could not connect to speech. Giving operator object anyway...' % (self._action_name))
-	#    pass
+	    # Send a goal to start speech
+            rospy.loginfo('Speech server found. Sending goal...')
+            speech_goal = WaitForInputGoal()
+            speech_goal.question = "What do you want me to do?"
+            speech_goal.possible_inputs = ['tidy up']
+            speech_goal.timeout = 0
 
-        
+	    if (speech_client.send_goal_and_wait(speech_goal) ==
+		GoalStatus.SUCCEEDED):
+	        rospy.loginfo('Speech succeeded.')
+            else:
+                rospy.loginfo('Speech failed.')  
+        except Exception as e:
+            rospy.loginfo('%s: Could not connect to speech. Giving operator object anyway...' % (self._action_name))
+	    pass
+
 	rospy.loginfo('%s: Opening gripper.' % (self._action_name))
 	self.gripper.command(1.2)
-
 
         # Create action client to control suction
         suction_action = '/hsrb/suction_control'
