@@ -1,0 +1,8 @@
+# Define the goal
+string goal_tf 
+---
+# Define the result
+bool goal_complete
+---
+# Define a feedback message
+

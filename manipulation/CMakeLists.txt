@@ -25,7 +25,8 @@ add_action_files(DIRECTORY
 		OpenDrawer.action
 		OpenFridge.action
 		PickUpObject.action
-		GiveObjectToOperator.action)
+		GiveObjectToOperator.action
+		OpenDoor.action)
 
 catkin_python_setup()
 
