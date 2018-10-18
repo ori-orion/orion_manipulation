@@ -8,10 +8,13 @@ import actionlib
 import json
 import rospkg
 import tf
+import tf2_ros
+import geometry_msgs.msg
 
 from manipulation.manipulation_header import *
 from tmc_manipulation_msgs.msg import CollisionObject
 from manipulation.msg import *
+
 
 class OpenDoorAction(object):
 
@@ -37,8 +40,8 @@ class OpenDoorAction(object):
 	self.whole_body.planning_timeout = 20.0
 
 	# Set up publisher for the collision map
-	self.br = tf.TransformBroadcaster()
-
+	#self.br = tf.TransformBroadcaster()
+	self.br = tf2_ros.StaticTransformBroadcaster()
 	self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
 	rospy.loginfo('%s: Initialised. Ready for clients.' % ( self._action_name))
 
@@ -65,9 +68,8 @@ class OpenDoorAction(object):
 		inds_to_remove = []
 		for i in range(len(message.poses)):
 		    pose = message.poses[i]
-		    if ( (pose.position.x >= median_x + 0.2) or (pose.position.x <= median_x - 0.2) or
-		         (pose.position.y >= median_y + 0.2) or (pose.position.y <= median_y - 0.2) or 
-			 (pose.position.z >= 1.2)):
+		    if ( (pose.position.x >= median_x + 0.15) or (pose.position.x <= median_x - 0.15) or
+		         (pose.position.y >= median_y + 0.15) or (pose.position.y <= median_y - 0.15) 				or (pose.position.z >= 1.2) or (pose.position.z <= 0.6)):
 		        inds_to_remove.append(i)
 
 
@@ -116,7 +118,8 @@ class OpenDoorAction(object):
 			for i in range(len(message.poses)):
 			    pose = message.poses[i]
 			    if (pose.position.y < min_y or pose.position.y > max_y or
-				 pose.position.z < min_z or pose.position.z > max_z):
+				 pose.position.z < min_z or pose.position.z > max_z or
+				((pose.position.x <= mode_x + 0.030) and (pose.position.x >= mode_x - 0.030))):
 			        inds_to_remove.append(i)
 
 		if max(comp_list) == mode_y:
@@ -130,8 +133,9 @@ class OpenDoorAction(object):
 			for i in range(len(message.poses)):
 			    pose = message.poses[i]
 			    if (pose.position.x < min_x or pose.position.x > max_x or
-				 pose.position.z < min_z or pose.position.z > max_z):
-			        inds_to_remove.append(i)
+				 pose.position.z < min_z or pose.position.z > max_z or
+				((pose.position.y <= mode_y + 0.030) and (pose.position.y >= mode_y - 0.030))):
+				inds_to_remove.append(i)
 
 		if max(comp_list) == mode_z:
 			for i in range(len(message.poses)):
@@ -144,7 +148,8 @@ class OpenDoorAction(object):
 			for i in range(len(message.poses)):
 			    pose = message.poses[i]
 			    if (pose.position.y < min_y or pose.position.y > max_y or
-				 pose.position.x < min_x or pose.position.x > max_x):
+				 pose.position.x < min_x or pose.position.x > max_x or
+				((pose.position.z <= mode_z + 0.030) and (pose.position.z >= mode_z - 0.030))):
 			        inds_to_remove.append(i)
 
 		rospy.loginfo('%s: Removing indices.' % ( self._action_name))
@@ -153,52 +158,6 @@ class OpenDoorAction(object):
 		    del message.poses[index], message.shapes[index]
 
 		rospy.loginfo('%s: Calculating new tf.' % ( self._action_name))
-		
-		# Should now be left with the handle so filter again for the 
-
-		#tf_listener = tf.TransformListener()
-		#    foundTrans = False
-		#    while not foundTrans:
-		#	try:
-		#	    t = tf_listener.getLatestCommonTime("/map", 'hand_palm_link')
-		#	    (trans, rot) = tf_listener.lookupTransform('/map', object_tf, rospy.Time(0))
-		#	    foundTrans = True
-		#	except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-		#	    continue
-
-    		#hand_x = trans[0]
-    		#hand_y = trans[1]
-		#hand_x_diff = 1000
-		#hand_y_diff = 1000
-
-		#for i in range(len(message.poses)):
-		#    pose = message.poses[i]
-		#   hand_x_diff = min(hand_x_diff, abs(hand_x-pose.position.x))
-		#    hand_y_diff = min(hand_y_diff, abs(hand_y-pose.position.y))
-
-		#inds_to_remove = []
-
-		#if min(hand_x_diff,hand_y_diff) == hand_x_diff:
-		#	for i in range(len(message.poses)):
-		#	    pose = message.poses[i]
-		#	    if ( (pose.position.x >= median_x + 0.2) or (pose.position.x <= median_x - 0.2) or
-		#		 (pose.position.y >= median_y + 0.2) or (pose.position.y <= median_y - 0.2) or 
-		#		 (pose.position.z >= 1.5)):
-			        
-    		#	        inds_to_remove.append(i)
-
-
-		#if min(hand_x_diff,hand_y_diff) == hand_y_diff:
-
-
-		
-	
-
-
-
-
-
-
 
 
 		coord1 = []
@@ -231,29 +190,55 @@ class OpenDoorAction(object):
 		coord7 = sum(coord7) / float(num_points)
 
 		reset_collision_map_build()
+	
+		static_transformStamped = geometry_msgs.msg.TransformStamped()
+		static_transformStamped.header.stamp = rospy.Time.now()
+		static_transformStamped.header.frame_id = "map"
+		static_transformStamped.child_frame_id = "handle"
+		static_transformStamped.transform.translation.x = coord1
+		static_transformStamped.transform.translation.y = coord2
+		static_transformStamped.transform.translation.z = coord3
+		static_transformStamped.transform.rotation.x = coord4
+		static_transformStamped.transform.rotation.y = coord5
+		static_transformStamped.transform.rotation.z = coord6
+		static_transformStamped.transform.rotation.w = coord7
+
 
 		# Publish the filtered message
 		self.pub.publish(message)
 		
 		# Publish the filtered message
 		rospy.loginfo('%s: Sending transform.' % ( self._action_name))
-		self.br.sendTransform((coord1, coord2, coord3),
-                        (coord4,coord5,coord6,coord7),
-                        rospy.Time.now(),
-                        "handle",
-                        "map")
+		#self.br.sendTransform((coord1, coord2, coord3),
+                #        (coord4,coord5,coord6,coord7),
+                #        rospy.Time.now(),
+                #        "handle",
+                #        "map")
+		self.br.sendTransform(static_transformStamped)
 
 
     
 
     def execute_cb(self, goal_msg):
 	 
+	self.whole_body.move_to_go()
+	self.gripper.command(0.1)
+
 	get_collision_map(self.robot)
 
 	# Publish the tf of the destination
 	rospy.loginfo('%s: Suscribing to the collision environment and activating callback.' % ( self._action_name))
         rospy.Subscriber("known_object", CollisionObject, self.callback)
        
+	self.whole_body.collision_world = None
+	#self.whole_body.move_end_effector_pose(geometry.pose(y=-0.3, z=0.05, x=0.2, ek=3.14,ej=1.57))
+	#self.whole_body.move_end_effector_pose(geometry.pose(y=-0.06, z=0.05, x=0.2, ek=3.14,ej=1.57), 'handle')
+
+	self.whole_body.move_end_effector_pose(geometry.pose(y=-0.07, z=0.08, x=0.03, ek=1.57, ej=1.57), 'handle')
+
+	self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
+	self.whole_body.move_end_effector_pose(geometry.pose(z=1.0), 'hand_palm_link')
+
 	_result = OpenDoorResult()
         rospy.loginfo('%s: Succeeded' % self._action_name)
         _result.goal_complete = True
