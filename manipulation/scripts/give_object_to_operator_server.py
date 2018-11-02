@@ -15,6 +15,7 @@ from tmc_suction.msg import (
 from manipulation.msg import *
 from orion_hri.msg import WaitForConfirmationAction, WaitForConfirmationGoal, WaitForConfirmationResult
 
+import time 
 
 class GiveObjectToOperatorAction(object):
 
@@ -51,6 +52,8 @@ class GiveObjectToOperatorAction(object):
 	    speech_confirm_action, WaitForConfirmationAction)
 
 	rospy.loginfo(' Connecting to speech confirmation server...')
+
+	
         try:
 	    if not speech_confirm_client.wait_for_server(
 		    rospy.Duration(self._CONNECTION_TIMEOUT)):
@@ -58,16 +61,22 @@ class GiveObjectToOperatorAction(object):
 
 	    # Send a goal to start speech
             rospy.loginfo('Speech server found. Sending goal...')
-            speech_goal = WaitForInputGoal()
-            speech_goal.question = "What do you want me to do?"
-            speech_goal.possible_inputs = ['tidy up']
-            speech_goal.timeout = 0
+            speech_goal = WaitForConfirmationGoal()
+            speech_goal.question = "Are you holding the object?"
+            speech_goal.possible_inputs = [rospy.getparam("bring_me/confirm_operator_presence"),
+					   rospy.getparam("bring_me/negative_confirmation")]
+            # Note this timeout is currently
+	    speech_goal.timeout = rospy.getparam("bring_me/wait_for_confirmation_timeout")
+	    
+	    speech_client.send_goal(speech_goal)
 
-	    if (speech_client.send_goal_and_wait(speech_goal) ==
-		GoalStatus.SUCCEEDED):
+            if (speech_client.send_goal_and_wait(speech_goal, preempt_timeout = rospy.Duration(20)) ==
+	    	GoalStatus.SUCCEEDED):
 	        rospy.loginfo('Speech succeeded.')
             else:
                 rospy.loginfo('Speech failed.')  
+
+
         except Exception as e:
             rospy.loginfo('%s: Could not connect to speech. Giving operator object anyway...' % (self._action_name))
 	    pass
@@ -81,23 +90,23 @@ class GiveObjectToOperatorAction(object):
 	    suction_action, SuctionControlAction)
 
         # Wait for connection
-	rospy.loginfo('%s: Connecting to suction server...' % (self._action_name))
-        try:
-	    if not suction_control_client.wait_for_server(
-		    rospy.Duration(self._CONNECTION_TIMEOUT)):
-	        raise Exception(suction_action + ' does not exist')
-        except Exception as e:
-	    rospy.logerr(e)
-	    sys.exit(1)
+	#rospy.loginfo('%s: Connecting to suction server...' % (self._action_name))
+        #try:
+	#    if not suction_control_client.wait_for_server(
+	#	    rospy.Duration(self._CONNECTION_TIMEOUT)):
+	#        raise Exception(suction_action + ' does not exist')
+        #except Exception as e:
+	#    rospy.logerr(e)
+	#    sys.exit(1)
 
-	rospy.loginfo('%s: Turning off the suction...' % (self._action_name))
+	#rospy.loginfo('%s: Turning off the suction...' % (self._action_name))
 
 	# Send a goal to stop suction
-	suction_off_goal = SuctionControlGoal()
-	suction_off_goal.suction_on.data = False
-	suction_control_client.send_goal_and_wait(suction_off_goal)
+	#suction_off_goal = SuctionControlGoal()
+	#suction_off_goal.suction_on.data = False
+	#suction_control_client.send_goal_and_wait(suction_off_goal)
 
-	rospy.loginfo('%s: Succeeded' % self._action_name)
+	#rospy.loginfo('%s: Succeeded' % self._action_name)
 
 	_result = GiveObjectToOperatorResult()
 	_result.goal_complete = True
