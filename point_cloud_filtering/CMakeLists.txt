@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(manipulation)
+project(point_cloud_filtering)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,39 +8,22 @@ project(manipulation)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  genmsg
-  actionlib
+  pcl_conversions
+  pcl_ros
   roscpp
   rospy
+  sensor_msgs
   std_msgs
-  geometry_msgs
-  actionlib_msgs
 )
 
-add_action_files(DIRECTORY 
-		action 
-		FILES 
-		MoveHandToTf.action 
-		GrabHorizontalDoorHandleAction.action
-		OpenDrawer.action
-		OpenFridge.action
-		PickUpObject.action
-		GiveObjectToOperator.action
-		OpenDoor.action
-		FilterPointCloud.action)
-
-catkin_python_setup()
-
-generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
-
-# System dependencies are found with CMake's conventions
+## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-
+# catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -90,7 +73,7 @@ generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs
+#   sensor_msgs#   std_msgs
 # )
 
 ################################################
@@ -122,19 +105,12 @@ generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-
-
 catkin_package(
-  CATKIN_DEPENDS roscpp rospy std_msgs actionlib_msgs
-)
-
-
-# catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES manipulation
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  LIBRARIES point_cloud_filtering
+#  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
-#)
+)
 
 ###########
 ## Build ##
@@ -149,7 +125,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/manipulation.cpp
+#   src/${PROJECT_NAME}/point_cloud_filtering.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -160,7 +136,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/manipulation_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/point_cloud_filtering_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -217,7 +193,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_manipulation.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_point_cloud_filtering.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
