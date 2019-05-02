@@ -22,9 +22,9 @@ void SegmentHandle(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                            pcl::PointIndices::Ptr surface_indices,
                            std::vector<pcl::PointIndices>* handle_indices);
 
-class PlaneCropper {
+class HandleCropper {
  public:
-  PlaneCropper(const ros::Publisher& pub);
+    HandleCropper(const ros::Publisher& pub);
   void Callback(const sensor_msgs::PointCloud2& msg);
 
  private:

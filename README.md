@@ -36,7 +36,7 @@ We then have an action server which takes a tf frame as a goal for the HSR to pi
 ## Point\_cloud_\filtering
 To launch the handle filter:
 ```
-rosrun point_cloud_filtering point_cloud_demo cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
+rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
 ```
 
 ## Grasp pose synthesis

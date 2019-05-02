@@ -112,7 +112,6 @@ void GetHandleFromClusters(std::vector<pcl::PointIndices>* clusters,
 
 }
 
-
 void GetClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                  std::vector<pcl::PointIndices>* clusters){
   double cluster_tolerance;
@@ -137,9 +136,9 @@ void RemoveDoor(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud, pcl::Poin
         extract.filter(*out_cloud);
 }
 
-PlaneCropper::PlaneCropper(const ros::Publisher& pub) : pub_(pub) {}
+HandleCropper::HandleCropper(const ros::Publisher& pub) : pub_(pub) {}
 
-void PlaneCropper::Callback(const sensor_msgs::PointCloud2& msg) {
+void HandleCropper::Callback(const sensor_msgs::PointCloud2& msg) {
 
   // Check the incoming point cloud
   PointCloudC::Ptr cloud(new PointCloudC());
