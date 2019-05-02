@@ -20,13 +20,13 @@ Repo for packages related to manipulating objects and opening doors etc.
 
 To launch collision reconstruction:
 ```
-roslaunch tmc\_reconstruction reconstruction.launch camera\_param\_path:=~/.ros/camera\_info/hsrb\_gazebo.yaml vocabulary\_path:=~/Documents/reconstruction\_ws/DBoW2/build/small\_voc.yml.gz world\_frame\_id\_exists:=true reference\_frame\_id:=head\_rgbd\_sensor\_rgb\_frame rgb\_image\_topic:=/hsrb/head\_rgbd\_sensor/rgb/image\_raw depth\_image\_topic:=/hsrb/head\_rgbd\_sensor/depth\_registered/image\_raw resolution:=0.04 is\_loop\_detection\_enable:=false auto_start:=false output\_collision\_object\_topic:=/known\_object
+roslaunch tmc_reconstruction reconstruction.launch camera_param_path:=~/.ros/camera_info/hsrb_gazebo.yaml vocabulary_path:=~/Documents/reconstruction_ws/DBoW2/build/small_voc.yml.gz world_frame_id_exists:=true reference_frame_id:=head_rgbd_sensor_rgb_frame rgb_image_topic:=/hsrb/head_rgbd_sensor/rgb/image_raw depth_image_topic:=/hsrb/head_rgbd_sensor/depth_registered/image_raw resolution:=0.04 is_loop_detection_enable:=false auto_start:=false output_collision_object_topic:=/known_object
 ```
 Service calls to begin, stop or reset the collision map:
 ```
-rosservice call /tmc\_reconstruction/system/start
-rosservice call /tmc\_reconstruction/system/stop
-rosservice call /tmc\_reconstruction/system/reset
+rosservice call /tmc_reconstruction/system/start
+rosservice call /tmc_reconstruction/system/stop
+rosservice call /tmc_reconstruction/system/reset
 ```
 
 We then have an action server which takes a tf frame as a goal for the HSR to pick up. If the tf\_frame object is in the config file then a hand-made pre-grasp and grasp pose will be executed. The robot will then try to move\_to\_go. If this is not possible then it will try to move back first and then go to this position.
@@ -36,30 +36,37 @@ We then have an action server which takes a tf frame as a goal for the HSR to pi
 ## Point\_cloud_\filtering
 To launch the handle filter:
 ```
-rosrun point\_cloud\_filtering point\_cloud\_demo cloud\_in:=/hsrb/head\_rgbd\_sensor/depth\_registered/rectified\_points
+rosrun point_cloud_filtering point_cloud_demo cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
 ```
 
 ## Grasp pose synthesis
 The following commands are used to generate grasp poses:
-
-roslaunch openni2\_launch openni2.launch camera:=hsrb depth\_frame\_id:=/hsrb/head\_rgbd\_sensor/depth\_registered/image rgb\_frame\_id:=/hsrb/head\_rgbd\_sensor/rgb/image\_raw
-
-roslaunch gpd tutorial1.launch cloud\_topic:=hsrb/head\_rgbd\_sensor/depth\_registered/rectified\_points
-
+```
+roslaunch openni2_launch openni2.launch camera:=hsrb depth\_frame\_id:=/hsrb/head\_rgbd\_sensor/depth_registered/image rgb_frame_id:=/hsrb/head_rgbd_sensor/rgb/image_raw
+```
+```
+roslaunch gpd tutorial1.launch cloud_topic:=hsrb/head_rgbd_sensor/depth_registered/rectified_points
+```
 
 ## To do:
 - [x] Add manipulation actions to the orion_actions repo
-- [] Modify manipulation package to use orion_actions for the actions and messages 
-- [] Document `Caffe' install instructions (needed for grasp pose synthesis)
-- [] Change grasp parameters for use on HSR
-- [] Integrate the handle detection and grasp synthesis
-- [] Implement all the actions (split this up into smaller tasks later)
-- [] Refactor point cloud filtering
+- [ ] Hard code a door grasp pose given a point cloud of the handle
+- [ ] Develop door opening motions
+- [ ] Refactor point cloud filtering
+- [ ] Modify manipulation package to use orion_actions for the actions and messages 
+- [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)
+- [ ] Change grasp parameters for use on HSR
+- [ ] Integrate the handle detection and grasp synthesis
+- [ ] Implement all the actions (split this up into smaller tasks later)
+- [ ] Refactor point cloud filtering
 
+## Notes
+Grasp pose synthesis is a bit weird when applied to the door handle point cloud. It doesn't give the classic perpendicular pose as i would like. Think this should be hard coded instead.
 
 When were these commands needed?:
-rosrun topic\_tools relay /hsrb/robot\_state/joint\_states /joint\_states
-rosrun topic\_tools relay /hsrb/robot\_state/joint\_states /robot/joint\_states
-
+```
+rosrun topic_tools relay /hsrb/robot_state/joint_states /joint_states
+rosrun topic_tools relay /hsrb/robot_state/joint_states /robot/joint_states
+```
 
 
