@@ -4,7 +4,7 @@ Repo for packages related to manipulating objects and opening doors etc.
 ## Packages:
 * manipulation
 	-This encompasses all the actions related to interacting with objects, and manipulating with them
-* point\_cloud_\filtering
+* point\_cloud\_filtering
 	-This package is used for isolating, segmenting and clustering point clouds in order to determine grasp poses.
 
 ## Pre-requisites
@@ -42,7 +42,7 @@ rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/
 ## Grasp pose synthesis
 The following commands are used to generate grasp poses:
 ```
-roslaunch openni2_launch openni2.launch camera:=hsrb depth\_frame\_id:=/hsrb/head\_rgbd\_sensor/depth_registered/image rgb_frame_id:=/hsrb/head_rgbd_sensor/rgb/image_raw
+roslaunch openni2_launch openni2.launch camera:=hsrb depth_frame_id:=/hsrb/head_rgbd_sensor/depth_registered/image rgb_frame_id:=/hsrb/head_rgbd_sensor/rgb/image_raw
 ```
 ```
 roslaunch gpd tutorial1.launch cloud_topic:=hsrb/head_rgbd_sensor/depth_registered/rectified_points
