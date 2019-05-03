@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,8 +107,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES point_cloud_filtering_crop point_cloud_filtering_planes
+  INCLUDE_DIRS include/
+  LIBRARIES  point_cloud_filtering_handle_segmentation point_cloud_filtering_handle_utils
+# point_cloud_filtering_crop point_cloud_filtering_planes
 #  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
@@ -119,7 +121,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
+  include/${PROJECT_NAME}
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -127,8 +129,11 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/point_cloud_filtering.cpp
 # )
-add_library(point_cloud_filtering_crop src/crop.cpp)
-add_library(point_cloud_filtering_planes src/planes.cpp)
+add_library(point_cloud_filtering_handle_segmentation src/handle_segmentation.cpp)
+add_library(point_cloud_filtering_handle_utils src/handle_utils.cpp)
+#add_library(point_cloud_filtering_planes src/handle_grasp_pose.cpp)
+#add_library(point_cloud_filtering_crop src/crop.cpp)
+#add_library(point_cloud_filtering_planes src/planes.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -152,18 +157,23 @@ set_target_properties(point_cloud_filtering_handle_grasp_pose PROPERTIES OUTPUT_
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(point_cloud_filtering_handle_grasp_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(point_cloud_filtering_crop ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(point_cloud_filtering_planes ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(point_cloud_filtering_crop ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(point_cloud_filtering_planes ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+target_link_libraries(point_cloud_filtering_handle_segmentation ${catkin_LIBRARIES} point_cloud_filtering_handle_utils)
+target_link_libraries(point_cloud_filtering_handle_utils ${catkin_LIBRARIES})
+
 target_link_libraries(point_cloud_filtering_handle_grasp_pose
-  point_cloud_filtering_crop
-  point_cloud_filtering_planes
-  ${catkin_LIBRARIES}
+        point_cloud_filtering_handle_utils
+        point_cloud_filtering_handle_segmentation
+        ${catkin_LIBRARIES}
 )
+
+
 #target_link_libraries(point_cloud_filtering_crop ${catkin_LIBRARIES})
 
 #############
