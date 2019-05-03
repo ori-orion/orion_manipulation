@@ -46,6 +46,7 @@ roslaunch openni2_launch openni2.launch camera:=hsrb depth_frame_id:=/hsrb/head_
 ```
 ```
 roslaunch gpd tutorial1.launch cloud_topic:=hsrb/head_rgbd_sensor/depth_registered/rectified_points
+roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 ```
 
 ## To do:

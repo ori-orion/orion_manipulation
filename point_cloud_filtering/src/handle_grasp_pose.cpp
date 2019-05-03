@@ -20,12 +20,15 @@ int main(int argc, char** argv) {
           nh.advertise<geometry_msgs::PointStamped>("handle_centroid", 1, true);
 
   // Crop for the handle
-  callback my_callback = boost::bind(&point_cloud_filtering::HandleCropper::Callback, &handle_cropper, &handle_centroid_pub);
-
   point_cloud_filtering::HandleCropper handle_cropper(handle_pub);
-  ros::Subscriber sub_door =
-          nh.subscribe("cloud_in", 1, my_callback);
-//          nh.subscribe("cloud_in", 1, &point_cloud_filtering::HandleCropper::Callback, &handle_cropper, &handle_centroid_pub);
+  point_cloud_filtering::HandleCentroid handle_centroid(handle_centroid_pub);
+
+  ros::Subscriber sub_handle =
+          nh.subscribe("cloud_in", 1, &point_cloud_filtering::HandleCropper::Callback,  &handle_cropper);
+
+  ros::Subscriber sub_handle_centroid =
+          nh.subscribe("handle_cloud", 1, &point_cloud_filtering::HandleCentroid::Callback,  &handle_centroid);
+
   ros::spin();
   return 0;
 }
