@@ -7,8 +7,7 @@ namespace point_cloud_filtering {
 
     HandleCropper::HandleCropper(const ros::Publisher& cloud_pub) : cloud_pub_(cloud_pub) {}
 
-    HandleCentroid::HandleCentroid(const ros::Publisher& handle_centroid_pub) : handle_centroid_pub_(handle_centroid_pub) {}
-
+    HandleCentroid::HandleCentroid(const tf::TransformBroadcaster& br) : handle_tf_br_(br) {}
 
     void HandleCropper::Callback(const sensor_msgs::PointCloud2& msg) {
 
@@ -95,13 +94,32 @@ namespace point_cloud_filtering {
         std::cout << "The centroid is: " << std::endl;
         std::cout << "x:" << centroid[0] << " y:" << centroid[1] << "z: " << centroid[2] << std::endl;
 
-        geometry_msgs::PointStamped msg_handle_centroid_out;
-        msg_handle_centroid_out.header.frame_id = "head_rgbd_sensor_rgb_frame";
-        msg_handle_centroid_out.header.stamp = ros::Time();
-        msg_handle_centroid_out.point.x = centroid[0];
-        msg_handle_centroid_out.point.y = centroid[1];
-        msg_handle_centroid_out.point.z = centroid[2];
-        handle_centroid_pub_.publish(msg_handle_centroid_out);
+        float x,y,z;
+
+        x = centroid[0];
+        y = centroid[1];
+        z = centroid[2];
+
+        tf::Transform transform;
+        transform.setOrigin(tf::Vector3(x, y, z));
+        transform.setRotation(tf::Quaternion(0, 0, 0));
+
+
+//        geometry_msgs::PointStamped msg_handle_centroid_out;
+//        msg_handle_centroid_out.header.frame_id = "head_rgbd_sensor_rgb_frame";
+//        msg_handle_centroid_out.header.stamp = ros::Time();
+//        msg_handle_centroid_out.point.x = centroid[0];
+//        msg_handle_centroid_out.point.y = centroid[1];
+//        msg_handle_centroid_out.point.z = centroid[2];
+//        handle_centroid_pub_.publish(msg_handle_centroid_out);
+
+//        ros::Rate rate(10.0);
+//        while (node.ok())
+//        handle_tf_br_.sendTransform((x,y,z), (0, 0, 0, 1), ros::Time::now(), "door_handle", "head_rgbd_sensor_rgb_frame");
+        handle_tf_br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame", "door_handle"));
+
+//            rate.sleep();
+//        }
     }
 
 } //namespace point_cloud_filtering

@@ -6,6 +6,7 @@
 #include "pcl/point_types.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include <tf/transform_broadcaster.h>
 
 namespace point_cloud_filtering {
 
@@ -20,11 +21,12 @@ namespace point_cloud_filtering {
 
     class HandleCentroid {
     public:
-        HandleCentroid(const ros::Publisher& handle_centroid_pub);
+        HandleCentroid(const tf::TransformBroadcaster& br);
         void Callback(const sensor_msgs::PointCloud2& msg);
 
     private:
-        ros::Publisher handle_centroid_pub_;
+//        ros::Publisher handle_centroid_pub_;
+        tf::TransformBroadcaster handle_tf_br_;
     };
 
 }  // namespace point_cloud_filtering

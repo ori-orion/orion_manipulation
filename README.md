@@ -13,7 +13,9 @@ Repo for packages related to manipulating objects and opening doors etc.
 	- Creates a collision map and publishes this to the `pre\_filter' topic defined above. The collision map later gets modified on the fly to remove an area around the object you're dealing with. 
 	- The key parameter that can be tweaked is the size of the boxes. 1.5cm works well and reduction would be preferred but this has a tradeoff with demand on CPU and graphics.
 
-
+## Topics published
+* /handle_cloud - Point cloud of the door handle (*sensor\_msgs::PointCloud2*)
+* tf frame 'door_handle' - the centroid of the door handle is published as a tf frame
 
 ## Manipulation
 *To fill in
@@ -34,6 +36,7 @@ We then have an action server which takes a tf frame as a goal for the HSR to pi
 *rosrun the action server*
 
 ## Point\_cloud_\filtering
+
 To launch the handle filter:
 ```
 rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
