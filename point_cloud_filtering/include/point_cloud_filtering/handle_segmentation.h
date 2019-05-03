@@ -23,10 +23,15 @@ namespace point_cloud_filtering {
     public:
         HandleCentroid(const tf::TransformBroadcaster& br);
         void Callback(const sensor_msgs::PointCloud2& msg);
-
+        bool CheckDetection();
+        double GetX();
+        double GetY();
+        double GetZ();
     private:
 //        ros::Publisher handle_centroid_pub_;
         tf::TransformBroadcaster handle_tf_br_;
+        bool good_detection_ ;
+        double x_, y_, z_;
     };
 
 }  // namespace point_cloud_filtering

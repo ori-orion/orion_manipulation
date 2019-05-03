@@ -17,8 +17,15 @@ Repo for packages related to manipulating objects and opening doors etc.
 * /handle_cloud - Point cloud of the door handle (*sensor\_msgs::PointCloud2*)
 * tf frame 'door_handle' - the centroid of the door handle is published as a tf frame
 
+## Opening doors
+The following combination now works to test the action server. This will segment the point cloud of the handle and compute the 3D coordinates of the centre. The robot will then attempt to grasp the handle.
+```
+rosrun point_cloud_filtering handle_grasp_se cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
+rosrun manipulation open_door_server.py
+rosrun manipulation open_door_client.py 
+```
+
 ## Manipulation
-*To fill in
 
 To launch collision reconstruction:
 ```
@@ -37,10 +44,16 @@ We then have an action server which takes a tf frame as a goal for the HSR to pi
 
 ## Point\_cloud_\filtering
 
-To launch the handle filter:
+To launch the handle filter rosservice:
 ```
 rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
 ```
+
+To make a call to handle detection:
+```
+rosservice call /handle_detection true
+```
+This will spin until a handle in front is detected and published as a tf frame. 
 
 ## Grasp pose synthesis
 The following commands are used to generate grasp poses:
@@ -54,15 +67,14 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 
 ## To do:
 - [x] Add manipulation actions to the orion_actions repo
-- [ ] Hard code a door grasp pose given a point cloud of the handle
-- [ ] Develop door opening motions
-- [ ] Refactor point cloud filtering
+- [x] Hard code a door grasp pose given a point cloud of the handle
+- [ ] Develop door opening motions and introudce into the open door action server
+- [x] Refactor point cloud filtering
 - [ ] Modify manipulation package to use orion_actions for the actions and messages 
 - [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)
 - [ ] Change grasp parameters for use on HSR
 - [ ] Integrate the handle detection and grasp synthesis
 - [ ] Implement all the actions (split this up into smaller tasks later)
-- [ ] Refactor point cloud filtering
 
 ## Notes
 Grasp pose synthesis is a bit weird when applied to the door handle point cloud. It doesn't give the classic perpendicular pose as i would like. Think this should be hard coded instead.

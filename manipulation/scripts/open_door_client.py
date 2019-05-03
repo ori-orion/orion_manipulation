@@ -41,7 +41,7 @@ if __name__ == '__main__':
         rospy.init_node('open_door_client_py')
 
         result = open_door_client()
-        print("Result:", ', '.join([str(n) for n in result.sequence]))
+        print("Result:" + str(result.goal_complete))
     except rospy.ROSInterruptException:
         print("Problem.")
 
