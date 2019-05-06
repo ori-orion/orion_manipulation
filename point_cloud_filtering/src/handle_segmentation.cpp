@@ -5,7 +5,7 @@
 
 namespace point_cloud_filtering {
 
-    HandleCropper::HandleCropper(const ros::Publisher& cloud_pub) : cloud_pub_(cloud_pub) {}
+    HandleCropper::HandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& door_pub ) : cloud_pub_(cloud_pub), door_pub_(door_pub) {}
 
     HandleCentroid::HandleCentroid(const tf::TransformBroadcaster& br) : handle_tf_br_(br), good_detection_(false) {}
 
@@ -16,9 +16,16 @@ namespace point_cloud_filtering {
       pcl::fromROSMsg(msg, *cloud);
       ROS_INFO("Got point cloud with %ld points", cloud->size());
 
+        //------ Crop the point cloud used to get the handle --------
+        Eigen::Vector4f min_crop_pt(-0.4, -0.5, 0, 1);
+        Eigen::Vector4f max_crop_pt(0.4, 0.5, 2, 1);
+        PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
+        CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
+
+
       //------ Get the door --------
       pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
-      SegmentDoorInliers(cloud, inliers);
+      SegmentDoorInliers(first_cropped_cloud, inliers);
 
       if (inliers->indices.empty ())
       {
@@ -28,7 +35,7 @@ namespace point_cloud_filtering {
       // Extract the plane indices subset of cloud into output_cloud:
       pcl::ExtractIndices<PointC> door_extract;
       PointCloudC::Ptr door_cloud (new PointCloudC());
-      door_extract.setInputCloud(cloud);
+      door_extract.setInputCloud(first_cropped_cloud);
       door_extract.setIndices(inliers);
       door_extract.filter(*door_cloud);
 
@@ -63,18 +70,27 @@ namespace point_cloud_filtering {
 
       // Remove the door
       PointCloudC::Ptr filtered_cloud(new PointCloudC());
-      RemoveDoor(cloud, filtered_cloud, inliers);
+      RemoveDoor(first_cropped_cloud, filtered_cloud, inliers);
+
+      ROS_INFO("Min z: ", min_z);
+      ROS_INFO("Max z: ", max_z);
 
       //------ Crop the point cloud used to get the handle --------
-      Eigen::Vector4f min_pt(min_x+0.13, min_y+0.1, min_z-0.12, 1);
-      Eigen::Vector4f max_pt(max_x-0.13, max_y-0.1, max_z-0.04, 1);
+      Eigen::Vector4f min_pt(min_x+0.13, min_y+0.13, min_z-0.12, 1);
+//      Eigen::Vector4f max_pt(max_x-0.13, max_y-0.13, max_z-0.06, 1);
+      Eigen::Vector4f max_pt(max_x-0.13, max_y-0.13, min_z-0.02, 1);
       PointCloudC::Ptr cropped_cloud(new PointCloudC());
       CropCloud(filtered_cloud, cropped_cloud, min_pt, max_pt);
 
-      // Publish the handle point cloud and centroid
+      // Publish the handle point cloud
       sensor_msgs::PointCloud2 msg_cloud_out;
       pcl::toROSMsg(*cropped_cloud, msg_cloud_out);
       cloud_pub_.publish(msg_cloud_out);
+
+      // Publish the door point cloud
+      sensor_msgs::PointCloud2 msg_door_cloud_out;
+      pcl::toROSMsg(*door_cloud, msg_door_cloud_out);
+      door_pub_.publish(msg_cloud_out);
 
     }
 

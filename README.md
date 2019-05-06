@@ -20,7 +20,7 @@ Repo for packages related to manipulating objects and opening doors etc.
 ## Opening doors
 The following combination now works to test the action server. This will segment the point cloud of the handle and compute the 3D coordinates of the centre. The robot will then attempt to grasp the handle.
 ```
-rosrun point_cloud_filtering handle_grasp_se cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
+rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
 rosrun manipulation open_door_server.py
 rosrun manipulation open_door_client.py 
 ```
@@ -69,6 +69,8 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 - [x] Add manipulation actions to the orion_actions repo
 - [x] Hard code a door grasp pose given a point cloud of the handle
 - [ ] Develop door opening motions and introudce into the open door action server
+- [ ] Code to segment object point clouds (crop -> remove plane ? )
+- [ ] Revamp pick up object server (get rid of config files, counters etc)
 - [x] Refactor point cloud filtering
 - [ ] Modify manipulation package to use orion_actions for the actions and messages 
 - [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)

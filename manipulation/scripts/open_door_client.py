@@ -9,7 +9,8 @@ import actionlib
 # Brings in the messages used by the fibonacci action, including the
 # goal message and the result message.
 
-from manipulation.msg import *
+#from manipulation.msg import *
+from orion_actions.msg import *
 
 def open_door_client():
     # Creates the SimpleActionClient, passing the type of the action
@@ -41,7 +42,7 @@ if __name__ == '__main__':
         rospy.init_node('open_door_client_py')
 
         result = open_door_client()
-        print("Result:" + str(result.goal_complete))
+        print("Result:" + str(result.result))
     except rospy.ROSInterruptException:
         print("Problem.")
 

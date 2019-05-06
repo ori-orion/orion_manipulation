@@ -14,11 +14,14 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
     ros::Publisher handle_pub =
             nh.advertise<sensor_msgs::PointCloud2>("handle_cloud", 1, true);
 
+    ros::Publisher door_pub =
+            nh.advertise<sensor_msgs::PointCloud2>("door_cloud", 1, true);
+
     // Crop for the handle
-    point_cloud_filtering::HandleCropper handle_cropper(handle_pub);
+    point_cloud_filtering::HandleCropper handle_cropper(handle_pub, door_pub);
     point_cloud_filtering::HandleCentroid handle_centroid(br);
 
-    std::cout<< "This does repeat" << std::endl;
+//    std::cout<< "This does repeat" << std::endl;
 
 
     ros::Subscriber sub_handle =
@@ -27,6 +30,8 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
     ros::Subscriber sub_handle_centroid =
             nh.subscribe("handle_cloud", 1, &point_cloud_filtering::HandleCentroid::Callback,  &handle_centroid);
 
+    // Until we get a good validated detection of the handle keep looping
+    // Need to insert a timer here using argument from high level
     while (not handle_centroid.CheckDetection())
     {
         ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));

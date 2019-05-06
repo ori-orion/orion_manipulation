@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   actionlib_msgs
   point_cloud_filtering
+  orion_actions
 )
 
 add_action_files(DIRECTORY 
@@ -27,7 +28,7 @@ add_action_files(DIRECTORY
 		OpenFridge.action
 		PickUpObject.action
 		GiveObjectToOperator.action
-		OpenDoor.action
+		#OpenDoor.action
 		FilterPointCloud.action)
 
 catkin_python_setup()
