@@ -18,7 +18,7 @@ Repo for packages related to manipulating objects and opening doors etc.
 * tf frame 'door_handle' - the centroid of the door handle is published as a tf frame
 
 ## Opening doors
-The following combination now works to test the action server. This will segment the point cloud of the handle and compute the 3D coordinates of the centre. The robot will then attempt to grasp the handle.
+The following combination now works to test the action server. This will segment the point cloud of the handle and compute the 3D coordinates of the centre. The robot will then attempt to grasp the handle and execute a rudimentary opening motion. 
 ```
 rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
 rosrun manipulation open_door_server.py
@@ -68,10 +68,12 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 ## To do:
 - [x] Add manipulation actions to the orion_actions repo
 - [x] Hard code a door grasp pose given a point cloud of the handle
-- [ ] Develop door opening motions and introudce into the open door action server
+- [x] Refactor point cloud filtering
+- [x] Develop door opening motions and introduce into the open door action server
+- [ ] Finish opening the door fully
+- [ ] Implement a check that the handle has been grasped (or object!)!!!
 - [ ] Code to segment object point clouds (crop -> remove plane ? )
 - [ ] Revamp pick up object server (get rid of config files, counters etc)
-- [x] Refactor point cloud filtering
 - [ ] Modify manipulation package to use orion_actions for the actions and messages 
 - [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)
 - [ ] Change grasp parameters for use on HSR
@@ -79,9 +81,12 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 - [ ] Implement all the actions (split this up into smaller tasks later)
 
 ## Notes
-Grasp pose synthesis is a bit weird when applied to the door handle point cloud. It doesn't give the classic perpendicular pose as i would like. Think this should be hard coded instead.
 
-When were these commands needed?:
+* The HSR stuggles to generate handles in a point cloud if their material is too specular like taht in the lab. Similarly it can't detect the glass doors.
+
+* Grasp pose synthesis is a bit weird when applied to the door handle point cloud. It doesn't give the classic perpendicular pose as I would like. Think this should be hard coded instead.
+
+* When were these commands needed?:
 ```
 rosrun topic_tools relay /hsrb/robot_state/joint_states /joint_states
 rosrun topic_tools relay /hsrb/robot_state/joint_states /robot/joint_states
