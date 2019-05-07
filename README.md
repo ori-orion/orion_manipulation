@@ -70,11 +70,15 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 - [x] Hard code a door grasp pose given a point cloud of the handle
 - [x] Refactor point cloud filtering
 - [x] Develop door opening motions and introduce into the open door action server
+- [x] Modify manipulation package to use orion_actions for the actions and messages 
+- [ ] Test new pick up object action on AR bottle
+- [ ] Test give object server
+- [ ] Create launch file to launch all manipulation server nodes
+- [ ] Check the axis conventention for image tf frames
 - [ ] Finish opening the door fully
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
 - [ ] Code to segment object point clouds (crop -> remove plane ? )
 - [ ] Revamp pick up object server (get rid of config files, counters etc)
-- [ ] Modify manipulation package to use orion_actions for the actions and messages 
 - [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)
 - [ ] Change grasp parameters for use on HSR
 - [ ] Integrate the handle detection and grasp synthesis
