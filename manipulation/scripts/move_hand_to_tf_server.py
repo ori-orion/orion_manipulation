@@ -63,15 +63,8 @@ class MoveHandToTfAction(object):
 
 
     def execute_cb(self, goal_msg):
-        # helper variables
-        # r = rospy.Rate(1)
         success = True
-
         goal_tf = goal_msg.goal_tf
-        # append the seeds for the fibonacci sequence
-        # self._feedback.sequence = []
-        # self._feedback.sequence.append(0)
-        # self._feedback.sequence.append(1)
 
         # publish info to the console for the user
         rospy.loginfo('%s: Executing, moving hand to %s.' % ( self._action_name, goal_tf))
