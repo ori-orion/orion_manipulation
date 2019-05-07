@@ -71,6 +71,7 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 - [x] Refactor point cloud filtering
 - [x] Develop door opening motions and introduce into the open door action server
 - [x] Modify manipulation package to use orion_actions for the actions and messages 
+- [ ] Fix collision map not generating in pick up action
 - [ ] Test new pick up object action on AR bottle
 - [ ] Test give object server
 - [ ] Create launch file to launch all manipulation server nodes

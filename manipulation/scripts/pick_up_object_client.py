@@ -6,7 +6,7 @@ import actionlib
 from orion_actions.msg import *
 
 def pick_up_object_client(goal_tf):
-    client = actionlib.SimpleActionClient('pick_up_object_server_node', PickUpObjectAction)
+    client = actionlib.SimpleActionClient('pick_up_object', PickUpObjectAction)
 
     print("Waiting for server")
     client.wait_for_server()
@@ -32,8 +32,9 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         goal_tf = sys.argv[1]
     else:
-        print("Failed to provide tf frame as argument to pick up.")
-        sys.exit(1)
+        print("Failed to provide tf frame as argument to pick up. Defaulting to ar_marker/201")
+        goal_tf = 'ar_marker/201'
+        # sys.exit(1)
 
     result = pick_up_object_client(goal_tf)
     print("Result:" + str(result.result))

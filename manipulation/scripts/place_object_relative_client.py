@@ -26,7 +26,7 @@ def place_object_relative_client(goal_tf):
 
 if __name__ == '__main__':
     rospy.init_node('place_object_relative_client_py')
-    goal_tf = 'ar_marker/4000'
+    goal_tf = 'ar_marker/201'
     result = place_object_relative_client(goal_tf)
     print("Result:" + str(result.result))
 

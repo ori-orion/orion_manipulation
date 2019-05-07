@@ -6,6 +6,8 @@ import actionlib
 import numpy as np
 import tf
 import hsrb_interface.geometry as geometry
+import tf.transformations as T
+import math
 
 from manipulation.manipulation_header import CollisionMapper
 from actionlib_msgs.msg import GoalStatus
@@ -42,30 +44,63 @@ class PickUpObjectAction(object):
 
         # Set up publisher for the collision map
         self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
-        self.tf_listener = tf.TransformListener()
+        self.goal_pose_br = tf.TransformBroadcaster()
+
         self.goal_object = None
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
+
+    def get_goal_pose(self, relative=geometry.pose()):
+        rospy.loginfo('%s: Trying to lookup goal pose...' % self._action_name)
+        foundTrans = False
+        while not foundTrans:
+            try:
+                odom_to_ref_pose = self.whole_body._lookup_odom_to_ref(self.goal_object)
+                foundTrans = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                continue
+        odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
+        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
+
+        rospy.loginfo('%s: Calculated the goal pose.' % self._action_name)
+
+        pose_msg = geometry.tuples_to_pose(odom_to_hand)
+
+        eulers = T.euler_from_quaternion([pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z, pose_msg.orientation.w])
+
+        return geometry.pose(x=pose_msg.position.x,
+                             y=pose_msg.position.y,
+                             z=pose_msg.position.z,
+                             ei=eulers[0],
+                             ej=eulers[1],
+                             ek=eulers[2])
+
 
     def check_for_object(self, object_tf):
         rospy.loginfo('%s: Checking object is in sight...' % self._action_name)
         found_marker = False
+        listen = tf.TransformListener()
+        rospy.sleep(1)
         while not found_marker:
-            all_frames = self.tf_listener.getFrameStrings()
+            all_frames = listen.getFrameStrings()
             found_marker = object_tf in all_frames
 
     def get_similar_tf(self, tf_frame):
+        listen = tf.TransformListener()
         rospy.sleep(3)
-        all_frames = self.tf_listener.getFrameStrings()
+        all_frames = listen.getFrameStrings()
         for object_tf in all_frames:
+            rospy.loginfo('%s: Found tf frame: %s' % (self._action_name, object_tf))
             if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
                 return object_tf
 
     def get_object_pose(self, object_tf):
         found_trans = False
+        listen = tf.TransformListener()
+        rospy.sleep(1)
         while not found_trans:
             try:
-                t = self.tf_listener.getLatestCommonTime("/map", object_tf)
-                (trans, rot) = self.tf_listener.lookupTransform('/map', object_tf, t)
+                t = listen.getLatestCommonTime("/map", object_tf)
+                (trans, rot) = listen.lookupTransform('/map', object_tf, t)
                 found_trans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
@@ -79,14 +114,26 @@ class PickUpObjectAction(object):
         self.pub.publish(msg)
 
     def grab_object(self, chosen_pregrasp_pose, chosen_grasp_pose):
+        self.whole_body.end_effector_frame = 'hand_palm_link'
+
         try:
             rospy.loginfo('%s: Opening gripper.' % (self._action_name))
             self.gripper.command(1.2)
 
             # Move to pregrasp
             self.whole_body.collision_world = self.collision_world
+
+            goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
+            print goal_pose
+            print type(goal_pose)
+            self.goal_pose_br.sendTransform((goal_pose.pos.x, goal_pose.pos.y, goal_pose.pos.z),
+                                            (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
+                                            rospy.Time.now(),
+                                            'goal_pose',
+                                            'base_footprint')
+
             rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
-            self.whole_body.move_end_effector_pose(chosen_pregrasp_pose, self.goal_object)
+            self.whole_body.move_end_effector_pose(goal_pose, 'base_footprint')
 
             # Turn off collision checking to get close and grasp
             rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
@@ -100,12 +147,15 @@ class PickUpObjectAction(object):
             self.gripper.apply_force(self._GRASP_FORCE)
             rospy.loginfo('%s: Object grasped.' % self._action_name)
 
+            return True
+
         except Exception as e:
             rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
             self.whole_body.collision_world = None
             rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
             self.whole_body.move_to_neutral()
             self._as.set_aborted()
+            return False
 
     def suck_object(self):
         self.whole_body.end_effector_frame = 'hand_l_finger_vacuum_frame'
@@ -150,25 +200,29 @@ class PickUpObjectAction(object):
         self.whole_body.collision_world = self.collision_world
 
         try:
-            rospy.loginfo('%s: Trying to move to go.' % self._action_name)
+            rospy.loginfo('%s: Trying to move back and get into go position.' % self._action_name)
             self.omni_base.go_rel(-0.3, 0, 0)
             self.whole_body.move_to_go()
+            return True
         except Exception as e:
             rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
+            self.whole_body.collision_world = None
             try:
                 rospy.loginfo('%s: Moving back and attempting to move to go again without collision detection.' % self._action_name)
+
                 try:
                     self.omni_base.go_rel(-0.3, 0, 0)
                 except:
+                    rospy.loginfo('%s: Trying to move to the side instead.' % self._action_name)
                     try:
                         self.omni_base.go_rel(0, 0.3, 0)
                     except:
                         self.omni_base.go_rel(0, -0.3, 0)
-                        self.whole_body.move_to_go()
+                    self.whole_body.move_to_go()
             except:
-                self.whole_body.collision_world = None
                 self.omni_base.go_rel(-0.3, 0, 0)
                 self.whole_body.move_to_go()
+            return False
 
     def execute_cb(self, goal_msg):
         _result = PickUpObjectResult()
@@ -191,8 +245,8 @@ class PickUpObjectAction(object):
             grasp_type = 'suction'
         else:
             grasp_type = 'grab'
-            chosen_pregrasp_pose = geometry.pose(z=-0.05, ei=0)
-            chosen_grasp_pose = geometry.pose(z=0.03)
+            chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-math.pi/2)
+            chosen_grasp_pose = geometry.pose(z=0.05)
         # ------------------------------------------------------------------------------
         # Check the object is in sight
         self.check_for_object(self.goal_object)
@@ -209,25 +263,32 @@ class PickUpObjectAction(object):
         # Get the object pose to subtract from collision map
         self.check_for_object(goal_tf)
 
-        # rospy.loginfo('%s: Getting object pose.' % self._action_name)
-        # goal_object_pose = self.get_object_pose(self.goal_object)
-
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
-            rospy.loginfo('%s: Preempted' % self._action_name)
+            rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+            self.whole_body.move_to_go()
             self._as.set_preempted()
             return
 
         if grasp_type == 'suction':
             self.suck_object()
         else:
-            self.grab_object(chosen_pregrasp_pose, chosen_grasp_pose)
+            grab_success = self.grab_object(chosen_pregrasp_pose, chosen_grasp_pose)
+
+        if grab_success == False:
+            self.whole_body.move_to_go()
+            return
 
         # Now return to moving position
-        self.finish_position()
+        success = self.finish_position()
 
-        rospy.loginfo('%s: Succeeded' % self._action_name)
-        _result.result = True
+        if success:
+            rospy.loginfo('%s: Succeeded' % self._action_name)
+            _result.result = True
+        else:
+            rospy.loginfo('%s: Failed' % self._action_name)
+            _result.result = False
+
         self._as.set_succeeded(_result)
 
 
