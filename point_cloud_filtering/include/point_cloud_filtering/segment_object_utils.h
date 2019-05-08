@@ -1,11 +1,15 @@
 //
-// Created by markfinean on 02/05/19.
+// Created by markfinean on 07/05/19.
 //
+
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
+#include "ros/ros.h"
+#include "sensor_msgs/PointCloud2.h"
+#include <tf/transform_broadcaster.h>
 #include "pcl_conversions/pcl_conversions.h"
 
 #include "pcl/PointIndices.h"
-#include "pcl/point_cloud.h"
-#include "pcl/point_types.h"
 
 #include "pcl/common/angles.h"
 #include "pcl/sample_consensus/method_types.h"
@@ -32,19 +36,18 @@ namespace point_cloud_filtering {
                    Eigen::Vector4f min_p,
                    Eigen::Vector4f max_p);
 
-    void SegmentDoorInliers(PointCloudC::Ptr in_cloud,
-                            pcl::PointIndices::Ptr points_within);
+    void SegmentTable(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices);
 
-//    void GetSurfaceInliers(PointCloudC::Ptr in_cloud,
-//                            pcl::PointIndices::Ptr points_within);
+    void RemoveSurface(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud, pcl::PointIndices::Ptr inliers);
 
-    void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
-                               PointCloudC::Ptr in_cloud,
-                               PointCloudC::Ptr out_cloud);
+    class ObjectSegmenter {
+    public:
+        ObjectSegmenter(const ros::Publisher& object_pub, const double x_in, const double y_in, const double z_in);
+        void Callback(const sensor_msgs::PointCloud2& msg);
 
-    void GetClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                     std::vector<pcl::PointIndices> *clusters);
+    private:
+        ros::Publisher object_pub_;
+        double object_x, object_y, object_z;
+    };
 
-    void RemoveDoor(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud, pcl::PointIndices::Ptr door_inliers);
-
-}
+}  // namespace point_cloud_filtering

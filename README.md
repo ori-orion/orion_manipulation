@@ -50,7 +50,7 @@ We then have an action server which takes a tf frame as a goal for the HSR to pi
 
 *rosrun the action server*
 
-## Point\_cloud_\filtering
+## Handle detection
 
 To launch the handle filter rosservice:
 ```
@@ -62,6 +62,18 @@ To make a call to handle detection:
 rosservice call /handle_detection true
 ```
 This will spin until a handle in front is detected and published as a tf frame. 
+
+## Object segmentation 
+This requires first launching the service:
+```
+rosrun point_cloud_filtering segment_object clo_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
+```
+
+To call the object segmentation:
+```
+rosservice call /object_segmentation **x** **y** **z**
+```
+where x,y,z are the coordinates (**float**) of the object in the robot's camera frame (z in front, y down, x to right)
 
 ## Grasp pose synthesis
 The following commands are used to generate grasp poses:
@@ -81,6 +93,7 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 - [x] Modify manipulation package to use orion_actions for the actions and messages 
 - [x] Fix collision map not generating in pick up action
 - [x] Test new pick up object action on AR bottle
+- [x] Added service to segment an opject given the rough location of it
 - [ ] Test give object server
 - [ ] Create launch file to launch all manipulation server nodes
 - [ ] Check the axis conventention for image tf frames

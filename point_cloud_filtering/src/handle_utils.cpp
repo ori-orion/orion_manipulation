@@ -34,6 +34,24 @@ namespace point_cloud_filtering {
         seg.segment(*points_within, *coefficients);
     }
 
+//    void GetSurfaceInliers(PointCloudC::Ptr in_cloud,
+//                            pcl::PointIndices::Ptr points_within) {
+//
+//        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+//        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
+//
+//        // Optional
+//        seg.setOptimizeCoefficients(true);
+//
+//        // Mandatory
+//        seg.setModelType(pcl::SACMODEL_PLANE);
+//        seg.setMethodType(pcl::SAC_RANSAC);
+//        seg.setMaxIterations(1000);
+//        seg.setDistanceThreshold(0.01);
+//        seg.setInputCloud(in_cloud);
+//        seg.segment(*points_within, *coefficients);
+//    }
+
     void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
                                PointCloudC::Ptr in_cloud,
                                PointCloudC::Ptr out_cloud) {
