@@ -26,8 +26,8 @@ namespace point_cloud_filtering {
         ROS_INFO("Got point cloud with %ld points", cloud->size());
 
         //------ Crop the point cloud roughly 20 cm around the object--------
-        Eigen::Vector4f min_crop_pt(object_x-0.2,object_y-0.2, object_z-0.2, 1);
-        Eigen::Vector4f max_crop_pt(object_x+0.2, object_y+0.2, object_z+0.2, 1);
+        Eigen::Vector4f min_crop_pt(object_x-0.15,object_y-0.15, object_z-0.15, 1);
+        Eigen::Vector4f max_crop_pt(object_x+0.15, object_y+0.15, object_z+0.15, 1);
 
         PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
         CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
@@ -71,8 +71,8 @@ namespace point_cloud_filtering {
         }
 
         //------ Crop the point cloud used to get the handle --------
-        Eigen::Vector4f min_pt(object_x-0.2,object_y-0.2, object_z-0.2, 1);
-        Eigen::Vector4f max_pt(object_x+0.2, min_y-0.01, object_z+0.2, 1);
+        Eigen::Vector4f min_pt(object_x-0.15,object_y-0.15, object_z-0.15, 1);
+        Eigen::Vector4f max_pt(object_x+0.15, min_y-0.01, object_z+0.15, 1);
 
         PointCloudC::Ptr object_cloud(new PointCloudC());
         CropCloud(no_surface_cloud, object_cloud, min_pt, max_pt);

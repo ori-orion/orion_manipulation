@@ -76,6 +76,13 @@ rosservice call /object_segmentation **x** **y** **z**
 where x,y,z are the coordinates (**float**) of the object in the robot's camera frame (z in front, y down, x to right)
 
 ## Grasp pose synthesis
+This is now wrapped up in a launch file. 
+```
+roslaunch manipulation grasp_synthesis.launch
+```
+This will generate and publish grasps to /detect\_grasps/clustered\_grasps when point clouds are received on the topic __/object\_cloud__
+
+
 The following commands are used to generate grasp poses:
 ```
 roslaunch openni2_launch openni2.launch camera:=hsrb depth_frame_id:=/hsrb/head_rgbd_sensor/depth_registered/image rgb_frame_id:=/hsrb/head_rgbd_sensor/rgb/image_raw
@@ -94,6 +101,7 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 - [x] Fix collision map not generating in pick up action
 - [x] Test new pick up object action on AR bottle
 - [x] Added service to segment an opject given the rough location of it
+- [x] Create launch file to fire up the grasp synthesis
 - [ ] Test give object server
 - [ ] Create launch file to launch all manipulation server nodes
 - [ ] Check the axis conventention for image tf frames
