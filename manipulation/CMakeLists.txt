@@ -17,19 +17,20 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   point_cloud_filtering
   orion_actions
+  gpd
 )
 
-add_action_files(DIRECTORY 
-		action 
-		FILES 
-		MoveHandToTf.action 
-		GrabHorizontalDoorHandleAction.action
-		OpenDrawer.action
-		OpenFridge.action
-		PickUpObject.action
-		GiveObjectToOperator.action
-		#OpenDoor.action
-		FilterPointCloud.action)
+#add_action_files(DIRECTORY
+#		action
+#		FILES
+#		MoveHandToTf.action
+#		GrabHorizontalDoorHandleAction.action
+#		OpenDrawer.action
+#		OpenFridge.action
+#		PickUpObject.action
+#		GiveObjectToOperator.action
+#		#OpenDoor.action
+#		FilterPointCloud.action)
 
 catkin_python_setup()
 

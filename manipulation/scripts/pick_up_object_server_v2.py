@@ -285,11 +285,11 @@ class PickUpObjectAction(object):
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
             _result.result = True
+            self._as.set_succeeded(_result)
         else:
             rospy.loginfo('%s: Failed' % self._action_name)
             _result.result = False
-
-        self._as.set_succeeded(_result)
+            self._as.set_aborted()
 
 
 if __name__ == '__main__':

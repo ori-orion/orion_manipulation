@@ -3,6 +3,7 @@
 import hsrb_interface
 import rospy
 import actionlib
+import hsrb_interface.geometry as geometry
 
 from actionlib_msgs.msg import GoalStatus
 
@@ -10,7 +11,6 @@ from orion_actions.msg import GiveObjectToOperatorAction, GiveObjectToOperatorGo
 from orion_hri.msg import WaitForConfirmationAction, WaitForConfirmationGoal, WaitForConfirmationResult
 
 class GiveObjectToOperatorAction(object):
-
 
     def __init__(self, name):
         self._action_name = 'give_something'
@@ -41,7 +41,7 @@ class GiveObjectToOperatorAction(object):
             # Send a goal to start speech
             rospy.loginfo('Speech server found. Sending goal...')
             speech_goal = WaitForConfirmationGoal()
-            speech_goal.question = "Are you holding the object?"
+            speech_goal.question = "Operator, are you there?"
             speech_goal.possible_inputs = [rospy.getparam("bring_me/confirm_operator_presence"),
                                            rospy.getparam("bring_me/negative_confirmation")]
             # Note this timeout is currently
@@ -61,19 +61,32 @@ class GiveObjectToOperatorAction(object):
 
     def execute_cb(self, goal_msg):
 
+        _result = GiveObjectToOperatorResult()
+
+        # Implemented a speech client but currently has no effect because it pass if fails
+        # Just using this to test
         self.get_speech_confirmation(self)
 
-        rospy.loginfo('%s: Moving to neutral position to present object.' % (self._action_name))
-        self.whole_body.move_to_neutral()
+        try:
+            rospy.loginfo('%s: Moving to neutral position to present object.' % (self._action_name))
+            self.whole_body.move_to_go()
 
-        rospy.loginfo('%s: Opening gripper.' % (self._action_name))
-        self.gripper.command(1.2)
+            rospy.loginfo('%s: Stretching out arm.' % (self._action_name))
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.1), 'hand_palm_link')
 
-        rospy.loginfo('%s: Opbject given to operator.' % (self._action_name))
+            rospy.sleep(2)
 
-        _result = GiveObjectToOperatorResult()
-        _result.result = True
-        self._as.set_succeeded(_result)
+            rospy.loginfo('%s: Opening gripper.' % (self._action_name))
+            self.gripper.command(1.2)
+
+            rospy.loginfo('%s: Object given to operator.' % (self._action_name))
+
+            _result.result = True
+            self._as.set_succeeded(_result)
+        except Exception as e:
+            rospy.loginfo('%s: Exception encountered: %s.' % (self._action_name, e))
+            _result.result = False
+            self._as.set_aborted()
 
 
 if __name__ == '__main__':

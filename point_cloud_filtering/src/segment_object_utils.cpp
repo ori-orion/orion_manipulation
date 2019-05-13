@@ -77,8 +77,6 @@ namespace point_cloud_filtering {
         PointCloudC::Ptr object_cloud(new PointCloudC());
         CropCloud(no_surface_cloud, object_cloud, min_pt, max_pt);
 
-//        ROS_INFO("Cropped below the table.");
-
         // Publish the object point cloud
         if (not inliers->indices.empty ()) {
             sensor_msgs::PointCloud2 msg_cloud_out;
