@@ -119,7 +119,7 @@ roslaunch gpd tutorial1.launch cloud_topic:=**Object cloud you want to grasp**
 	- [x] Tested
 - ReceiveObjectFromOperator.action
 	- [x] Created server
-	- [ ] Tested
+	- [x] Tested
 - PutObjectOnSurface.action
 	- [ ] Created server
 	- [ ] Tested

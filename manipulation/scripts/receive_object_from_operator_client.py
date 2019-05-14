@@ -8,7 +8,7 @@ from orion_actions.msg import *
 
 def receive_object_from_operator_client():
 
-    client = actionlib.SimpleActionClient('receive_object_from_operator_server_node', ReceiveObjectFromOperatorAction)
+    client = actionlib.SimpleActionClient('receive_object_from_operator', ReceiveObjectFromOperatorAction)
     client.wait_for_server()
     goal_msg = ReceiveObjectFromOperatorGoal()
     client.send_goal(goal_msg)
@@ -18,7 +18,7 @@ def receive_object_from_operator_client():
 
 if __name__ == '__main__':
     try:
-        rospy.init_node('receive_object_from_operator_client_py')
+        rospy.init_node('receive_object_from_operator_client')
         result = receive_object_from_operator_client()
         print("Result:" + str(result.result))
     except rospy.ROSInterruptException:
