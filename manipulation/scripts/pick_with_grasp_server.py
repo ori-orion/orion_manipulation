@@ -15,6 +15,8 @@ from tmc_suction.msg import (SuctionControlAction, SuctionControlGoal)
 from tmc_manipulation_msgs.msg import CollisionObject
 from orion_actions.msg import *
 
+# Select a grasp for the robot to execute.
+from gpd.msg import GraspConfigList
 
 class PickUpObjectAction(object):
 
@@ -113,6 +115,28 @@ class PickUpObjectAction(object):
     def callback(self, msg):
         self.pub.publish(msg)
 
+    def grasp_callback(msg):
+        global grasps
+        grasps = msg.grasps
+
+    def get_grasp(self):
+        grasps = [] # global variable to store grasps
+
+        # Subscribe to the ROS topic that contains the grasps.
+        grasps_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
+
+        # Wait for grasps to arrive.
+        rate = rospy.Rate(1)
+
+        while not len(grasps) > 0:
+            if len(grasps) > 0:
+                rospy.loginfo('Received %d grasps.', len(grasps))
+                break
+
+        grasp = grasps[0] # grasps are sorted in descending order by score
+        rospy.loginfo('%s: Selected grasp with score:: %s' % (self._action_name, str(grasp.score)))
+        return grasp
+
     def grab_object(self, chosen_pregrasp_pose, chosen_grasp_pose):
         self.whole_body.end_effector_frame = 'hand_palm_link'
 
@@ -122,6 +146,9 @@ class PickUpObjectAction(object):
 
             # Move to pregrasp
             self.whole_body.collision_world = self.collision_world
+
+            # Get the best grasp
+            grasp = self.get_grasp()
 
             goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
             print goal_pose
@@ -285,11 +312,11 @@ class PickUpObjectAction(object):
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
             _result.result = True
-            self._as.set_succeeded(_result)
         else:
             rospy.loginfo('%s: Failed' % self._action_name)
             _result.result = False
-            self._as.set_aborted()
+
+        self._as.set_succeeded(_result)
 
 
 if __name__ == '__main__':

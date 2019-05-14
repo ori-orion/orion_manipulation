@@ -3,14 +3,20 @@
 import hsrb_interface
 import rospy
 import actionlib
+import hsrb_interface.geometry as geometry
 
 from actionlib_msgs.msg import GoalStatus
-
-from orion_actions.msg import GiveObjectToOperatorAction, GiveObjectToOperatorGoal, GiveObjectToOperatorResult
+from orion_actions.msg import *
+# from orion_actions.msg import GiveObjectToOperatorAction, GiveObjectToOperatorGoal, GiveObjectToOperatorResult
 from orion_hri.msg import WaitForConfirmationAction, WaitForConfirmationGoal, WaitForConfirmationResult
 
-class GiveObjectToOperatorAction(object):
 
+from hsrb_interface import robot as _robot
+
+_robot.enable_interactive()
+
+
+class GiveObjectToOperatorAction(object):
 
     def __init__(self, name):
         self._action_name = 'give_something'
@@ -21,6 +27,8 @@ class GiveObjectToOperatorAction(object):
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
         self.gripper = self.robot.try_get('gripper')
+        self.tts = self.robot.try_get('default_tts')
+        self.tts.language = self.tts.ENGLISH
 
         # Increase planning timeout. Default is 10s
         self.whole_body.planning_timeout = 20.0
@@ -41,7 +49,7 @@ class GiveObjectToOperatorAction(object):
             # Send a goal to start speech
             rospy.loginfo('Speech server found. Sending goal...')
             speech_goal = WaitForConfirmationGoal()
-            speech_goal.question = "Are you holding the object?"
+            speech_goal.question = "Operator, are you there?"
             speech_goal.possible_inputs = [rospy.getparam("bring_me/confirm_operator_presence"),
                                            rospy.getparam("bring_me/negative_confirmation")]
             # Note this timeout is currently
@@ -61,19 +69,41 @@ class GiveObjectToOperatorAction(object):
 
     def execute_cb(self, goal_msg):
 
-        self.get_speech_confirmation(self)
-
-        rospy.loginfo('%s: Moving to neutral position to present object.' % (self._action_name))
-        self.whole_body.move_to_neutral()
-
-        rospy.loginfo('%s: Opening gripper.' % (self._action_name))
-        self.gripper.command(1.2)
-
-        rospy.loginfo('%s: Opbject given to operator.' % (self._action_name))
-
         _result = GiveObjectToOperatorResult()
-        _result.result = True
-        self._as.set_succeeded(_result)
+
+        # Implemented a speech client but currently has no effect because it pass if fails
+        # Just using this to test
+        # self.get_speech_confirmation()
+
+        try:
+            rospy.loginfo('%s: Moving to neutral position to present object.' % (self._action_name))
+            self.whole_body.move_to_neutral()
+            rospy.sleep(0.5)
+            self.tts.say("I will now pass you the object.")
+            rospy.sleep(1)
+
+            rospy.loginfo('%s: Stretching out arm.' % (self._action_name))
+            self.whole_body.linear_weight = 100
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0.2, z=0.2), 'hand_palm_link')
+
+            rospy.sleep(1)
+            self.tts.say("Please make sure you are holding the object and I will let go.")
+            rospy.sleep(5)
+
+            rospy.loginfo('%s: Opening gripper.' % (self._action_name))
+            self.gripper.command(1.2)
+            rospy.loginfo('%s: Object given to operator.' % (self._action_name))
+
+            rospy.sleep(2)
+            rospy.loginfo('%s: Moving to go position.' % (self._action_name))
+            self.whole_body.move_to_go()
+
+            _result.result = True
+            self._as.set_succeeded(_result)
+        except Exception as e:
+            rospy.loginfo('%s: Exception encountered: %s.' % (self._action_name, e))
+            _result.result = False
+            self._as.set_aborted()
 
 
 if __name__ == '__main__':

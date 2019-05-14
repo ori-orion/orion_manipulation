@@ -4,8 +4,8 @@ import rospy
 import actionlib
 from orion_actions.msg import *
 
-def pick_up_object_client(goal_tf):
-    client = actionlib.SimpleActionClient('pick_up_object_server_node', PutObjectOnFloorAction)
+def put_object_on_floor_client():
+    client = actionlib.SimpleActionClient('put_object_on_floor', PutObjectOnFloorAction)
 
     print("Waiting for server")
     client.wait_for_server()
@@ -25,8 +25,8 @@ def pick_up_object_client(goal_tf):
 
 
 if __name__ == '__main__':
-    rospy.init_node('pick_up_object_client_py')
-    result = pick_up_object_client()
+    rospy.init_node('put_object_on_floor_client')
+    result = put_object_on_floor_client()
     print("Result:" + str(result.result))
 
 

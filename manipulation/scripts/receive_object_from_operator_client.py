@@ -6,11 +6,11 @@ import actionlib
 from orion_actions.msg import *
 
 
-def give_object_to_operator_client():
+def receive_object_from_operator_client():
 
-    client = actionlib.SimpleActionClient('give_something', GiveObjectToOperatorAction)
+    client = actionlib.SimpleActionClient('receive_object_from_operator', ReceiveObjectFromOperatorAction)
     client.wait_for_server()
-    goal_msg = GiveObjectToOperatorGoal()
+    goal_msg = ReceiveObjectFromOperatorGoal()
     client.send_goal(goal_msg)
     client.wait_for_result()
     return client.get_result()
@@ -18,8 +18,8 @@ def give_object_to_operator_client():
 
 if __name__ == '__main__':
     try:
-        rospy.init_node('give_object_to_operator_client_py')
-        result = give_object_to_operator_client()
+        rospy.init_node('receive_object_from_operator_client')
+        result = receive_object_from_operator_client()
         print("Result:" + str(result.result))
     except rospy.ROSInterruptException:
         print("Problem.")

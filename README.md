@@ -89,7 +89,7 @@ roslaunch openni2_launch openni2.launch camera:=hsrb depth_frame_id:=/hsrb/head_
 ```
 ```
 roslaunch gpd tutorial1.launch cloud_topic:=hsrb/head_rgbd_sensor/depth_registered/rectified_points
-roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
+roslaunch gpd tutorial1.launch cloud_topic:=**Object cloud you want to grasp**
 ```
 
 ## To do:
@@ -102,17 +102,64 @@ roslaunch gpd tutorial1.launch cloud_topic:=*Object cloud you want to grasp*
 - [x] Test new pick up object action on AR bottle
 - [x] Added service to segment an opject given the rough location of it
 - [x] Create launch file to fire up the grasp synthesis
-- [ ] Test give object server
+- [x] Code to segment object point clouds (crop -> remove plane ? )
+- [x] Revamp pick up object server (get rid of config files, counters etc)
+- PickUpObject.action
+	- [x] Created server
+	- [x] Tested
+- OpenDoor.action
+	- [x] Created server
+	- [x] Tested
+	- [ ] Finish opening the door fully
+- PutObjectOnFloor.action
+	- [x] Created server
+	- [x] Tested
+- GiveObjectToOperator.action
+	- [x] Created server
+	- [x] Tested
+- ReceiveObjectFromOperator.action
+	- [x] Created server
+	- [x] Tested
+- PutObjectOnSurface.action
+	- [ ] Created server
+	- [ ] Tested
+- OpenFurnitureDoor.action
+	- [ ] Created server
+	- [ ] Tested
+- OpenDrawer.action
+	- [ ] Created server
+	- [ ] Tested
+- CloseDrawer.action
+	- [ ] Created server
+	- [ ] Tested
+- CloseFurnitureDoor.action
+	- [ ] Created server
+	- [ ] Tested
+- PointToObject.action
+	- [ ] Created server
+	- [ ] Tested
+- PlaceObjectRelative.action
+	- [x] Started server (Started! Needs x,y,z in pose implementing)
+	- [ ] Finish server
+	- [ ] Tested
+- GrabBothBinBags.action
+	- [ ] Created server
+	- [ ] Tested
+- TurnOnBlender.action
+	- [ ] Created server
+	- [ ] Tested
+- OpenBinLid.action
+	- [ ] Created server
+	- [ ] Tested
+- PourInto.action
+	- [ ] Created server
+	- [ ] Tested
 - [ ] Create launch file to launch all manipulation server nodes
 - [ ] Check the axis conventention for image tf frames
-- [ ] Finish opening the door fully
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
-- [ ] Code to segment object point clouds (crop -> remove plane ? )
-- [ ] Revamp pick up object server (get rid of config files, counters etc)
-- [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)
-- [ ] Change grasp parameters for use on HSR
+- [ ] Tune grasp synthesis parameters for HSR
 - [ ] Integrate the handle detection and grasp synthesis
-- [ ] Implement all the actions (split this up into smaller tasks later)
+- [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)
 
 ## Notes
 
