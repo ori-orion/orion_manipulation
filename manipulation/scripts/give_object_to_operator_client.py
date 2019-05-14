@@ -8,7 +8,7 @@ from orion_actions.msg import *
 
 def give_object_to_operator_client():
 
-    client = actionlib.SimpleActionClient('give_object_to_operator_server_node', GiveObjectToOperatorAction)
+    client = actionlib.SimpleActionClient('give_something', GiveObjectToOperatorAction)
     client.wait_for_server()
     goal_msg = GiveObjectToOperatorGoal()
     client.send_goal(goal_msg)
