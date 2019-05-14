@@ -113,7 +113,7 @@ roslaunch gpd tutorial1.launch cloud_topic:=**Object cloud you want to grasp**
 	- [ ] Finish opening the door fully
 - PutObjectOnFloor.action
 	- [x] Created server
-	- [ ] Tested
+	- [x] Tested
 - GiveObjectToOperator.action
 	- [x] Created server
 	- [x] Tested

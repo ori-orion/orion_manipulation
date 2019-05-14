@@ -16,7 +16,8 @@ class ReceiveObjectFromOperatorAction(object):
 
     def __init__(self, name):
         self._action_name = 'receive_object_from_operator'
-        self._as = actionlib.SimpleActionServer(self._action_name, orion_actions.msg.ReceiveObjectFromOperatorAction,execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(self._action_name, orion_actions.msg.ReceiveObjectFromOperatorAction,
+                                                execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Preparation for using the robot functions

@@ -4,10 +4,11 @@ import hsrb_interface
 import rospy
 import actionlib
 import hsrb_interface.geometry as geometry
+from hsrb_interface import robot as _robot
 
-from manipulation.manipulation_header import CollisionMapper
+_robot.enable_interactive()
+
 from actionlib_msgs.msg import GoalStatus
-from tmc_manipulation_msgs.msg import CollisionObject
 from orion_actions.msg import *
 
 
@@ -23,51 +24,19 @@ class PutObjectOnFloorAction(object):
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
-        self.collision_world = self.robot.try_get('global_collision_world')
         self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.whole_body.looking_hand_constraint = True
+        self.tts = self.robot.try_get('default_tts')
+        self.tts.language = self.tts.ENGLISH
 
-        self.collision_mapper = CollisionMapper(self.robot)
-
-        self.whole_body.planning_timeout = 20.0 # Increase planning timeout. Default is 10s
-
-        # Set up publisher for the collision map
-        self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
+        self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
-
-    def callback(self, msg):
-        self.pub.publish(msg)
-
-    def put_object_on_floor(self):
-        try:
-            self.whole_body.collision_world = self.collision_world
-
-            rospy.loginfo('%s: Placing gripper close to floor in front' % (self._action_name))
-            self.whole_body.move_end_effector_pose(geometry.pose(x=0.5, y=0, z=0.05))
-
-            rospy.loginfo('%s: Opening gripper.' % (self._action_name))
-            self.gripper.command(1.2)
-
-        except Exception as e:
-            rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
-            self.whole_body.collision_world = None
-            rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
-            self.whole_body.move_to_neutral()
-            self._as.set_aborted()
 
     def execute_cb(self, goal_msg):
         _result = PutObjectOnFloorResult()
         _result.result = False
-
-        # Currently doesn't do anything other than relay to another topic
-        rospy.Subscriber("known_object_pre_filter", CollisionObject, self.callback)
-
-        # Set collision map
-        rospy.loginfo('%s: Getting Collision Map.' % self._action_name)
-        self.collision_mapper.get_collision_map()
-        rospy.loginfo('%s: Collision Map generated.' % self._action_name)
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
@@ -75,17 +44,43 @@ class PutObjectOnFloorAction(object):
             self._as.set_preempted()
             return
 
-        self.put_object_on_floor()
+        try:
+            rospy.loginfo('%s: Placing gripper close to floor in front' % (self._action_name))
+            self.tts.say("I will place the object on the floor in front of me.")
+            rospy.sleep(2)
+            self.whole_body.linear_weight = 100
+            self.whole_body.move_to_neutral()
+            rospy.sleep(1)
+            self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
 
-        rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
-        self.whole_body.move_to_neutral()
+            rospy.sleep(1)
+            rospy.loginfo('%s: Opening gripper.' % (self._action_name))
+            self.gripper.command(1.2)
 
-        rospy.loginfo('%s: Succeeded' % self._action_name)
-        _result.result = True
-        self._as.set_succeeded(_result)
+            self.tts.say("Object placed successfully. Returning to go position.")
+            rospy.sleep(2)
+
+            rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
+            self.whole_body.move_to_go()
+
+            rospy.loginfo('%s: Succeeded' % self._action_name)
+            _result.result = True
+            self._as.set_succeeded(_result)
+
+        except Exception as e:
+            rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
+            self.tts.say("I encountered a problem. Returning to go position and aborting placement.")
+            rospy.sleep(2)
+            rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
+            self.whole_body.move_to_go()
+            self._as.set_aborted()
+
+
+
+
 
 
 if __name__ == '__main__':
-    rospy.init_node('put object_on_floor_server_node')
+    rospy.init_node('put_object_on_floor_server')
     server = PutObjectOnFloorAction(rospy.get_name())
     rospy.spin()
