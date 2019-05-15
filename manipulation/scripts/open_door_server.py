@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-
+import time
 import hsrb_interface
 import hsrb_interface.geometry as geometry
 import numpy as np
@@ -11,6 +11,9 @@ import tf
 import tf2_ros
 import geometry_msgs.msg
 import math
+from hsrb_interface import robot as _robot
+
+_robot.enable_interactive()
 
 from manipulation.manipulation_header import *
 from point_cloud_filtering.srv import DetectHandle
@@ -24,15 +27,16 @@ class OpenDoorAction(object):
         self._action_name = 'open_door'
         self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.OpenDoorAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
-	
+
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
         self.omni_base = self.robot.try_get('omni_base')
         self.gripper = self.robot.try_get('gripper')
         self._HAND_TF = 'hand_palm_link'
-        self._GRASP_FORCE = 0.8
-
+        self._GRASP_FORCE = 0.4
+        self.tts = self.robot.try_get('default_tts')
+        self.tts.language = self.tts.ENGLISH
 
         # Increase planning timeout. Default is 10s
         self.whole_body.planning_timeout = 20.0
@@ -62,31 +66,74 @@ class OpenDoorAction(object):
         self.whole_body.collision_world = None
         self.whole_body.linear_weight = 50.0
         rospy.loginfo('%s: Calling handle detection...' % (self._action_name))
+        rospy.sleep(1)
+        self.tts.say("I'm now looking for the door handle")
         handle_pose = self.get_handle_pose()
 
         rospy.loginfo('%s: Grasping handle...' % (self._action_name))
+        self.tts.say("Door handle found. Moving to grasp.")
+        rospy.sleep(1)
         self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.05), 'head_rgbd_sensor_rgb_frame')
         try:
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.02), 'hand_palm_link')
+            # rospy.loginfo("%s: Downward handle motion complete..." % (self._action_name))
         except:
             rospy.loginfo("%s: Couldn't move forward..." % (self._action_name))
             pass
         self.gripper.apply_force(self._GRASP_FORCE)
+        # self.gripper.set_distance(0.02)
         rospy.sleep(2)
 
         rospy.loginfo('%s: Executing opening motion...' % (self._action_name))
-        self.whole_body.move_end_effector_pose(geometry.pose(y=0.04), 'hand_palm_link')
-        rospy.sleep(2)
+        self.tts.say("Grasped successfully. Now opening.")
+        rospy.sleep(1)
+        try:
+            self.whole_body.move_end_effector_pose(geometry.pose(y=0.025), 'hand_palm_link')
+            rospy.loginfo('%s: Successfully pulled handle down...' % (self._action_name))
+        except:
+            rospy.loginfo('%s: Failed to move to the side...' % (self._action_name))
 
-        self.omni_base.go_rel(-0.1,0,0)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
-        self.gripper.set_distance(0.1)
+        rospy.sleep(1)
 
+        # start = time.clock()
+        # duration = 0
+        self.whole_body.planning_timeout = 5.0
+        try:
+            rospy.loginfo('%s: Attempting to move backwards...' % (self._action_name))
+            # self.omni_base.go_rel(-0.1, 0, 0)
+            self.whole_body.linear_weight = 1
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
+            rospy.loginfo('%s: Attempting to move back more...' % (self._action_name))
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
+            self.tts.say("Releasing door handle.")
+            rospy.sleep(1)
+            self.gripper.set_distance(0.1)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
+        except:
+            self.tts.say("Sorry. I encountered a problem.")
+            rospy.sleep(1)
+            self.gripper.set_distance(0.1)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
+
+        self.tts.say("I will now try to open the door fully.")
+        rospy.sleep(1)
         self.whole_body.move_to_go()
-
+        self.whole_body.move_to_neutral()
+        self.whole_body.linear_weight = 100
+        self.omni_base.go_rel(0, -0.15, 0)
+        self.whole_body.move_to_joint_positions({'arm_lift_joint': 0.5})
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0.3), 'hand_palm_link')
+        self.omni_base.go_rel(0.15, 0, 0)
+        self.omni_base.go_rel(0, 0, math.pi/2)
+        self.whole_body.move_to_go()
         rospy.loginfo('%s: Succeeded door opening. Now returning results.' % self._action_name)
+        self.tts.say("Door opening complete.")
+        # self.tts.say("Yeah boy.")
+        rospy.sleep(1)
+
         result = OpenDoorResult()
         result.result = True
+        self.whole_body.planning_timeout = 20.0
         self._as.set_succeeded(result)
 
 
