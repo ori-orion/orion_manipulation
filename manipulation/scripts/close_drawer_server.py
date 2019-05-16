@@ -54,7 +54,7 @@ class CloseDrawerAction(object):
         self.gripper.command(1)
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
         self.whole_body.move_to_go()
-        
+
         rospy.loginfo('%s: Succeeded closing drawer.' % self._action_name)
         self.tts.say("Completed drawer closing.")
         rospy.sleep(1)
