@@ -74,19 +74,26 @@ class OpenDoorAction(object):
         self.tts.say("Door handle found. Moving to grasp.")
         rospy.sleep(1)
         self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.05), 'head_rgbd_sensor_rgb_frame')
+
+        # Determine if door hinge is on left or right
+        if handle_pose.x > 0:
+            hinge_sign = 1 # hinge on left
+        else:
+            hinge_sign = -1 # hinge on right
+
         try:
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.02), 'hand_palm_link')
-            # rospy.loginfo("%s: Downward handle motion complete..." % (self._action_name))
         except:
             rospy.loginfo("%s: Couldn't move forward..." % (self._action_name))
             pass
+
         self.gripper.apply_force(self._GRASP_FORCE)
-        # self.gripper.set_distance(0.02)
         rospy.sleep(2)
 
         rospy.loginfo('%s: Executing opening motion...' % (self._action_name))
         self.tts.say("Grasped successfully. Now opening.")
         rospy.sleep(1)
+
         try:
             self.whole_body.move_end_effector_pose(geometry.pose(y=0.025), 'hand_palm_link')
             rospy.loginfo('%s: Successfully pulled handle down...' % (self._action_name))
@@ -95,12 +102,9 @@ class OpenDoorAction(object):
 
         rospy.sleep(1)
 
-        # start = time.clock()
-        # duration = 0
         self.whole_body.planning_timeout = 5.0
         try:
             rospy.loginfo('%s: Attempting to move backwards...' % (self._action_name))
-            # self.omni_base.go_rel(-0.1, 0, 0)
             self.whole_body.linear_weight = 1
             self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
             rospy.loginfo('%s: Attempting to move back more...' % (self._action_name))
@@ -120,11 +124,11 @@ class OpenDoorAction(object):
         self.whole_body.move_to_go()
         self.whole_body.move_to_neutral()
         self.whole_body.linear_weight = 100
-        self.omni_base.go_rel(0, -0.15, 0)
+        self.omni_base.go_rel(0, -hinge_sign*0.15, 0)
         self.whole_body.move_to_joint_positions({'arm_lift_joint': 0.5})
         self.whole_body.move_end_effector_pose(geometry.pose(z=0.3), 'hand_palm_link')
         self.omni_base.go_rel(0.15, 0, 0)
-        self.omni_base.go_rel(0, 0, math.pi/2)
+        self.omni_base.go_rel(0, 0, hinge_sign * math.pi/2)
         self.whole_body.move_to_go()
         rospy.loginfo('%s: Succeeded door opening. Now returning results.' % self._action_name)
         self.tts.say("Door opening complete.")
