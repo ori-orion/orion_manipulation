@@ -6,7 +6,10 @@ import numpy as np
 import rospy
 import actionlib
 
+import tf
+import tf.transformations as T
 import math
+
 from hsrb_interface import robot as _robot
 
 _robot.enable_interactive()
@@ -29,7 +32,7 @@ class OpenDrawerAction(object):
         self.omni_base = self.robot.try_get('omni_base')
         self.gripper = self.robot.try_get('gripper')
         self._HAND_TF = 'hand_palm_link'
-        self._GRASP_FORCE = 0.4
+        self._GRASP_FORCE = 0.8
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
@@ -50,11 +53,43 @@ class OpenDrawerAction(object):
 
         return response
 
+    def get_goal_pose(self, relative=geometry.pose(), offset=0.0):
+        rospy.loginfo('%s: Trying to lookup goal pose...' % self._action_name)
+        foundTrans = False
+        while not foundTrans:
+            try:
+                odom_to_ref_pose = self.whole_body._lookup_odom_to_ref('head_rgbd_sensor_rgb_frame')
+                foundTrans = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                continue
+        odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
+        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
+
+        rospy.loginfo('%s: Calculated the goal pose.' % self._action_name)
+
+        pose_msg = geometry.tuples_to_pose(odom_to_hand)
+
+        # This gives the position of the handle
+        goal_pose = geometry.pose(x=pose_msg.position.x,
+                      y=pose_msg.position.y,
+                      z=pose_msg.position.z,
+                      ei=math.pi/2,
+                      ej=0,
+                      ek=math.pi/2)
+
+        # return goal_pose
+        offset_pose = geometry.pose(z=offset)
+        #
+        return geometry.multiply_tuples(goal_pose, offset_pose)
 
     def execute_cb(self, goal_msg):
         rospy.loginfo('%s: Executing callback. Opening drawers.' % (self._action_name))
         self.tts.say("I will now find handles and open the drawers.")
         rospy.sleep(1)
+
+        rospy.loginfo('%s: Opening gripper.' % (self._action_name))
+        self.gripper.command(1.2)
+
 
         # Try and find handles
         handle_poses = self.get_handle_poses()
@@ -64,20 +99,25 @@ class OpenDrawerAction(object):
         rospy.loginfo('%s: Found %d handles.' % (self._action_name, num_handles_found))
 
         if num_handles_found > 0:
-            self.tts.say("I found %d handle and will now grasp one of them")
+            self.tts.say("I found %d handles and will now grasp one of them" % num_handles_found)
 
             # Grasp the handle
             rospy.loginfo('%s: Grasping handle...' % (self._action_name))
             rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(x=handle_poses.x[0], y=handle_poses.y[0],  z=handle_poses.z[0]-0.05), 'head_rgbd_sensor_rgb_frame')
+            handle_goal_pose = self.get_goal_pose(relative=geometry.pose(x=handle_poses.x[0], y=handle_poses.y[0],
+                                                                         z=handle_poses.z[0]), offset=-0.15)
 
+            # self.whole_body.move_end_effector_pose(geometry.pose(x=handle_poses.x[0], y=handle_poses.y[0],  z=handle_poses.z[0]), 'head_rgbd_sensor_rgb_frame')
+            self.whole_body.linear_weight = 80
+            self.whole_body.move_end_effector_pose(handle_goal_pose, 'odom')
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.055), 'hand_palm_link')
 
-            try:
-                self.whole_body.move_end_effector_pose(geometry.pose(z=0.02), 'hand_palm_link')
-            except:
-                rospy.loginfo("%s: Couldn't move forward..." % (self._action_name))
-                pass
-
+            # try:
+            #     self.whole_body.move_end_effector_pose(geometry.pose(z=0.02), 'hand_palm_link')
+            # except:
+            #     rospy.loginfo("%s: Couldn't move forward..." % (self._action_name))
+            #     pass
+            # self.gripper.set_distance(self._GRASP_FORCE)
             self.gripper.apply_force(self._GRASP_FORCE)
             rospy.sleep(2)
 
@@ -97,7 +137,7 @@ class OpenDrawerAction(object):
                 rospy.sleep(1)
                 self.gripper.set_distance(0.1)
                 self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
-                # self.whole_body.move_to_go()
+                self.whole_body.move_to_go()
             except:
                 rospy.loginfo('%s: Problem moving backwards...' % (self._action_name))
                 self.tts.say("Sorry. I encountered a problem.")

@@ -127,8 +127,8 @@ roslaunch gpd tutorial1.launch cloud_topic:=**Object cloud you want to grasp**
 	- [ ] Created server
 	- [ ] Tested
 - OpenDrawer.action
-	- [ ] Created server
-	- [ ] Tested
+	- [x] Created server
+	- [x] Tested
 - CloseDrawer.action
 	- [x] Created server
 	- [ ] Tested
