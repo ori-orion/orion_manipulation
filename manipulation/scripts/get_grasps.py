@@ -36,7 +36,9 @@ def callback(msg):
         binormal_4 = np.array([grasp.binormal.x, grasp.binormal.y, grasp.binormal.z, approach_center[1]])
         axis_4 = np.array([grasp.axis.x, grasp.axis.y, grasp.axis.z, approach_center[2]])
 
-        R = np.array([approach_4, binormal_4, axis_4, [0, 0, 0, 1]])
+        # R = np.array([approach_4, binormal_4, axis_4, [0, 0, 0, 1]])
+        R = np.array([axis_4, -binormal_4, approach_4, [0, 0, 0, 1]])
+
         q = T.quaternion_from_matrix(R)
 
         # NOTE THIS NEEDS THE QUATERNION CONJUGATE
