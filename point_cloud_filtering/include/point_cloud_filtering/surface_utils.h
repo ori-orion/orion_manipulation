@@ -30,9 +30,11 @@ namespace point_cloud_filtering {
     public:
         SurfacePlacement(const ros::Publisher& goal_pub);
         void Callback(const sensor_msgs::PointCloud2& msg);
+        void GetHeadAngle(const sensor_msgs::JointState& msg) ;
 
     private:
         ros::Publisher goal_pub_;
+        double head_angle;
     };
 
 

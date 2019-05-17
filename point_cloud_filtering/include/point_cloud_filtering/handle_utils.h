@@ -40,13 +40,10 @@ namespace point_cloud_filtering {
                             pcl::ModelCoefficients::Ptr coefficients,
                             Eigen::Vector3f axis);
 
-//    void GetSurfaceInliers(PointCloudC::Ptr in_cloud,
-//                            pcl::PointIndices::Ptr points_within);
-
-    void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
-                               PointCloudC::Ptr in_cloud,
-                               PointCloudC::Ptr out_cloud);
-
+//    void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
+//                               PointCloudC::Ptr in_cloud,
+//                               PointCloudC::Ptr out_cloud);
+//
     void GetClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                      std::vector<pcl::PointIndices> *clusters);
 

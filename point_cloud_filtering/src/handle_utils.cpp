@@ -62,46 +62,28 @@ namespace point_cloud_filtering {
                   << coefficients->values[3] << std::endl;
     }
 
-//    void GetSurfaceInliers(PointCloudC::Ptr in_cloud,
-//                            pcl::PointIndices::Ptr points_within) {
+//    void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
+//                               PointCloudC::Ptr in_cloud,
+//                               PointCloudC::Ptr out_cloud) {
+//        pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
+//        pcl::ExtractIndices<PointC> handle_extract;
 //
-//        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
-//        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
+//        int clust_size, ind;
+//        clust_size = 0;
+//        ind = 0;
+//        for (size_t i = 0; i < clusters->size(); ++i) {
+//            if (clusters->at(i).indices.size() > clust_size) {
+//                ind = i;
+//            }
+//        }
 //
-//        // Optional
-//        seg.setOptimizeCoefficients(true);
+//        *handle_inliers = clusters->at(ind);
+//        handle_extract.setInputCloud(in_cloud);
+//        handle_extract.setIndices(handle_inliers);
+//        handle_extract.filter(*out_cloud);
 //
-//        // Mandatory
-//        seg.setModelType(pcl::SACMODEL_PLANE);
-//        seg.setMethodType(pcl::SAC_RANSAC);
-//        seg.setMaxIterations(1000);
-//        seg.setDistanceThreshold(0.01);
-//        seg.setInputCloud(in_cloud);
-//        seg.segment(*points_within, *coefficients);
 //    }
-
-    void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
-                               PointCloudC::Ptr in_cloud,
-                               PointCloudC::Ptr out_cloud) {
-        pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
-        pcl::ExtractIndices<PointC> handle_extract;
-
-        int clust_size, ind;
-        clust_size = 0;
-        ind = 0;
-        for (size_t i = 0; i < clusters->size(); ++i) {
-            if (clusters->at(i).indices.size() > clust_size) {
-                ind = i;
-            }
-        }
-
-        *handle_inliers = clusters->at(ind);
-        handle_extract.setInputCloud(in_cloud);
-        handle_extract.setIndices(handle_inliers);
-        handle_extract.filter(*out_cloud);
-
-    }
-
+//
     void GetClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                      std::vector<pcl::PointIndices> *clusters) {
         double cluster_tolerance;

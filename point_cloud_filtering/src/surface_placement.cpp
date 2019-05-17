@@ -19,6 +19,9 @@ bool get_surface_location(point_cloud_filtering::GetSurfaceGoal::Request  &req,
     // Crop for the handle
     point_cloud_filtering::SurfacePlacement surface_placer(goal_pub);
 
+    ros::Subscriber joint_sub =
+            nh.subscribe ("/hsrb/robot_state/joint_states", 1, &point_cloud_filtering::SurfacePlacement::GetHeadAngle, &surface_placer);
+
     ros::Subscriber sub_handle =
             nh.subscribe("cloud_in", 1, &point_cloud_filtering::SurfacePlacement::Callback,  &surface_placer);
 

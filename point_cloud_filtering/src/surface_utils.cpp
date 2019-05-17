@@ -10,9 +10,13 @@
 
 namespace point_cloud_filtering {
 
-    ObjectSegmenter::ObjectSegmenter(const ros::Publisher& goal_pub) : goal_pub_(goal_pub) {}
+    ObjectSegmenter::SurfacePlacement(const ros::Publisher& goal_pub) : goal_pub_(goal_pub) {}
 
-    void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
+    void SurfacePlacement::GetHeadAngle(const sensor_msgs::JointState& msg) {
+        head_angle = msg.position[13];
+    }
+
+    void SurfacePlacement::Callback(const sensor_msgs::PointCloud2& msg) {
 
         // Check the incoming point cloud
         PointCloudC::Ptr cloud(new PointCloudC());
@@ -20,9 +24,8 @@ namespace point_cloud_filtering {
         ROS_INFO("Got point cloud with %ld points", cloud->size());
 
         //------ Crop the point cloud roughly 20 cm around the object--------
-        Eigen::Vector4f min_crop_pt(object_x-0.15,object_y-0.15, object_z-0.15, 1);
-        Eigen::Vector4f max_crop_pt(object_x+0.15, object_y+0.15, object_z+0.15, 1);
-
+        Eigen::Vector4f min_crop_pt(-0.2, 0.0, 0, 1);
+        Eigen::Vector4f max_crop_pt(0.2, 1.0, 2, 1);
         PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
         CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
 
@@ -33,7 +36,7 @@ namespace point_cloud_filtering {
         Eigen::Vector3f axis;
         axis << 0, 1 - sin(head_angle), 0 + cos (head_angle);
 
-        SegmentSurface(first_cropped_cloud, inliers, axis);
+        SegmentTable(first_cropped_cloud, inliers, axis);
 
         if (inliers->indices.empty ())
         {
@@ -67,18 +70,18 @@ namespace point_cloud_filtering {
 
         }
 
-        //------ Crop the point cloud used to get the handle --------
-        Eigen::Vector4f min_pt(object_x-0.15,object_y-0.15, object_z-0.15, 1);
-        Eigen::Vector4f max_pt(object_x+0.15, min_y-0.01, object_z+0.15, 1);
+        //------ Crop the point cloud used to get the handle -------
+        Eigen::Vector4f min_crop_pt(-0.2, 0.0, 0, 1);
+        Eigen::Vector4f max_crop_pt(0.2, max_y, 2, 1);
 
-        PointCloudC::Ptr object_cloud(new PointCloudC());
-        CropCloud(no_surface_cloud, object_cloud, min_pt, max_pt);
+        PointCloudC::Ptr final_cloud(new PointCloudC());
+        CropCloud(no_surface_cloud, final_cloud, min_pt, max_pt);
 
         // Publish the object point cloud
         if (not inliers->indices.empty ()) {
             sensor_msgs::PointCloud2 msg_cloud_out;
-            pcl::toROSMsg(*object_cloud, msg_cloud_out);
-            object_pub_.publish(msg_cloud_out);
+            pcl::toROSMsg(*final_cloud, msg_cloud_out);
+            goal_pub_.publish(msg_cloud_out);
         }
     }
 

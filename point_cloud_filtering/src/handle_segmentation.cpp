@@ -199,24 +199,6 @@ namespace point_cloud_filtering {
         door_extract.setIndices(inliers);
         door_extract.filter(*door_cloud);
 
-//        pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> norm_est;
-//
-//        norm_est.setInputCloud (door_cloud);
-//
-//        // Create an empty kdtree representation, and pass it to the normal estimation object.
-//        // Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
-//        pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB> ());
-//        norm_est.setSearchMethod (tree);
-//
-//        // Output datasets
-//        pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
-//
-//        // Use all neighbors in a sphere of radius 3cm
-//        norm_est.setRadiusSearch (0.03);
-//
-//        // Compute the features
-//        norm_est.compute (*cloud_normals);
-
 
         float min_x = std::numeric_limits<float>::max();
         float min_y = std::numeric_limits<float>::max();
@@ -259,39 +241,6 @@ namespace point_cloud_filtering {
 
 
         //------ Crop the point cloud used to get the handle --------
-//        Take 10cm from the surface
-//        Eigen::Vector4f min_pt;
-
-
-//        if (coefficients->values[1] < 0 && coefficients->values[2]<0){
-//            Eigen::Vector4f min_pt(min_x,
-//                                   min_y+ 0.2 * coefficients->values[1],
-//                                   min_z+ 0.2 * coefficients->values[2],
-//                                   1);
-//        }
-//        if (coefficients->values[1] < 0 && coefficients->values[2]>0){
-//            Eigen::Vector4f min_pt(min_x,
-//                                   min_y+ 0.2 * coefficients->values[1],
-//                                   min_z- 0.2 * coefficients->values[2],
-//                                   1);
-//        }
-//        if (coefficients->values[1] > 0 && coefficients->values[2]<0){
-//            Eigen::Vector4f min_pt(min_x,
-//                                   min_y- 0.2 * coefficients->values[1],
-//                                   min_z+ 0.2 * coefficients->values[2],
-//                                   1);
-//        }
-//        if (coefficients->values[1] > 0 && coefficients->values[2]>0){
-//            Eigen::Vector4f min_pt(min_x,
-//                                   min_y- 0.2 * coefficients->values[1],
-//                                   min_z- 0.2 * coefficients->values[2],
-//                                   1);
-//        }
-
-//        Eigen::Vector4f min_pt(min_x,
-//                                min_y,
-//                                min_z,
-//                                1);
         Eigen::Vector4f min_pt(min_x + 0.1,
                                min_y,
                                min_z,
@@ -302,16 +251,15 @@ namespace point_cloud_filtering {
         PointCloudC::Ptr handle_cloud(new PointCloudC());
         CropCloud(filtered_cloud, handle_cloud, min_pt, max_pt);
 
+        // Publish the plane point cloud
+        sensor_msgs::PointCloud2 msg_door_cloud_out;
+        pcl::toROSMsg(*door_cloud, msg_door_cloud_out);
+        plane_pub_.publish(msg_door_cloud_out);
+
         // Publish the handle point cloud
         sensor_msgs::PointCloud2 msg_cloud_out;
         pcl::toROSMsg(*handle_cloud, msg_cloud_out);
         cloud_pub_.publish(msg_cloud_out);
-
-        // Publish the plane point cloud
-        sensor_msgs::PointCloud2 msg_door_cloud_out;
-//        pcl::toROSMsg(*first_cropped_cloud, msg_door_cloud_out);
-        pcl::toROSMsg(*door_cloud, msg_door_cloud_out);
-        plane_pub_.publish(msg_door_cloud_out);
 
     }
 
@@ -322,31 +270,55 @@ namespace point_cloud_filtering {
         pcl::fromROSMsg(msg, *handle_cloud);
         ROS_INFO("Got point cloud with %ld points", handle_cloud->size());
 
-        // publish centroid
-        Eigen::Vector4f centroid;
-        pcl::compute3DCentroid(*handle_cloud, centroid);
-        std::cout << "The centroid is: " << std::endl;
-        std::cout << "x:" << centroid[0] << " y:" << centroid[1] << "z: " << centroid[2] << std::endl;
+        // At this point we may have multiple handles detected
+        std::vector<pcl::PointIndices>* clusters;
+        GetClusters(handle_cloud, clusters);
 
-        float x,y,z;
+        for(size_t i=0; i < clusters->size(); ++i) {
 
-        x = centroid[0];
-        y = centroid[1];
-        z = centroid[2];
+            pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
+            pcl::ExtractIndices<PointC> handle_extract;
+            PointCloudC::Ptr clustered_handle_cloud(new PointCloudC());
 
-        tf::Transform transform;
-        transform.setOrigin(tf::Vector3(x, y, z));
-        transform.setRotation(tf::Quaternion(0, 0, 0));
+            *handle_inliers = clusters->at(i);
+            handle_extract.setInputCloud(handle_cloud);
+            handle_extract.setIndices(handle_inliers);
+            handle_extract.filter(*clustered_handle_cloud);
 
-        handle_tf_br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame", "drawer_handle"));
+            // publish centroid
+            Eigen::Vector4f centroid;
+            pcl::compute3DCentroid(*handle_cloud, centroid);
+            std::cout << "The centroid is: " << std::endl;
+            std::cout << "x:" << centroid[0] << " y:" << centroid[1] << "z: " << centroid[2] << std::endl;
 
-        //  If the pose seems reasonable then store and prepare to exit the service
-        if(z>0.2 && z<1.2 && x>-0.5 && x<0.5 && y>-0.5 && y<0.5){
-            DrawerHandleCentroid::good_detection_ = true;
-            DrawerHandleCentroid::x_ = x;
-            DrawerHandleCentroid::y_ = y;
-            DrawerHandleCentroid::z_ = z;
-            std::cout << "Criteria matched!" << std::endl;
+            float x, y, z;
+
+            x = centroid[0];
+            y = centroid[1];
+            z = centroid[2];
+
+            tf::Transform transform;
+            transform.setOrigin(tf::Vector3(x, y, z));
+            transform.setRotation(tf::Quaternion(0, 0, 0));
+
+            std::stringstream ss;
+            ss << i;
+
+            std::string drawer_handle_name = "drawer_handle_" + ss.str();
+
+            handle_tf_br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame",
+                                                             drawer_handle_name));
+
+
+            //  If the pose seems reasonable then store and prepare to exit the service
+            if (z > 0.2 && z < 1.2 && x > -0.5 && x < 0.5 && y > -0.5 && y < 0.5 && DrawerHandleCentroid::good_detection_ == false) {
+                DrawerHandleCentroid::good_detection_ = true;
+                DrawerHandleCentroid::x_ = x;
+                DrawerHandleCentroid::y_ = y;
+                DrawerHandleCentroid::z_ = z;
+                std::cout << "Criteria matched!" << std::endl;
+            }
+
         }
 
     }
