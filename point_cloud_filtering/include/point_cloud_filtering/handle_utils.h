@@ -35,6 +35,11 @@ namespace point_cloud_filtering {
     void SegmentDoorInliers(PointCloudC::Ptr in_cloud,
                             pcl::PointIndices::Ptr points_within);
 
+    void SegmentFurnitureInliers(PointCloudC::Ptr in_cloud,
+                            pcl::PointIndices::Ptr points_within,
+                            pcl::ModelCoefficients::Ptr coefficients,
+                            Eigen::Vector3f axis);
+
 //    void GetSurfaceInliers(PointCloudC::Ptr in_cloud,
 //                            pcl::PointIndices::Ptr points_within);
 

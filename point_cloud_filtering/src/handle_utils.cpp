@@ -34,6 +34,34 @@ namespace point_cloud_filtering {
         seg.segment(*points_within, *coefficients);
     }
 
+    void SegmentFurnitureInliers(PointCloudC::Ptr in_cloud,
+                            pcl::PointIndices::Ptr points_within,
+                            pcl::ModelCoefficients::Ptr coefficients,
+                            Eigen::Vector3f axis) {
+
+        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+
+        // Optional
+        seg.setOptimizeCoefficients(true);
+
+        // Mandatory
+        seg.setModelType(pcl::SACMODEL_PLANE);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setMaxIterations(1000);
+        seg.setDistanceThreshold(0.01);
+
+        seg.setAxis(axis);
+        seg.setEpsAngle(pcl::deg2rad(10.0));
+
+        seg.setInputCloud(in_cloud);
+        seg.segment(*points_within, *coefficients);
+
+        std::cerr << "Model coefficients: " << coefficients->values[0] << " "
+                  << coefficients->values[1] << " "
+                  << coefficients->values[2] << " "
+                  << coefficients->values[3] << std::endl;
+    }
+
 //    void GetSurfaceInliers(PointCloudC::Ptr in_cloud,
 //                            pcl::PointIndices::Ptr points_within) {
 //
