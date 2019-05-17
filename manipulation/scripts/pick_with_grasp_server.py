@@ -48,6 +48,8 @@ class PickUpObjectAction(object):
         self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
         self.goal_pose_br = tf.TransformBroadcaster()
 
+        self.grasps = None
+        
         self.goal_object = None
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
@@ -115,25 +117,23 @@ class PickUpObjectAction(object):
     def callback(self, msg):
         self.pub.publish(msg)
 
-    def grasp_callback(msg):
-        global grasps
-        grasps = msg.grasps
+    def grasp_callback(self, msg):
+        self.grasps = msg.grasps
 
     def get_grasp(self):
-        grasps = [] # global variable to store grasps
-
+        
         # Subscribe to the ROS topic that contains the grasps.
-        grasps_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
+        grasps_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasps_callback)
 
         # Wait for grasps to arrive.
         rate = rospy.Rate(1)
 
-        while not len(grasps) > 0:
-            if len(grasps) > 0:
-                rospy.loginfo('Received %d grasps.', len(grasps))
+        while not len(self.grasps) > 0:
+            if len(self.grasps) > 0:
+                rospy.loginfo('Received %d grasps.', len(self.grasps))
                 break
 
-        grasp = grasps[0] # grasps are sorted in descending order by score
+        grasp = self.grasps[0] # grasps are sorted in descending order by score
         rospy.loginfo('%s: Selected grasp with score:: %s' % (self._action_name, str(grasp.score)))
         return grasp
 
@@ -157,10 +157,10 @@ class PickUpObjectAction(object):
                                             (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
                                             rospy.Time.now(),
                                             'goal_pose',
-                                            'base_footprint')
+                                            'odom')
 
             rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
-            self.whole_body.move_end_effector_pose(goal_pose, 'base_footprint')
+            self.whole_body.move_end_effector_pose(goal_pose, 'odom')
 
             # Turn off collision checking to get close and grasp
             rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))

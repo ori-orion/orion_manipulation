@@ -82,6 +82,7 @@ roslaunch manipulation grasp_synthesis.launch
 ```
 This will generate and publish grasps to /detect\_grasps/clustered\_grasps when point clouds are received on the topic __/object\_cloud__
 
+Note that when using the rotation matrix \[approach, binormal, axis\] to find the quaternion matrix for hand approach, you need to take the quaternion conjugate!
 
 The following commands are used to generate grasp poses:
 ```
