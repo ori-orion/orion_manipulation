@@ -7,15 +7,15 @@ import actionlib
 from orion_actions.msg import *
 
 
-def close_drawer_client():
+def open_drawer_client():
     # Creates the SimpleActionClient, passing the type of the action
-    client = actionlib.SimpleActionClient('close_drawer', CloseDrawerAction)
+    client = actionlib.SimpleActionClient('open_drawer', OpenDrawerAction)
 
     print("Waiting for server")
     client.wait_for_server()
     print("Finished waiting for server")
 
-    goal_msg = CloseDrawerGoal()
+    goal_msg = OpenDrawerGoal()
     client.send_goal(goal_msg)
     client.wait_for_result()
 
@@ -24,8 +24,8 @@ def close_drawer_client():
 
 if __name__ == '__main__':
     try:
-        rospy.init_node('close_drawer_client')
-        result = open_door_client()
+        rospy.init_node('open_drawer_client')
+        result = open_drawer_client()
         print("Result:" + str(result.result))
     except rospy.ROSInterruptException:
         print("Problem.")
