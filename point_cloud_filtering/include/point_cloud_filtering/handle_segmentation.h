@@ -53,12 +53,12 @@ namespace point_cloud_filtering {
         DrawerHandleCentroid(const tf::TransformBroadcaster& br);
         void Callback(const sensor_msgs::PointCloud2& msg);
         bool CheckDetection();
-        double GetX();
-        double GetY();
-        double GetZ();
+        std::vector<double> GetX();
+        std::vector<double> GetY();
+        std::vector<double> GetZ();
     private:
         tf::TransformBroadcaster handle_tf_br_;
         bool good_detection_ ;
-        double x_, y_, z_;
+        std::vector<double> x_, y_, z_;
     };
 }  // namespace point_cloud_filtering

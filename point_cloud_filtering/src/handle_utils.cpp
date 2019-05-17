@@ -51,7 +51,7 @@ namespace point_cloud_filtering {
         seg.setDistanceThreshold(0.01);
 
         seg.setAxis(axis);
-        seg.setEpsAngle(pcl::deg2rad(10.0));
+        seg.setEpsAngle(pcl::deg2rad(5.0));
 
         seg.setInputCloud(in_cloud);
         seg.segment(*points_within, *coefficients);
@@ -85,12 +85,14 @@ namespace point_cloud_filtering {
 //    }
 //
     void GetClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                     std::vector<pcl::PointIndices> *clusters) {
+                     std::vector<pcl::PointIndices>* clusters) {
         double cluster_tolerance;
         int min_cluster_size, max_cluster_size;
-        ros::param::param("ec_cluster_tolerance", cluster_tolerance, 0.01);
-        ros::param::param("ec_min_cluster_size", min_cluster_size, 30);
-        ros::param::param("ec_max_cluster_size", max_cluster_size, 100);
+        ros::param::param("ec_cluster_tolerance", cluster_tolerance, 0.06);
+        ros::param::param("ec_min_cluster_size", min_cluster_size, 25);
+        ros::param::param("ec_max_cluster_size", max_cluster_size, 300);
+
+        std::cout << "Getting clusters... " << std::endl;
 
         pcl::EuclideanClusterExtraction<PointC> euclid;
         euclid.setInputCloud(cloud);
@@ -98,6 +100,7 @@ namespace point_cloud_filtering {
         euclid.setMinClusterSize(min_cluster_size);
         euclid.setMaxClusterSize(max_cluster_size);
         euclid.extract(*clusters);
+        std::cout << "Finished clustering... " << std::endl;
     }
 
     void RemoveDoor(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud, pcl::PointIndices::Ptr door_inliers) {

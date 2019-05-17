@@ -62,7 +62,9 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
    FILES
    DetectHandle.srv
+   DetectDrawerHandles.srv
    SegmentObject.srv
+   GetSurfaceGoal.srv
 )
 
 ## Generate actions in the 'action' folder

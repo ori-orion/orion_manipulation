@@ -180,7 +180,7 @@ namespace point_cloud_filtering {
 
         //------ Get the door --------
         Eigen::Vector3f axis;
-        axis << 0, -sin(head_angle), cos(head_angle);
+        axis << 0, sin(head_angle), cos(head_angle);
 
         std::cout << axis << std::endl;
         pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
@@ -242,11 +242,11 @@ namespace point_cloud_filtering {
 
         //------ Crop the point cloud used to get the handle --------
         Eigen::Vector4f min_pt(min_x + 0.1,
-                               min_y,
+                               min_y + 0.03,
                                min_z,
                                1);
 
-        Eigen::Vector4f max_pt(max_x - 0.1, max_y - 0.1 * axis[2], max_z-0.1*axis[1], 1);
+        Eigen::Vector4f max_pt(max_x - 0.1, max_y - 0.1 * axis[2], max_z+0.1*axis[1], 1);
 
         PointCloudC::Ptr handle_cloud(new PointCloudC());
         CropCloud(filtered_cloud, handle_cloud, min_pt, max_pt);
@@ -271,71 +271,82 @@ namespace point_cloud_filtering {
         ROS_INFO("Got point cloud with %ld points", handle_cloud->size());
 
         // At this point we may have multiple handles detected
-        std::vector<pcl::PointIndices>* clusters;
-        GetClusters(handle_cloud, clusters);
+        std::vector<pcl::PointIndices> clusters;
+        GetClusters(handle_cloud, &clusters);
 
-        for(size_t i=0; i < clusters->size(); ++i) {
+        ROS_INFO("Found %ld clusters.", clusters.size());
 
-            pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
-            pcl::ExtractIndices<PointC> handle_extract;
-            PointCloudC::Ptr clustered_handle_cloud(new PointCloudC());
+        if (clusters.size() > 0) {
 
-            *handle_inliers = clusters->at(i);
-            handle_extract.setInputCloud(handle_cloud);
-            handle_extract.setIndices(handle_inliers);
-            handle_extract.filter(*clustered_handle_cloud);
+            for (size_t i = 0; i < clusters.size(); ++i) {
 
-            // publish centroid
-            Eigen::Vector4f centroid;
-            pcl::compute3DCentroid(*handle_cloud, centroid);
-            std::cout << "The centroid is: " << std::endl;
-            std::cout << "x:" << centroid[0] << " y:" << centroid[1] << "z: " << centroid[2] << std::endl;
+                pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
+                pcl::ExtractIndices<PointC> handle_extract;
+                PointCloudC::Ptr clustered_handle_cloud(new PointCloudC());
 
-            float x, y, z;
+                *handle_inliers = clusters.at(i);
+                handle_extract.setInputCloud(handle_cloud);
+                handle_extract.setIndices(handle_inliers);
+                handle_extract.filter(*clustered_handle_cloud);
 
-            x = centroid[0];
-            y = centroid[1];
-            z = centroid[2];
+                // publish centroid
+                Eigen::Vector4f centroid;
+                pcl::compute3DCentroid(*clustered_handle_cloud, centroid);
+                std::cout << "The centroid is: " << std::endl;
+                std::cout << "x:" << centroid[0] << " y:" << centroid[1] << "z: " << centroid[2] << std::endl;
 
-            tf::Transform transform;
-            transform.setOrigin(tf::Vector3(x, y, z));
-            transform.setRotation(tf::Quaternion(0, 0, 0));
+                float x, y, z;
 
-            std::stringstream ss;
-            ss << i;
+                x = centroid[0];
+                y = centroid[1];
+                z = centroid[2];
 
-            std::string drawer_handle_name = "drawer_handle_" + ss.str();
+                tf::Transform transform;
+                transform.setOrigin(tf::Vector3(x, y, z));
+                transform.setRotation(tf::Quaternion(0, 0, 0));
 
-            handle_tf_br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame",
-                                                             drawer_handle_name));
+                std::stringstream ss;
+                ss << i;
+
+                std::string drawer_handle_name = "drawer_handle_" + ss.str();
 
 
-            //  If the pose seems reasonable then store and prepare to exit the service
-            if (z > 0.2 && z < 1.2 && x > -0.5 && x < 0.5 && y > -0.5 && y < 0.5 && DrawerHandleCentroid::good_detection_ == false) {
-                DrawerHandleCentroid::good_detection_ = true;
-                DrawerHandleCentroid::x_ = x;
-                DrawerHandleCentroid::y_ = y;
-                DrawerHandleCentroid::z_ = z;
-                std::cout << "Criteria matched!" << std::endl;
+                //            std::string drawer_handle_name = "drawer_handle_" + ss.str();
+                handle_tf_br_.sendTransform(
+                        tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame",
+                                             drawer_handle_name));
+                std::cout << "Sent transform for: " << drawer_handle_name << std::endl;
+
+                //  If the pose seems reasonable then store and prepare to exit the service
+                if (z > 0.2 && z < 1.5 && x > -0.5 && x < 0.5 && y > -0.5 && y < 1.0) {
+                    DrawerHandleCentroid::good_detection_ = true;
+                    DrawerHandleCentroid::x_.push_back(x);
+                    DrawerHandleCentroid::y_.push_back(y);
+                    DrawerHandleCentroid::z_.push_back(z);
+
+//                    DrawerHandleCentroid::good_detection_ == false
+                    std::cout << "Criteria matched!" << std::endl;
+                }
+
             }
-
+        } else{
+            ROS_INFO("No clusters found.");
         }
-
     }
 
     bool DrawerHandleCentroid::CheckDetection() {
         return DrawerHandleCentroid::good_detection_;
     }
 
-    double DrawerHandleCentroid::GetX(){
+    std::vector<double> DrawerHandleCentroid::GetX(){
         return DrawerHandleCentroid::x_;
     }
 
-    double DrawerHandleCentroid::GetY(){
+    std::vector<double> DrawerHandleCentroid::GetY(){
         return DrawerHandleCentroid::y_;
     }
 
-    double DrawerHandleCentroid::GetZ(){
+    std::vector<double> DrawerHandleCentroid::GetZ(){
         return DrawerHandleCentroid::z_;
     }
 

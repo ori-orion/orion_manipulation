@@ -1,13 +1,13 @@
 #include "handle_segmentation.h"
 #include "handle_utils.h"
 #include "geometry_msgs/PointStamped.h"
-#include "point_cloud_filtering/DetectHandle.h"
+#include "point_cloud_filtering/DetectDrawerHandles.h"
 #include <ros/callback_queue.h>
 #include "sensor_msgs/JointState.h"
 
 
-bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
-                   point_cloud_filtering::DetectHandle::Response &res){
+bool detect_handle(point_cloud_filtering::DetectDrawerHandles::Request  &req,
+                   point_cloud_filtering::DetectDrawerHandles::Response &res){
 
 
     tf::TransformBroadcaster br;

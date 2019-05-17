@@ -70,7 +70,7 @@ namespace point_cloud_filtering {
 
         }
 
-        //------ Crop the point cloud used to get the handle -------
+        //------ Crop the point cloud used to get all objects above the surface -------
         Eigen::Vector4f min_crop_pt(-0.2, 0.0, 0, 1);
         Eigen::Vector4f max_crop_pt(0.2, max_y, 2, 1);
 
@@ -83,6 +83,25 @@ namespace point_cloud_filtering {
             pcl::toROSMsg(*final_cloud, msg_cloud_out);
             goal_pub_.publish(msg_cloud_out);
         }
+
+        // TO DO: This need to eliminate all points on the surface where there is an x,y coordinate in the object point cloud.
+        pcl::PointIndices::Ptr surface_inliers_to_remove (new pcl::PointIndices());
+        pcl::ExtractIndices<PointC> point_extracter;
+
+        for (int i = 0; i < (*p_obstacles).size(); i++)
+        {
+            pcl::PointXYZ pt(p_obstacles->points[i].x, p_obstacles->points[i].y, p_obstacles->points[i].z);
+            float zAvg = 0.5f;
+            if (abs(pt.z - zAvg) < THRESHOLD) // e.g. remove all pts below zAvg
+            {
+                inliers->indices.push_back(i);
+            }
+        }
+        extract.setInputCloud(p_obstacles);
+        extract.setIndices(inliers);
+        extract.setNegative(true);
+        extract.filter(*p_obstacles);
+
     }
 
     void SegmentTable(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices, Eigen::Vector3f axis) {

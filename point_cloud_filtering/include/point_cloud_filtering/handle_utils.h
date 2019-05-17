@@ -45,7 +45,7 @@ namespace point_cloud_filtering {
 //                               PointCloudC::Ptr out_cloud);
 //
     void GetClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                     std::vector<pcl::PointIndices> *clusters);
+                     std::vector<pcl::PointIndices>* clusters);
 
     void RemoveDoor(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud, pcl::PointIndices::Ptr door_inliers);
 
