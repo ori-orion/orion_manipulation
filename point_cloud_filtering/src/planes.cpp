@@ -92,7 +92,8 @@ void SegmentDoorInliers(PointCloudC::Ptr in_cloud,
 
 void GetHandleFromClusters(std::vector<pcl::PointIndices>* clusters, 
 			   PointCloudC::Ptr in_cloud, 
-		           PointCloudC::Ptr out_cloud){ 
+		           PointCloudC::Ptr out_cloud){
+
   pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
   pcl::ExtractIndices<PointC> handle_extract;
 

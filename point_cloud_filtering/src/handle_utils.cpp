@@ -34,53 +34,65 @@ namespace point_cloud_filtering {
         seg.segment(*points_within, *coefficients);
     }
 
-//    void GetSurfaceInliers(PointCloudC::Ptr in_cloud,
-//                            pcl::PointIndices::Ptr points_within) {
-//
-//        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
-//        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
-//
-//        // Optional
-//        seg.setOptimizeCoefficients(true);
-//
-//        // Mandatory
-//        seg.setModelType(pcl::SACMODEL_PLANE);
-//        seg.setMethodType(pcl::SAC_RANSAC);
-//        seg.setMaxIterations(1000);
-//        seg.setDistanceThreshold(0.01);
-//        seg.setInputCloud(in_cloud);
-//        seg.segment(*points_within, *coefficients);
-//    }
+    void SegmentFurnitureInliers(PointCloudC::Ptr in_cloud,
+                            pcl::PointIndices::Ptr points_within,
+                            pcl::ModelCoefficients::Ptr coefficients,
+                            Eigen::Vector3f axis) {
 
-    void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
-                               PointCloudC::Ptr in_cloud,
-                               PointCloudC::Ptr out_cloud) {
-        pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
-        pcl::ExtractIndices<PointC> handle_extract;
+        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
 
-        int clust_size, ind;
-        clust_size = 0;
-        ind = 0;
-        for (size_t i = 0; i < clusters->size(); ++i) {
-            if (clusters->at(i).indices.size() > clust_size) {
-                ind = i;
-            }
-        }
+        // Optional
+        seg.setOptimizeCoefficients(true);
 
-        *handle_inliers = clusters->at(ind);
-        handle_extract.setInputCloud(in_cloud);
-        handle_extract.setIndices(handle_inliers);
-        handle_extract.filter(*out_cloud);
+        // Mandatory
+        seg.setModelType(pcl::SACMODEL_PLANE);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setMaxIterations(1000);
+        seg.setDistanceThreshold(0.01);
 
+        seg.setAxis(axis);
+        seg.setEpsAngle(pcl::deg2rad(5.0));
+
+        seg.setInputCloud(in_cloud);
+        seg.segment(*points_within, *coefficients);
+
+        std::cerr << "Model coefficients: " << coefficients->values[0] << " "
+                  << coefficients->values[1] << " "
+                  << coefficients->values[2] << " "
+                  << coefficients->values[3] << std::endl;
     }
 
+//    void GetHandleFromClusters(std::vector<pcl::PointIndices> *clusters,
+//                               PointCloudC::Ptr in_cloud,
+//                               PointCloudC::Ptr out_cloud) {
+//        pcl::PointIndices::Ptr handle_inliers(new pcl::PointIndices());
+//        pcl::ExtractIndices<PointC> handle_extract;
+//
+//        int clust_size, ind;
+//        clust_size = 0;
+//        ind = 0;
+//        for (size_t i = 0; i < clusters->size(); ++i) {
+//            if (clusters->at(i).indices.size() > clust_size) {
+//                ind = i;
+//            }
+//        }
+//
+//        *handle_inliers = clusters->at(ind);
+//        handle_extract.setInputCloud(in_cloud);
+//        handle_extract.setIndices(handle_inliers);
+//        handle_extract.filter(*out_cloud);
+//
+//    }
+//
     void GetClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                     std::vector<pcl::PointIndices> *clusters) {
+                     std::vector<pcl::PointIndices>* clusters) {
         double cluster_tolerance;
         int min_cluster_size, max_cluster_size;
-        ros::param::param("ec_cluster_tolerance", cluster_tolerance, 0.01);
-        ros::param::param("ec_min_cluster_size", min_cluster_size, 30);
-        ros::param::param("ec_max_cluster_size", max_cluster_size, 100);
+        ros::param::param("ec_cluster_tolerance", cluster_tolerance, 0.06);
+        ros::param::param("ec_min_cluster_size", min_cluster_size, 25);
+        ros::param::param("ec_max_cluster_size", max_cluster_size, 300);
+
+        std::cout << "Getting clusters... " << std::endl;
 
         pcl::EuclideanClusterExtraction<PointC> euclid;
         euclid.setInputCloud(cloud);
@@ -88,6 +100,7 @@ namespace point_cloud_filtering {
         euclid.setMinClusterSize(min_cluster_size);
         euclid.setMaxClusterSize(max_cluster_size);
         euclid.extract(*clusters);
+        std::cout << "Finished clustering... " << std::endl;
     }
 
     void RemoveDoor(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud, pcl::PointIndices::Ptr door_inliers) {
