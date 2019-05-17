@@ -15,12 +15,12 @@ from manipulation.manipulation_header import *
 from orion_actions.msg import *
 from point_cloud_filtering.srv import DetectDrawerHandles
 
-class CloseDrawerAction(object):
+class OpenDrawerAction(object):
 
 
     def __init__(self, name):
-        self._action_name = 'close_drawer'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.CloseDrawerAction,execute_cb=self.execute_cb, auto_start=False)
+        self._action_name = 'open_drawer'
+        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.OpenDrawerAction,execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Preparation for using the robot functions
@@ -97,13 +97,14 @@ class CloseDrawerAction(object):
                 rospy.sleep(1)
                 self.gripper.set_distance(0.1)
                 self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
-                self.whole_body.move_to_go()
+                # self.whole_body.move_to_go()
             except:
                 rospy.loginfo('%s: Problem moving backwards...' % (self._action_name))
                 self.tts.say("Sorry. I encountered a problem.")
                 rospy.sleep(1)
                 self.gripper.set_distance(0.1)
                 self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'hand_palm_link')
+                self.whole_body.move_to_go()
                 self._as.set_aborted()
         else:
             rospy.loginfo('%s: No handles found.' % (self._action_name))
@@ -111,12 +112,12 @@ class CloseDrawerAction(object):
             rospy.sleep(1)
             self._as.set_aborted()
 
-        result = CloseDrawerResult()
+        result = OpenDrawerResult()
         result.result = True
         self._as.set_succeeded(result)
 
 
 if __name__ == '__main__':
-    rospy.init_node('close_drawer_server_node')
-    server = OpenDoorAction(rospy.get_name())
+    rospy.init_node('open_drawer_server_node')
+    server = OpenDrawerAction(rospy.get_name())
     rospy.spin()

@@ -66,5 +66,5 @@ class CloseDrawerAction(object):
 
 if __name__ == '__main__':
     rospy.init_node('close_drawer_server_node')
-    server = OpenDoorAction(rospy.get_name())
+    server = CloseDrawerAction(rospy.get_name())
     rospy.spin()
