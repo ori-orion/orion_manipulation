@@ -231,12 +231,20 @@ class PickUpObjectAction(object):
         # Currently doesn't do anything other than relay to another topic
         rospy.Subscriber("known_object_pre_filter", CollisionObject, self.callback)
 
-        goal_tf = goal_msg.goal_tf
-        goal_tf = self.get_similar_tf(goal_tf)
-        if goal_tf is None:
-            self._as.set_aborted()
-            rospy.loginfo('{0}: Found no similar tf frame. Aborting.'.format(self._action_name))
-            return
+        goal_tf_in = goal_msg.goal_tf
+        goal_tf = None
+
+
+        while goal_tf is None:
+            goal_tf = self.get_similar_tf(goal_tf_in)
+
+            if self._as.is_preempt_requested():
+                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
+
+            if goal_tf is None:
+                rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
 
         rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
         self.set_goal_object(goal_tf)
