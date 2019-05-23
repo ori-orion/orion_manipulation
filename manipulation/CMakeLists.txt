@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  move_base_msgs
   actionlib_msgs
   point_cloud_filtering
   orion_actions
