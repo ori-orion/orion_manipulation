@@ -81,7 +81,7 @@ class FollowAction(object):
         _result.succeeded = False
 
         while True:
-            goal_tf = goal_msg.goal_tf
+            goal_tf = goal_msg.object_name
             goal_tf = self.get_similar_tf(goal_tf)
             if goal_tf is None:
                 self._as.set_aborted()
