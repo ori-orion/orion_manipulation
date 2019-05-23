@@ -101,15 +101,15 @@ class FollowAction(object):
                 movebase_client(0, 0, theta)
                 movebase_client(distance-0.5, 0, 0)
 
-                # Give opportunity to preempt
-                if self._as.is_preempt_requested():
-                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                    self.whole_body.move_to_go()
-                    self._as.set_preempted()
-                    rospy.loginfo('%s: Succeeded' % self._action_name)
-                    _result.succeeded = True
-                    self._as.set_succeeded(_result)
-                    return
+            # Give opportunity to preempt
+            if self._as.is_preempt_requested():
+                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
+                rospy.loginfo('%s: Succeeded' % self._action_name)
+                _result.succeeded = True
+                self._as.set_succeeded(_result)
+                return
 
 
 if __name__ == '__main__':
