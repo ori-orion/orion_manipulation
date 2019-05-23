@@ -130,10 +130,10 @@ class PickUpObjectAction(object):
                                             (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
                                             rospy.Time.now(),
                                             'goal_pose',
-                                            'base_footprint')
+                                            'odom')
 
             rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
-            self.whole_body.move_end_effector_pose(goal_pose, 'base_footprint')
+            self.whole_body.move_end_effector_pose(goal_pose, 'odom')
 
             # Turn off collision checking to get close and grasp
             rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
