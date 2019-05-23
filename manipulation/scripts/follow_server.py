@@ -78,7 +78,7 @@ class FollowAction(object):
 
     def execute_cb(self, goal_msg):
         _result = FollowResult()
-        _result.result = False
+        _result.succeeded = False
 
         while True:
             goal_tf = goal_msg.goal_tf
@@ -108,7 +108,7 @@ class FollowAction(object):
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
                 rospy.loginfo('%s: Succeeded' % self._action_name)
-                _result.result = True
+                _result.succeeded = True
                 self._as.set_succeeded(_result)
                 return
 
