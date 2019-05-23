@@ -84,33 +84,32 @@ class FollowAction(object):
             goal_tf = goal_msg.object_name
             goal_tf = self.get_similar_tf(goal_tf)
             if goal_tf is None:
-                self._as.set_aborted()
                 rospy.loginfo('{0}: Found no similar tf frame. Aborting.'.format(self._action_name))
                 return
+            else:
+                rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
 
-            rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
+                # ------------------------------------------------------------------------------
+                # Check the object is in sight
+                self.check_for_object(goal_tf)
 
-            # ------------------------------------------------------------------------------
-            # Check the object is in sight
-            self.check_for_object(goal_tf)
+                person_coords = get_object_pose(goal_tf)
 
-            person_coords = get_object_pose(goal_tf)
+                distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
+                theta = math.atan(person_coords[1] / person_coords[0])
 
-            distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
-            theta = math.atan(person_coords[1] / person_coords[0])
+                movebase_client(0, 0, theta)
+                movebase_client(distance-0.5, 0, 0)
 
-            movebase_client(0, 0, theta)
-            movebase_client(distance-0.5, 0, 0)
-
-            # Give opportunity to preempt
-            if self._as.is_preempt_requested():
-                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                rospy.loginfo('%s: Succeeded' % self._action_name)
-                _result.succeeded = True
-                self._as.set_succeeded(_result)
-                return
+                # Give opportunity to preempt
+                if self._as.is_preempt_requested():
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                    self.whole_body.move_to_go()
+                    self._as.set_preempted()
+                    rospy.loginfo('%s: Succeeded' % self._action_name)
+                    _result.succeeded = True
+                    self._as.set_succeeded(_result)
+                    return
 
 
 if __name__ == '__main__':
