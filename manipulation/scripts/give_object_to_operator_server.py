@@ -19,8 +19,9 @@ _robot.enable_interactive()
 class GiveObjectToOperatorAction(object):
 
     def __init__(self, name):
-        self._action_name = 'give_something'
-        self._as = actionlib.SimpleActionServer(self._action_name, orion_actions.msg.GiveObjectToOperatorAction,execute_cb=self.execute_cb, auto_start=False)
+        self._action_name = 'give_object_to_operator'
+        self._as = actionlib.SimpleActionServer(self._action_name, orion_actions.msg.GiveObjectToOperatorAction,
+                                                execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Preparation for using the robot functions
