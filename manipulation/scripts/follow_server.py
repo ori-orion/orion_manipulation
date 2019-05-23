@@ -9,7 +9,7 @@ from move_base_msgs import *
 from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
 
-def movebase_client(self, x, y, theta):
+def movebase_client(x, y, theta):
 
     client = actionlib.SimpleActionClient('move_base_simple', MoveBaseAction)
     client.wait_for_server()
