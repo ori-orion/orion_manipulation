@@ -4,7 +4,7 @@ import rospy
 import actionlib
 from orion_actions.msg import *
 
-def pour_into_client():
+def pour_into_client(goal_tf):
     client = actionlib.SimpleActionClient('pour_into', PourIntoAction)
 
     print("Waiting for server")
@@ -12,7 +12,7 @@ def pour_into_client():
     print("Finished waiting for server")
 
     # Creates a goal to send to the action server.
-    goal_msg = PourIntoGoal()
+    goal_msg = PourIntoGoal(goal_tf_frame=goal_tf)
 
     # Sends the goal to the action server.
     client.send_goal(goal_msg)
@@ -26,5 +26,8 @@ def pour_into_client():
 
 if __name__ == '__main__':
     rospy.init_node('pour_into_client')
-    result = pour_into_client()
+
+    goal_tf = 'ar_marker/4000'
+
+    result = pour_into_client(goal_tf)
     print("Result:" + str(result.result))

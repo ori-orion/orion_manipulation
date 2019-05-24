@@ -3,6 +3,9 @@
 import hsrb_interface
 import rospy
 import actionlib
+import tf
+import tf.transformations as T
+import math
 import hsrb_interface.geometry as geometry
 from hsrb_interface import robot as _robot
 
@@ -32,11 +35,28 @@ class PourIntoAction(object):
 
         self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
 
+        # Constants for pouring operation
+        self._POUR_SPEED = 0.2
+        self._DEFAULT_POUR_HEIGHT = 0.05
+        self.pour_pose = geometry.pose(y=-0.20, z=-0.05, ek=-1.57);
+
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def execute_cb(self, goal_msg):
+        # Messages for feedback / results
         _result = PourIntoResult()
         _result.result = False
+
+        # Get the tf of the object to be poured into, from the message
+        goal_tf = goal_msg.goal_tf_frame
+        goal_tf = self.get_similar_tf(goal_tf)
+        if goal_tf is None:
+            self._as.set_aborted()
+            rospy.loginfo('{0}: Found no similar tf frame. Aborting.'.format(self._action_name))
+            return
+
+        rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
+
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
@@ -44,34 +64,28 @@ class PourIntoAction(object):
             self._as.set_preempted()
             return
 
-
-
-
         try:
-            rospy.loginfo('%s: Testing' % (self._action_name))
+            rospy.loginfo('%s: Executing, pouring into object at %s.' % (self._action_name, goal_tf))
             self.tts.say("I will pour what I am holding into the specified object.")
-            rospy.sleep(2)
+            rospy.sleep(1)
             self.whole_body.move_to_neutral()
             rospy.sleep(1)
 
+            # Move grasper over the object to pour into
+            self.whole_body.move_end_effector_pose(self.pour_pose, goal_tf)
+
             # Attempt to start pour
-            self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
+            self.whole_body.move_end_effector_by_arc(geometry.pose(x=self._DEFAULT_POUR_HEIGHT), math.radians(90.0), ref_frame_id='hand_palm_link')
 
-            # More pour
-            rospy.sleep(1)
-            self.gripper.command(1.2)
+            # Delay to make sure pouring is complete
+            rospy.sleep(4)
+
             self.tts.say("Pouring successful. Returning to position.")
-            rospy.sleep(2)
+            rospy.sleep(1)
 
-            # Move the gripper back a bit then return to go
-            self.whole_body.linear_weight = 100
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.2), 'hand_palm_link')
+            # Return to "go" pose
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
             self.whole_body.move_to_go()
-
-
-
-
 
             rospy.loginfo('%s: Succeeded' % self._action_name)
             _result.result = True
@@ -86,8 +100,14 @@ class PourIntoAction(object):
             self._as.set_aborted()
 
 
-
-
+    def get_similar_tf(self, tf_frame):
+        listen = tf.TransformListener()
+        rospy.sleep(3)
+        all_frames = listen.getFrameStrings()
+        for object_tf in all_frames:
+            rospy.loginfo('%s: Found tf frame: %s' % (self._action_name, object_tf))
+            if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
+                return object_tf
 
 
 if __name__ == '__main__':
