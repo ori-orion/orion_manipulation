@@ -74,7 +74,6 @@ class PickUpObjectAction(object):
                              ej=eulers[1],
                              ek=eulers[2])
 
-
     def check_for_object(self, object_tf):
         rospy.loginfo('%s: Checking object is in sight...' % self._action_name)
         found_marker = False
@@ -107,37 +106,74 @@ class PickUpObjectAction(object):
 
         return np.array([trans[0], trans[1], trans[2]])
 
+    def get_object_distance(self, object_tf):
+        found_trans = False
+        listen = tf.TransformListener()
+        rospy.sleep(1)
+        while not found_trans:
+            try:
+                t = listen.getLatestCommonTime("/hand_palm_link", object_tf)
+                (trans, rot) = listen.lookupTransform('/hand_palm_link', object_tf, t)
+                found_trans = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                continue
+
+        return math.sqrt(math.pow(trans[0],2) + math.pow(trans[1],2) + math.pow(trans[2],2))
+
     def set_goal_object(self, obj):
         self.goal_object = obj
 
-    def callback(self, msg):
-        self.pub.publish(msg)
+    def collision_callback(self, msg):
+        # If we have a goal object set then we do pruning first
+        if self.goal_object:
+            object_pose = self.get_object_pose(self.goal_object)
+            upper_bound = object_pose + np.array([1,1,1])
+            lower_bound = object_pose - np.array([1,1,1])
+            # Get the message
+            message = msg
+            rospy.loginfo('%s: Removing excess collision space.' % self._action_name)
+
+            # Find which boxes to removes
+            inds_to_remove = []
+            for i in range(len(message.poses)):
+                pose = message.poses[i]
+                pose_arr = np.array([pose.position.x,pose.position.y,pose.position.z])
+                if np.all(pose_arr <= upper_bound) and np.all(pose_arr >= lower_bound):
+                    inds_to_remove.append(i)
+
+            # Remove the boxes
+            for index in sorted(inds_to_remove, reverse=True):
+                del message.poses[index], message.shapes[index]
+
+            # Publish the filtered message
+            self.pub.publish(message)
+        else:
+            self.pub.publish(msg)
 
     def grab_object(self, chosen_pregrasp_pose, chosen_grasp_pose):
         self.whole_body.end_effector_frame = 'hand_palm_link'
 
+        rospy.loginfo('%s: Opening gripper.' % (self._action_name))
+        self.gripper.command(1.2)
+        self.whole_body.collision_world = self.collision_world
+
+        # Move to pregrasp
+        goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
+
+        self.goal_pose_br.sendTransform((goal_pose.pos.x, goal_pose.pos.y, goal_pose.pos.z),
+                                        (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
+                                        rospy.Time.now(),
+                                        'goal_pose',
+                                        'odom')
+
         try:
-            rospy.loginfo('%s: Opening gripper.' % (self._action_name))
-            self.gripper.command(1.2)
-
-            # Move to pregrasp
-            self.whole_body.collision_world = self.collision_world
-
-            goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
-            print goal_pose
-            print type(goal_pose)
-            self.goal_pose_br.sendTransform((goal_pose.pos.x, goal_pose.pos.y, goal_pose.pos.z),
-                                            (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
-                                            rospy.Time.now(),
-                                            'goal_pose',
-                                            'odom')
-
             rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
             self.whole_body.move_end_effector_pose(goal_pose, 'odom')
 
             # Turn off collision checking to get close and grasp
             rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
             self.whole_body.collision_world = None
+            rospy.sleep(1)
 
             # Move to grasp pose
             rospy.loginfo('%s: Moving to grasp position.' % (self._action_name))
@@ -152,6 +188,7 @@ class PickUpObjectAction(object):
         except Exception as e:
             rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
             self.whole_body.collision_world = None
+            rospy.sleep(1)
             rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
             self.whole_body.move_to_neutral()
             self._as.set_aborted()
@@ -229,11 +266,10 @@ class PickUpObjectAction(object):
         _result.result = False
 
         # Currently doesn't do anything other than relay to another topic
-        rospy.Subscriber("known_object_pre_filter", CollisionObject, self.callback)
+        rospy.Subscriber("known_object_pre_filter", CollisionObject, self.collision_callback)
 
         goal_tf_in = goal_msg.goal_tf
         goal_tf = None
-
 
         while goal_tf is None:
             goal_tf = self.get_similar_tf(goal_tf_in)
@@ -246,8 +282,12 @@ class PickUpObjectAction(object):
             if goal_tf is None:
                 rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
 
+        # Found the goal tf so proceed to pick up
+
         rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
         self.set_goal_object(goal_tf)
+        obj_dist = self.get_object_distance(self, object_tf)
+        rospy.loginfo('{0}: Distance to object is "{1}"m.'.format(self._action_name, str(obj_dist)))
 
         if self.goal_object == 'postcard':
             grasp_type = 'suction'
@@ -255,6 +295,7 @@ class PickUpObjectAction(object):
             grasp_type = 'grab'
             chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-math.pi/2)
             chosen_grasp_pose = geometry.pose(z=0.05)
+
         # ------------------------------------------------------------------------------
         # Check the object is in sight
         self.check_for_object(self.goal_object)
@@ -269,7 +310,7 @@ class PickUpObjectAction(object):
         rospy.loginfo('%s: Collision Map generated.' % self._action_name)
 
         # Get the object pose to subtract from collision map
-        self.check_for_object(goal_tf)
+        # self.check_for_object(goal_tf)
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
