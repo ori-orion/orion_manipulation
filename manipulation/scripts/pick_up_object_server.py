@@ -15,6 +15,9 @@ from tmc_suction.msg import (SuctionControlAction, SuctionControlGoal)
 from tmc_manipulation_msgs.msg import CollisionObject
 from orion_actions.msg import *
 
+# For grasp synthesis
+from point_cloud_filtering.srv import SegmentObject
+from gpd.msg import GraspConfigList
 
 class PickUpObjectAction(object):
 
@@ -46,8 +49,71 @@ class PickUpObjectAction(object):
         self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
         self.goal_pose_br = tf.TransformBroadcaster()
 
+        self.grasps = None
+        self.use_grasp_synthesis = False
+
         self.goal_object = None
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
+
+    def grasp_callback(self, msg):
+        self.grasps = msg.grasps
+
+    def get_grasp(self):
+
+        while not len(self.grasps) > 0:
+            if len(self.grasps) > 0:
+                rospy.loginfo('Received %d grasps.', len(self.grasps))
+                break
+
+        grasp = self.grasps[0] # grasps are sorted in descending order by score
+        rospy.loginfo('%s: Selected grasp with score:: %s' % (self._action_name, str(grasp.score)))
+
+        # This gives the approach point correctly
+        bottom = np.array([grasp.bottom.x, grasp.bottom.y, grasp.bottom.z])
+        approach = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z ])
+        binormal = np.array([grasp.binormal.x, grasp.binormal.y, grasp.binormal.z])
+        hand_outer_diameter = 0.12
+        hw = 0.5*hand_outer_diameter
+        finger_width = 0.01
+        left_bottom = bottom - (hw - 0.5 * finger_width) * binormal
+        right_bottom = bottom + (hw - 0.5 * finger_width) * binormal
+        base_center = left_bottom + 0.5 * (right_bottom - left_bottom) - 0.01 * approach
+        approach_center = base_center - 0.06 * approach
+
+        approach_4 = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z , approach_center[0]])
+        binormal_4 = np.array([grasp.binormal.x, grasp.binormal.y, grasp.binormal.z, approach_center[1]])
+        axis_4 = np.array([grasp.axis.x, grasp.axis.y, grasp.axis.z, approach_center[2]])
+
+        R = np.array([axis_4, -binormal_4, approach_4, [0, 0, 0, 1]])
+        q = T.quaternion_conjugate(T.quaternion_from_matrix(R))
+
+        return geometry.Pose(geometry.Vector3(approach_center[0], approach_center[1], approach_center[2]), geometry.Quaternion(q[0], q[1], q[2], q[3]))
+
+    def segment_object(self, object_pos_head_frame):
+        rospy.wait_for_service('/object_segmentation')
+        try:
+            segment_object_service = rospy.ServiceProxy('/object_segmentation', SegmentObject)
+            response = segment_object_service(object_pos_head_frame[0],
+                                              object_pos_head_frame[1],
+                                              object_pos_head_frame[2])
+        except rospy.ServiceException, e:
+            print "Service call failed: %s" % e
+
+        return response
+
+    def get_head_frame_object_pose(self, object_tf):
+        found_trans = False
+        listen = tf.TransformListener()
+        rospy.sleep(1)
+        while not found_trans:
+            try:
+                t = listen.getLatestCommonTime("/head_rgbd_sensor_rgb_frame", object_tf)
+                (trans, rot) = listen.lookupTransform('/head_rgbd_sensor_rgb_frame', object_tf, t)
+                found_trans = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                continue
+
+        return np.array([trans[0], trans[1], trans[2]])
 
     def get_goal_pose(self, relative=geometry.pose()):
         rospy.loginfo('%s: Trying to lookup goal pose...' % self._action_name)
@@ -157,18 +223,32 @@ class PickUpObjectAction(object):
         self.gripper.command(1.2)
         self.whole_body.collision_world = self.collision_world
 
-        # Move to pregrasp
-        goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
-
-        self.goal_pose_br.sendTransform((goal_pose.pos.x, goal_pose.pos.y, goal_pose.pos.z),
-                                        (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
-                                        rospy.Time.now(),
-                                        'goal_pose',
-                                        'odom')
-
         try:
-            rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
-            self.whole_body.move_end_effector_pose(goal_pose, 'odom')
+            if self.use_grasp_synthesis:
+                # Segment the object point cloud first
+                object_position_head_frame = self.get_object_pose(self.goal_object)
+
+                # Call segmentation (lasts 10s)
+                seg_response = self.segment_object(object_position_head_frame)
+
+                # Get the best grasp - returns the pose-tuple in the head-frame
+                grasp = self.get_grasp()
+
+                rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
+                self.whole_body.move_end_effector_pose(grasp, 'head_rgbd_sensor_rgb_frame')
+
+            else:
+                # Move to pregrasp
+                goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
+
+                self.goal_pose_br.sendTransform((goal_pose.pos.x, goal_pose.pos.y, goal_pose.pos.z),
+                                                (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
+                                                rospy.Time.now(),
+                                                'goal_pose',
+                                                'odom')
+
+                rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
+                self.whole_body.move_end_effector_pose(goal_pose, 'odom')
 
             # Turn off collision checking to get close and grasp
             rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
