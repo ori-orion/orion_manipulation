@@ -10,26 +10,26 @@ from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
 from geometry_msgs.msg import PoseStamped
 
-# def movebase_client(x, y, theta):
-#
-#     client = actionlib.SimpleActionClient('move_base_simple', MoveBaseAction)
-#     client.wait_for_server()
-#
-#     goal = MoveBaseGoal()
-#     goal.target_pose.header.frame_id = "/base_footprint"
-#     goal.target_pose.header.stamp = rospy.Time.now()
-#     goal.target_pose.pose.position.x = x
-#     goal.target_pose.pose.position.y = y
-#     goal.target_pose.pose.orientation.w = theta
-#
-#     client.send_goal(goal)
-#     wait = client.wait_for_result()
-#
-#     if not wait:
-#         rospy.logerr("Action server not available!")
-#         rospy.signal_shutdown("Action server not available!")
-#     else:
-#         return client.get_result()
+def movebase_client(x, y, theta):
+
+    client = actionlib.SimpleActionClient('move_base/move', MoveBaseAction)
+    client.wait_for_server()
+
+    goal = MoveBaseGoal()
+    goal.target_pose.header.frame_id = "/base_footprint"
+    goal.target_pose.header.stamp = rospy.Time.now()
+    goal.target_pose.pose.position.x = x
+    goal.target_pose.pose.position.y = y
+    goal.target_pose.pose.orientation.w = theta
+
+    client.send_goal(goal)
+    wait = client.wait_for_result()
+
+    if not wait:
+        rospy.logerr("Action server not available!")
+        rospy.signal_shutdown("Action server not available!")
+    else:
+        return client.get_result()
 
 
 def get_object_pose(object_tf):
@@ -79,22 +79,22 @@ class FollowAction(object):
             if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
                 return object_tf
 
-    def send_movebase_goal(self, x, y, theta):
-
-        pose = PoseStamped()
-        pose.header.stamp = rospy.Time.now()
-        pose.header.frame_id = "/base_footprint"
-        pose.pose.position.x = x
-        pose.pose.position.y = y
-        pose.pose.position.z = 0
-
-        quaternion = tf.transformations.quaternion_from_euler(0, 0, theta)
-        pose.pose.orientation.x = quaternion[0]
-        pose.pose.orientation.y = quaternion[1]
-        pose.pose.orientation.z = quaternion[2]
-        pose.pose.orientation.w = quaternion[3]
-
-        self.pub.publish(pose)
+    # def send_movebase_goal(self, x, y, theta):
+    #
+    #     pose = PoseStamped()
+    #     pose.header.stamp = rospy.Time.now()
+    #     pose.header.frame_id = "/base_footprint"
+    #     pose.pose.position.x = x
+    #     pose.pose.position.y = y
+    #     pose.pose.position.z = 0
+    #
+    #     quaternion = tf.transformations.quaternion_from_euler(0, 0, theta)
+    #     pose.pose.orientation.x = quaternion[0]
+    #     pose.pose.orientation.y = quaternion[1]
+    #     pose.pose.orientation.z = quaternion[2]
+    #     pose.pose.orientation.w = quaternion[3]
+    #
+    #     self.pub.publish(pose)
 
     def execute_cb(self, goal_msg):
         _result = FollowResult()
@@ -128,10 +128,10 @@ class FollowAction(object):
             distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
             theta = math.atan(person_coords[1] / person_coords[0])
 
-            self.send_movebase_goal(0, 0, theta)
+            movebase_client(0, 0, theta)
             rospy.sleep(1)
             if distance > 0.5:
-                self.send_movebase_goal(distance-0.5, 0, 0)
+                movebase_client(distance-0.5, 0, 0)
             rospy.sleep(1)
 
             # Give opportunity to preempt
