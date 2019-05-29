@@ -93,6 +93,20 @@ class PointToObjectAction(object):
 
         return np.array([trans[0], trans[1], trans[2]])
 
+    def get_object_rel_to_hand(self, object_tf):
+        found_trans = False
+        listen = tf.TransformListener()
+        rospy.sleep(1)
+        while not found_trans:
+            try:
+                t = listen.getLatestCommonTime("/hand_palm_link", object_tf)
+                (trans, rot) = listen.lookupTransform('/hand_palm_link', object_tf, t)
+                found_trans = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                continue
+
+        return np.array([trans[0], trans[1], trans[2]])
+
     def execute_cb(self, goal_msg):
         _result = PointToObjectResult()
         _result.result = False
@@ -127,11 +141,17 @@ class PointToObjectAction(object):
         # self.whole_body.gaze_point(ref_frame_id=goal_tf)
 
         object_pose = self.get_object_pose(goal_tf)
+        object_rel_to_hand = self.get_object_rel_to_hand(goal_tf)
 
-        # distance = math.sqrt(math.pow(object_pose[0], 2) + math.pow(object_pose[1], 2) + math.pow(object_pose[2], 2))
+        distance = math.sqrt(math.pow(object_rel_to_hand[0], 2) + math.pow(object_rel_to_hand[1], 2) + math.pow(object_rel_to_hand[2], 2))
+
         theta = math.atan(object_pose[1] / object_pose[0])
         rospy.loginfo('%s: Turning to face the object.' % self._action_name)
         self.omni_base.go_rel(0, 0, theta)
+
+        rospy.loginfo('%s: Pointing to object.' % self._action_name)
+        self.whole_body.linear_weight = 100
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-(distance-0.3)), goal_tf)
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
