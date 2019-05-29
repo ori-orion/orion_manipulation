@@ -204,7 +204,7 @@ class PickUpObjectAction(object):
             for i in range(len(message.poses)):
                 pose = message.poses[i]
                 pose_arr = np.array([pose.position.x,pose.position.y,pose.position.z])
-                if np.all(pose_arr <= upper_bound) and np.all(pose_arr >= lower_bound):
+                if not(np.all(pose_arr <= upper_bound) and np.all(pose_arr >= lower_bound)):
                     inds_to_remove.append(i)
 
             # Remove the boxes
@@ -366,7 +366,7 @@ class PickUpObjectAction(object):
 
         rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
         self.set_goal_object(goal_tf)
-        obj_dist = self.get_object_distance(self, object_tf)
+        obj_dist = self.get_object_distance(goal_tf)
         rospy.loginfo('{0}: Distance to object is "{1}"m.'.format(self._action_name, str(obj_dist)))
 
         if self.goal_object == 'postcard':
