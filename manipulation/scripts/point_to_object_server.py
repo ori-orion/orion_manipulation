@@ -120,7 +120,7 @@ class PointToObjectAction(object):
 
         # ------------------------------------------------------------------------------
         # Check the object is in sight
-        self.check_for_object(self.goal_object)
+        self.check_for_object(goal_tf)
 
         # Look at the object - this is to make sure that we get all of the necessary collision map
         # rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
