@@ -36,30 +36,30 @@ class PointToObjectAction(object):
         # Set up publisher for the collision map
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
-    def get_goal_pose(self, relative=geometry.pose()):
-        rospy.loginfo('%s: Trying to lookup goal pose...' % self._action_name)
-        foundTrans = False
-        while not foundTrans:
-            try:
-                odom_to_ref_pose = self.whole_body._lookup_odom_to_ref(self.goal_object)
-                foundTrans = True
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                continue
-        odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
-        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
-
-        rospy.loginfo('%s: Calculated the goal pose.' % self._action_name)
-
-        pose_msg = geometry.tuples_to_pose(odom_to_hand)
-
-        eulers = T.euler_from_quaternion([pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z, pose_msg.orientation.w])
-
-        return geometry.pose(x=pose_msg.position.x,
-                             y=pose_msg.position.y,
-                             z=pose_msg.position.z,
-                             ei=eulers[0],
-                             ej=eulers[1],
-                             ek=eulers[2])
+    # def get_goal_pose(self, relative=geometry.pose()):
+    #     rospy.loginfo('%s: Trying to lookup goal pose...' % self._action_name)
+    #     foundTrans = False
+    #     while not foundTrans:
+    #         try:
+    #             odom_to_ref_pose = self.whole_body._lookup_odom_to_ref(self.goal_object)
+    #             foundTrans = True
+    #         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+    #             continue
+    #     odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
+    #     odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
+    #
+    #     rospy.loginfo('%s: Calculated the goal pose.' % self._action_name)
+    #
+    #     pose_msg = geometry.tuples_to_pose(odom_to_hand)
+    #
+    #     eulers = T.euler_from_quaternion([pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z, pose_msg.orientation.w])
+    #
+    #     return geometry.pose(x=pose_msg.position.x,
+    #                          y=pose_msg.position.y,
+    #                          z=pose_msg.position.z,
+    #                          ei=eulers[0],
+    #                          ej=eulers[1],
+    #                          ek=eulers[2])
 
     def check_for_object(self, object_tf):
         rospy.loginfo('%s: Checking object is in sight...' % self._action_name)
@@ -126,7 +126,7 @@ class PointToObjectAction(object):
         # rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
         # self.whole_body.gaze_point(ref_frame_id=goal_tf)
 
-        object_pose = self.get_goal_pose(goal_tf)
+        object_pose = self.get_object_pose(goal_tf)
 
         # distance = math.sqrt(math.pow(object_pose[0], 2) + math.pow(object_pose[1], 2) + math.pow(object_pose[2], 2))
         theta = math.atan(object_pose[1] / object_pose[0])
