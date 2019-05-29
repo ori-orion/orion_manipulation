@@ -5,6 +5,10 @@ import actionlib
 import numpy as np
 import tf
 import math
+
+import hsrb_interface
+import hsrb_interface.geometry as geometry
+
 from move_base_msgs.msg import *
 from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
@@ -55,6 +59,11 @@ class FollowAction(object):
         self._as.start()
 
         self.pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10)
+
+        self.robot = hsrb_interface.Robot()
+        self.whole_body = self.robot.try_get('whole_body')
+        self.whole_body.end_effector_frame = 'hand_palm_link'
+        self.whole_body.looking_hand_constraint = True
 
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
