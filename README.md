@@ -158,9 +158,9 @@ roslaunch gpd tutorial1.launch cloud_topic:=**Object cloud you want to grasp**
 - [ ] Create launch file to launch all manipulation server nodes
 - [ ] Check the axis conventention for image tf frames
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
-- [ ] Tune grasp synthesis parameters for HSR
-- [ ] Integrate the handle detection and grasp synthesis
-- [ ] Document `Caffe' install instructions (needed for grasp pose synthesis)
+- [x] Tune grasp synthesis parameters for HSR
+- [x] Integrate the handle detection and grasp synthesis
+- [x] Document `Caffe' install instructions (needed for grasp pose synthesis)
 
 ## Notes
 
@@ -176,6 +176,7 @@ rosrun topic_tools relay /hsrb/robot_state/joint_states /robot/joint_states
 
 The action server takes as input a tf frame as the goal for the HSR to pick up. If the tf\_frame is in the config file and is still available then a hand-made pre-grasp and grasp pose will be executed. The robot will then try to move\_to\_go. If this is not possible then it will try to move back first and then go to this position.
 
+The omni_base commands fail if the pose integrator is killed (as was required for using AMCL move\_base)
 
 ## Launching the servers
 At WRS, these were run on the development pc and typically execute via the main tmux script in the ori\_hsr\_bringup package:
