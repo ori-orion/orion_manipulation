@@ -101,7 +101,7 @@ class PointToObjectAction(object):
         self.gripper.set_distance(0.1)
         self.whole_body.move_to_neutral()
 
-        goal_tf_in = goal_msg.goal_tf
+        goal_tf_in = goal_msg.object_tf_frame
         goal_tf = None
 
         while goal_tf is None:
