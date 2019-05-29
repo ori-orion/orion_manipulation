@@ -42,11 +42,11 @@ class ReceiveObjectFromOperatorAction(object):
         _result = ReceiveObjectFromOperatorResult()
 
         try:
-            rospy.loginfo('%s: Moving to neutral position to present object.' % (self._action_name))
-            self.whole_body.move_to_neutral()
-
             rospy.loginfo('%s: Opening gripper.' % (self._action_name))
             self.gripper.set_distance(1)
+
+            rospy.loginfo('%s: Moving to neutral position to present object.' % (self._action_name))
+            self.whole_body.move_to_neutral()
 
             rospy.loginfo('%s: Stretching out arm.' % (self._action_name))
             self.tts.say("Moving into position to receive object.")
