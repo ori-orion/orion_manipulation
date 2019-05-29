@@ -47,7 +47,7 @@ class PickUpObjectAction(object):
 
         # Set up publisher for the collision map
         self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
-        self.goal_pose_br = tf.TransformBroadcaster()
+        self.goal_pose_br = tf.TransformBroadcaster()+
 
         self.grasps = None
         self.use_grasp_synthesis = False
