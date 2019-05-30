@@ -9,6 +9,7 @@ import math
 import hsrb_interface
 import hsrb_interface.geometry as geometry
 
+from std_srvs.srv import Empty, EmptyRequest
 # from move_base_msgs.msg import *
 from move_base_msgs.msg import MoveBaseAction
 from move_base_msgs.msg import MoveBaseGoal
@@ -16,6 +17,8 @@ from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
 from geometry_msgs.msg import PoseStamped
 
+from hsrb_interface import robot as _robot
+_robot.enable_interactive()
 
 class FollowAction(object):
 
@@ -32,6 +35,8 @@ class FollowAction(object):
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.whole_body.looking_hand_constraint = True
         self.omni_base = self.robot.try_get('omni_base')
+        self.tts = self.robot.try_get('default_tts')
+        self.tts.language = self.tts.ENGLISH
 
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
@@ -96,6 +101,9 @@ class FollowAction(object):
                 self._as.set_preempted()
                 return
 
+        self.tts.say("I will now start following. Please do not go too fast.")
+        rospy.sleep(1)
+
         while True:
             # Check the object is in sight
             self.check_for_object(goal_tf)
@@ -114,19 +122,35 @@ class FollowAction(object):
                                                                               str(distance),
                                                                               str(theta)))
 
+
+            # Stop head moving
+            stop_client = rospy.ServiceProxy('/viewpoint_controller/stop', Empty)
+            stop_client.call(EmptyRequest())
+
             if distance <= 0.5:
                 rospy.loginfo('%s: Sending base goals.' % self._action_name)
-                self.omni_base.go_rel(0, 0, theta)
+                # self.omni_base.go_rel(0, 0, theta)
+                base_pose = geometry.pose(0, 0, 0.0, 0.0, 0.0, theta)
+                base_goal = self.omni_base.create_go_pose_goal(base_pose, 'base_footprint')
+                self.omni_base.execute(base_goal)
                 rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
             else:
                 ratio = 1 - (0.5/distance)
                 rospy.loginfo('%s: Sending base goals.' % self._action_name)
-                self.omni_base.go_rel(ratio * person_coords[0], ratio * person_coords[1], theta)
+                # self.omni_base.go_rel(ratio * person_coords[0], ratio * person_coords[1], theta)
+                base_pose = geometry.pose(ratio * person_coords[0], ratio * person_coords[1], 0.0, 0.0, 0.0, theta)
+                base_goal = self.omni_base.create_go_pose_goal(base_pose, 'base_footprint')
+                self.omni_base.execute(base_goal)
+
                 rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
 
         # Give opportunity to preempt
             if self._as.is_preempt_requested():
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.tts.say("I will now stop following you.")
+                rospy.sleep(1)
+                start_client = rospy.ServiceProxy('/viewpoint_controller/start', Empty)
+                start_client.call(EmptyRequest())
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
                 return

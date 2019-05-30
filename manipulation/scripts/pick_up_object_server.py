@@ -259,10 +259,14 @@ class PickUpObjectAction(object):
                 # Call segmentation (lasts 10s)
                 seg_response = self.segment_object(object_position_head_frame)
 
+                self.tts.say('I am trying to calculate the best possible grasp position')
+                rospy.sleep(1)
                 # Get the best grasp - returns the pose-tuple in the head-frame
                 grasp = self.get_grasp()
 
                 rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
+                self.tts.say('I will now move into the grasp position')
+                rospy.sleep(1)
                 self.whole_body.move_end_effector_pose(grasp, 'head_rgbd_sensor_rgb_frame')
 
             else:
