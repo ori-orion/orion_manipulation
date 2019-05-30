@@ -114,13 +114,15 @@ class FollowAction(object):
                                                                               str(distance),
                                                                               str(theta)))
 
-            rospy.loginfo('%s: Sending base goals.' % self._action_name)
-            self.omni_base.go_rel(0, 0, theta)
-            rospy.sleep(1)
-            if distance > 0.5:
-                self.omni_base.go_rel(distance-0.5, 0, 0)
-            rospy.sleep(1)
-            rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
+            if distance <= 0.5:
+                rospy.loginfo('%s: Sending base goals.' % self._action_name)
+                self.omni_base.go_rel(0, 0, theta)
+                rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
+            else:
+                ratio = 1 - (0.5/distance)
+                rospy.loginfo('%s: Sending base goals.' % self._action_name)
+                self.omni_base.go_rel(ratio * person_coords[0], ratio * person_coords[1], theta)
+                rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
 
         # Give opportunity to preempt
             if self._as.is_preempt_requested():
