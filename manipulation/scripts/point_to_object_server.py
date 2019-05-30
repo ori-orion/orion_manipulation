@@ -6,7 +6,6 @@ import actionlib
 import numpy as np
 import tf
 import hsrb_interface.geometry as geometry
-import tf.transformations as T
 import math
 
 from actionlib_msgs.msg import GoalStatus
@@ -35,31 +34,6 @@ class PointToObjectAction(object):
 
         # Set up publisher for the collision map
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
-
-    # def get_goal_pose(self, relative=geometry.pose()):
-    #     rospy.loginfo('%s: Trying to lookup goal pose...' % self._action_name)
-    #     foundTrans = False
-    #     while not foundTrans:
-    #         try:
-    #             odom_to_ref_pose = self.whole_body._lookup_odom_to_ref(self.goal_object)
-    #             foundTrans = True
-    #         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-    #             continue
-    #     odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
-    #     odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
-    #
-    #     rospy.loginfo('%s: Calculated the goal pose.' % self._action_name)
-    #
-    #     pose_msg = geometry.tuples_to_pose(odom_to_hand)
-    #
-    #     eulers = T.euler_from_quaternion([pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z, pose_msg.orientation.w])
-    #
-    #     return geometry.pose(x=pose_msg.position.x,
-    #                          y=pose_msg.position.y,
-    #                          z=pose_msg.position.z,
-    #                          ei=eulers[0],
-    #                          ej=eulers[1],
-    #                          ek=eulers[2])
 
     def check_for_object(self, object_tf):
         rospy.loginfo('%s: Checking object is in sight...' % self._action_name)
@@ -112,7 +86,7 @@ class PointToObjectAction(object):
         _result.result = False
 
         rospy.loginfo('%s: Closing gripper to point at object' % self._action_name)
-        self.gripper.set_distance(0.1)
+        self.gripper.set_distance(0.01)
         self.whole_body.move_to_neutral()
 
         goal_tf_in = goal_msg.object_tf_frame
@@ -137,21 +111,27 @@ class PointToObjectAction(object):
         self.check_for_object(goal_tf)
 
         # Look at the object - this is to make sure that we get all of the necessary collision map
-        # rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
-        # self.whole_body.gaze_point(ref_frame_id=goal_tf)
+        rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
+        self.whole_body.gaze_point(ref_frame_id=goal_tf)
 
         object_pose = self.get_object_pose(goal_tf)
-        object_rel_to_hand = self.get_object_rel_to_hand(goal_tf)
-
-        distance = math.sqrt(math.pow(object_rel_to_hand[0], 2) + math.pow(object_rel_to_hand[1], 2) + math.pow(object_rel_to_hand[2], 2))
-
         theta = math.atan(object_pose[1] / object_pose[0])
         rospy.loginfo('%s: Turning to face the object.' % self._action_name)
         self.omni_base.go_rel(0, 0, theta)
 
+        object_rel_to_hand = self.get_object_rel_to_hand(goal_tf)
+        distance = math.sqrt(math.pow(object_rel_to_hand[0], 2) + math.pow(object_rel_to_hand[1], 2) + math.pow(object_rel_to_hand[2], 2))
+        if distance > 0.3:
+            req_ratio = 0.3/distance
+        else:
+            req_ratio = 0.5
+
         rospy.loginfo('%s: Pointing to object.' % self._action_name)
         self.whole_body.linear_weight = 100
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-(distance-0.3)), goal_tf)
+        self.whole_body.move_end_effector_pose(geometry.pose(x=req_ratio*object_rel_to_hand[0],
+                                                             y=req_ratio*object_rel_to_hand[1],
+                                                             z=req_ratio*object_rel_to_hand[2]),
+                                               'hand_palm_link')
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
