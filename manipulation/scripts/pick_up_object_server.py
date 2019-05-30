@@ -444,7 +444,7 @@ class PickUpObjectAction(object):
 
         self.tts.say("Object grasped successfully. Now returning to normal position.")
         rospy.sleep(1)
-        
+
         # Now return to moving position
         success = self.finish_position()
 
