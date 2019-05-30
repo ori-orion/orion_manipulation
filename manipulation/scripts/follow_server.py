@@ -56,8 +56,6 @@ class FollowAction(object):
         goal.target_pose.pose.position.y = y
         goal.target_pose.pose.orientation.w = theta
 
-
-
         rospy.loginfo('%s: Sending a goal to move_base.' % self._action_name)
         rospy.loginfo('%s: Sending x: %s y: %s theta: %s.' % (self._action_name, x, y, theta))
 
@@ -81,6 +79,7 @@ class FollowAction(object):
                 (trans, rot) = listen.lookupTransform('/base_footprint', object_tf, t)
                 found_trans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                rospy.loginfo('%s: Cant find object pose. Trying again....' % self._action_name)
                 if self._as.is_preempt_requested():
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                     self.whole_body.move_to_go()
@@ -154,9 +153,14 @@ class FollowAction(object):
 
             person_coords = self.get_object_pose(goal_tf)
 
+            rospy.loginfo('{0}: Found the person pose.'.format(self._action_name))
             distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
             theta = math.atan(person_coords[1] / person_coords[0])
+            rospy.loginfo('{0}: Distance to person: "{1} Theta: {2}".'.format(self._action_name,
+                                                                              str(distance),
+                                                                              str(theta)))
 
+            rospy.loginfo('%s: Sending base goals.' % self._action_name)
             self.omni_base.go_rel(0, 0, theta)
             # self.movebase_client(0, 0, theta)
             rospy.sleep(1)
@@ -164,8 +168,9 @@ class FollowAction(object):
                 self.omni_base.go_rel(distance-0.5, 0, 0)
                 # self.movebase_client(distance-0.5, 0, 0)
             rospy.sleep(1)
+            rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
 
-            # Give opportunity to preempt
+        # Give opportunity to preempt
             if self._as.is_preempt_requested():
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                 self.whole_body.move_to_go()
