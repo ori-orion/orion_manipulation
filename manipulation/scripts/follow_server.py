@@ -37,42 +37,9 @@ class FollowAction(object):
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
 
-    def movebase_client(self, x, y, theta):
-
-        client = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
-        client.wait_for_server()
-
-        # Wait for connection
-        try:
-            if not client.wait_for_server(rospy.Duration(5)):
-                raise Exception('MoveBase client does not exist')
-        except Exception as e:
-            rospy.logerr(e)
-
-        goal = MoveBaseGoal()
-        goal.target_pose.header.frame_id = "/base_footprint"
-        goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.pose.position.x = x
-        goal.target_pose.pose.position.y = y
-        goal.target_pose.pose.orientation.w = theta
-
-        rospy.loginfo('%s: Sending a goal to move_base.' % self._action_name)
-        rospy.loginfo('%s: Sending x: %s y: %s theta: %s.' % (self._action_name, x, y, theta))
-
-        client.send_goal(goal)
-        wait = client.wait_for_result()
-
-        if not wait:
-            rospy.logerr("Action server not available!")
-            rospy.signal_shutdown("Action server not available!")
-        else:
-            rospy.loginfo('%s: Current state %s.' % (self._action_name, client.get_state()))
-            return client.get_result()
-
     def get_object_pose(self, object_tf):
         found_trans = False
         listen = tf.TransformListener()
-        rospy.sleep(1)
         while not found_trans:
             try:
                 t = listen.getLatestCommonTime("/base_footprint", object_tf)
@@ -106,26 +73,8 @@ class FollowAction(object):
         rospy.sleep(3)
         all_frames = listen.getFrameStrings()
         for object_tf in all_frames:
-            rospy.loginfo('%s: Found tf frame: %s' % (self._action_name, object_tf))
             if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
                 return object_tf
-
-    # def send_movebase_goal(self, x, y, theta):
-    #
-    #     pose = PoseStamped()
-    #     pose.header.stamp = rospy.Time.now()
-    #     pose.header.frame_id = "/base_footprint"
-    #     pose.pose.position.x = x
-    #     pose.pose.position.y = y
-    #     pose.pose.position.z = 0
-    #
-    #     quaternion = tf.transformations.quaternion_from_euler(0, 0, theta)
-    #     pose.pose.orientation.x = quaternion[0]
-    #     pose.pose.orientation.y = quaternion[1]
-    #     pose.pose.orientation.z = quaternion[2]
-    #     pose.pose.orientation.w = quaternion[3]
-    #
-    #     self.pub.publish(pose)
 
     def execute_cb(self, goal_msg):
         _result = FollowResult()
@@ -151,6 +100,11 @@ class FollowAction(object):
             # Check the object is in sight
             self.check_for_object(goal_tf)
 
+            # Look at the object - this is to make sure that we get all of the necessary collision map
+            rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
+            self.whole_body.gaze_point(ref_frame_id=goal_tf)
+
+            rospy.loginfo('%s: Getting person pose.' % self._action_name)
             person_coords = self.get_object_pose(goal_tf)
 
             rospy.loginfo('{0}: Found the person pose.'.format(self._action_name))
@@ -162,11 +116,9 @@ class FollowAction(object):
 
             rospy.loginfo('%s: Sending base goals.' % self._action_name)
             self.omni_base.go_rel(0, 0, theta)
-            # self.movebase_client(0, 0, theta)
             rospy.sleep(1)
             if distance > 0.5:
                 self.omni_base.go_rel(distance-0.5, 0, 0)
-                # self.movebase_client(distance-0.5, 0, 0)
             rospy.sleep(1)
             rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
 
