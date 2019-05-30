@@ -9,7 +9,9 @@ import math
 import hsrb_interface
 import hsrb_interface.geometry as geometry
 
-from move_base_msgs.msg import *
+# from move_base_msgs.msg import *
+from move_base_msgs.msg import MoveBaseAction
+from move_base_msgs.msg import MoveBaseGoal
 from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
 from geometry_msgs.msg import PoseStamped
@@ -29,6 +31,7 @@ class FollowAction(object):
         self.whole_body = self.robot.try_get('whole_body')
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.whole_body.looking_hand_constraint = True
+        self.omni_base = self.robot.try_get('omni_base')
 
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
@@ -36,7 +39,7 @@ class FollowAction(object):
 
     def movebase_client(self, x, y, theta):
 
-        client = actionlib.SimpleActionClient('move_base/move', MoveBaseAction)
+        client = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
         client.wait_for_server()
 
         # Wait for connection
@@ -154,10 +157,12 @@ class FollowAction(object):
             distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
             theta = math.atan(person_coords[1] / person_coords[0])
 
-            self.movebase_client(0, 0, theta)
+            self.omni_base.go_rel(0, 0, theta)
+            # self.movebase_client(0, 0, theta)
             rospy.sleep(1)
             if distance > 0.5:
-                self.movebase_client(distance-0.5, 0, 0)
+                self.omni_base.go_rel(distance-0.5, 0, 0)
+                # self.movebase_client(distance-0.5, 0, 0)
             rospy.sleep(1)
 
             # Give opportunity to preempt
