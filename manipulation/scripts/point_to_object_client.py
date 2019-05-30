@@ -5,15 +5,15 @@ import sys
 import actionlib
 from orion_actions.msg import *
 
-def follow_client(goal_tf):
-    client = actionlib.SimpleActionClient('follow', FollowAction)
+def point_to_object_client(goal_tf):
+    client = actionlib.SimpleActionClient('point_to_object', PointToObjectAction)
 
     print("Waiting for server")
     client.wait_for_server()
     print("Finished waiting for server")
 
     # Creates a goal to send to the action server.
-    goal_msg = FollowGoal(object_name=goal_tf)
+    goal_msg = PointToObjectGoal(object_tf_frame=goal_tf)
 
     # Sends the goal to the action server.
     client.send_goal(goal_msg)
@@ -26,7 +26,7 @@ def follow_client(goal_tf):
 
 
 if __name__ == '__main__':
-    rospy.init_node('follow_client_py')
+    rospy.init_node('point_to_object_client_py')
     print("Provided {0} arguments to client.".format(len(sys.argv)))
 
     if len(sys.argv) == 2:
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         goal_tf = 'ar_marker/201'
         # sys.exit(1)
 
-    result = follow_client(goal_tf)
+    result = point_to_object_client(goal_tf)
     print("Result:" + str(result.result))
 
 
