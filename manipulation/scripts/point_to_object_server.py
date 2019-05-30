@@ -54,7 +54,6 @@ class PointToObjectAction(object):
         rospy.sleep(3)
         all_frames = listen.getFrameStrings()
         for object_tf in all_frames:
-            rospy.loginfo('%s: Found tf frame: %s' % (self._action_name, object_tf))
             if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
                 return object_tf
 
@@ -90,6 +89,8 @@ class PointToObjectAction(object):
         _result = PointToObjectResult()
         _result.result = False
 
+        self.tts.say("I will close the gripper to make clear where I point.")
+        rospy.sleep(1)
         rospy.loginfo('%s: Closing gripper to point at object' % self._action_name)
         self.gripper.set_distance(0.01)
         self.whole_body.move_to_neutral()
@@ -107,16 +108,15 @@ class PointToObjectAction(object):
 
             if goal_tf is None:
                 rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
+        # Found the goal tf
+        rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
 
         self.tts.say("I can see the object and will now point towards it.")
         rospy.sleep(1)
 
-        # Found the goal tf
-        rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
-
         # ------------------------------------------------------------------------------
         # Check the object is in sight
-        self.check_for_object(goal_tf)
+        # self.check_for_object(goal_tf)
 
         # Look at the object - this is to make sure that we get all of the necessary collision map
         rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
@@ -126,7 +126,8 @@ class PointToObjectAction(object):
         theta = math.atan(object_pose[1] / object_pose[0])
         rospy.loginfo('%s: Turning to face the object.' % self._action_name)
         self.omni_base.go_rel(0, 0, theta)
-
+        self.whole_body.gaze_point(ref_frame_id=goal_tf)
+        
         object_rel_to_hand = self.get_object_rel_to_hand(goal_tf)
         distance = math.sqrt(math.pow(object_rel_to_hand[0], 2) + math.pow(object_rel_to_hand[1], 2) + math.pow(object_rel_to_hand[2], 2))
         if distance > 0.3:
