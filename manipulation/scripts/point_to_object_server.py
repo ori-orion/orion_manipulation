@@ -127,7 +127,7 @@ class PointToObjectAction(object):
         rospy.loginfo('%s: Turning to face the object.' % self._action_name)
         self.omni_base.go_rel(0, 0, theta)
         self.whole_body.gaze_point(ref_frame_id=goal_tf)
-        
+
         object_rel_to_hand = self.get_object_rel_to_hand(goal_tf)
         distance = math.sqrt(math.pow(object_rel_to_hand[0], 2) + math.pow(object_rel_to_hand[1], 2) + math.pow(object_rel_to_hand[2], 2))
         if distance > 0.3:
