@@ -53,7 +53,10 @@ class FollowAction(object):
         goal.target_pose.pose.position.y = y
         goal.target_pose.pose.orientation.w = theta
 
+
+
         rospy.loginfo('%s: Sending a goal to move_base.' % self._action_name)
+        rospy.loginfo('%s: Sending x: %s y: %s theta: %s.' % (self._action_name, x, y, theta))
 
         client.send_goal(goal)
         wait = client.wait_for_result()
@@ -62,6 +65,7 @@ class FollowAction(object):
             rospy.logerr("Action server not available!")
             rospy.signal_shutdown("Action server not available!")
         else:
+            rospy.loginfo('%s: Current state %s.' % (self._action_name, client.get_state()))
             return client.get_result()
 
     def get_object_pose(self, object_tf):
