@@ -150,10 +150,10 @@ class FollowAction(object):
             distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
             theta = math.atan(person_coords[1] / person_coords[0])
 
-            movebase_client(0, 0, theta)
+            self.movebase_client(0, 0, theta)
             rospy.sleep(1)
             if distance > 0.5:
-                movebase_client(distance-0.5, 0, 0)
+                self.movebase_client(distance-0.5, 0, 0)
             rospy.sleep(1)
 
             # Give opportunity to preempt
