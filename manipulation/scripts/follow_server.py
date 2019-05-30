@@ -14,41 +14,6 @@ from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
 from geometry_msgs.msg import PoseStamped
 
-def movebase_client(x, y, theta):
-
-    client = actionlib.SimpleActionClient('move_base/move', MoveBaseAction)
-    client.wait_for_server()
-
-    goal = MoveBaseGoal()
-    goal.target_pose.header.frame_id = "/base_footprint"
-    goal.target_pose.header.stamp = rospy.Time.now()
-    goal.target_pose.pose.position.x = x
-    goal.target_pose.pose.position.y = y
-    goal.target_pose.pose.orientation.w = theta
-
-    client.send_goal(goal)
-    wait = client.wait_for_result()
-
-    if not wait:
-        rospy.logerr("Action server not available!")
-        rospy.signal_shutdown("Action server not available!")
-    else:
-        return client.get_result()
-
-
-def get_object_pose(object_tf):
-    found_trans = False
-    listen = tf.TransformListener()
-    rospy.sleep(1)
-    while not found_trans:
-        try:
-            t = listen.getLatestCommonTime("/base_footprint", object_tf)
-            (trans, rot) = listen.lookupTransform('/base_footprint', object_tf, t)
-            found_trans = True
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            continue
-
-    return np.array([trans[0], trans[1]])
 
 class FollowAction(object):
 
@@ -69,6 +34,53 @@ class FollowAction(object):
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
 
+    def movebase_client(self, x, y, theta):
+
+        client = actionlib.SimpleActionClient('move_base/move', MoveBaseAction)
+        client.wait_for_server()
+
+        # Wait for connection
+        try:
+            if not client.wait_for_server(rospy.Duration(5)):
+                raise Exception('MoveBase client does not exist')
+        except Exception as e:
+            rospy.logerr(e)
+
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "/base_footprint"
+        goal.target_pose.header.stamp = rospy.Time.now()
+        goal.target_pose.pose.position.x = x
+        goal.target_pose.pose.position.y = y
+        goal.target_pose.pose.orientation.w = theta
+
+        rospy.loginfo('%s: Sending a goal to move_base.' % self._action_name)
+
+        client.send_goal(goal)
+        wait = client.wait_for_result()
+
+        if not wait:
+            rospy.logerr("Action server not available!")
+            rospy.signal_shutdown("Action server not available!")
+        else:
+            return client.get_result()
+
+    def get_object_pose(self, object_tf):
+        found_trans = False
+        listen = tf.TransformListener()
+        rospy.sleep(1)
+        while not found_trans:
+            try:
+                t = listen.getLatestCommonTime("/base_footprint", object_tf)
+                (trans, rot) = listen.lookupTransform('/base_footprint', object_tf, t)
+                found_trans = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                if self._as.is_preempt_requested():
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                    self.whole_body.move_to_go()
+                    self._as.set_preempted()
+                continue
+
+        return np.array([trans[0], trans[1]])
 
     def check_for_object(self, object_tf):
         rospy.loginfo('%s: Checking object is in sight...' % self._action_name)
@@ -78,6 +90,10 @@ class FollowAction(object):
         while not found_marker:
             all_frames = listen.getFrameStrings()
             found_marker = object_tf in all_frames
+            if self._as.is_preempt_requested():
+                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
 
     def get_similar_tf(self, tf_frame):
         listen = tf.TransformListener()
@@ -123,16 +139,13 @@ class FollowAction(object):
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
-                rospy.loginfo('%s: Succeeded' % self._action_name)
-                _result.succeeded = True
-                self._as.set_succeeded(_result)
                 return
 
         while True:
             # Check the object is in sight
             self.check_for_object(goal_tf)
 
-            person_coords = get_object_pose(goal_tf)
+            person_coords = self.get_object_pose(goal_tf)
 
             distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
             theta = math.atan(person_coords[1] / person_coords[0])
@@ -148,9 +161,6 @@ class FollowAction(object):
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
-                rospy.loginfo('%s: Succeeded' % self._action_name)
-                _result.succeeded = True
-                self._as.set_succeeded(_result)
                 return
 
 

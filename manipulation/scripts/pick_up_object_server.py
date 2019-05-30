@@ -15,6 +15,10 @@ from tmc_suction.msg import (SuctionControlAction, SuctionControlGoal)
 from tmc_manipulation_msgs.msg import CollisionObject
 from orion_actions.msg import *
 
+
+from hsrb_interface import robot as _robot
+_robot.enable_interactive()
+
 # For grasp synthesis
 from point_cloud_filtering.srv import SegmentObject
 from gpd.msg import GraspConfigList
@@ -36,6 +40,8 @@ class PickUpObjectAction(object):
         self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.whole_body.looking_hand_constraint = True
+        self.tts = self.robot.try_get('default_tts')
+        self.tts.language = self.tts.ENGLISH
 
         self.collision_mapper = CollisionMapper(self.robot)
 
@@ -111,6 +117,10 @@ class PickUpObjectAction(object):
                 (trans, rot) = listen.lookupTransform('/head_rgbd_sensor_rgb_frame', object_tf, t)
                 found_trans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                if self._as.is_preempt_requested():
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
                 continue
 
         return np.array([trans[0], trans[1], trans[2]])
@@ -123,7 +133,12 @@ class PickUpObjectAction(object):
                 odom_to_ref_pose = self.whole_body._lookup_odom_to_ref(self.goal_object)
                 foundTrans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                if self._as.is_preempt_requested():
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
                 continue
+
         odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
         odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
 
@@ -146,6 +161,10 @@ class PickUpObjectAction(object):
         listen = tf.TransformListener()
         rospy.sleep(1)
         while not found_marker:
+            if self._as.is_preempt_requested():
+                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
             all_frames = listen.getFrameStrings()
             found_marker = object_tf in all_frames
 
@@ -168,6 +187,10 @@ class PickUpObjectAction(object):
                 (trans, rot) = listen.lookupTransform('/map', object_tf, t)
                 found_trans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                if self._as.is_preempt_requested():
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
                 continue
 
         return np.array([trans[0], trans[1], trans[2]])
@@ -182,6 +205,11 @@ class PickUpObjectAction(object):
                 (trans, rot) = listen.lookupTransform('/hand_palm_link', object_tf, t)
                 found_trans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                if self._as.is_preempt_requested():
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
+
                 continue
 
         return math.sqrt(math.pow(trans[0],2) + math.pow(trans[1],2) + math.pow(trans[2],2))
@@ -363,11 +391,12 @@ class PickUpObjectAction(object):
                 rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
 
         # Found the goal tf so proceed to pick up
-
         rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
         self.set_goal_object(goal_tf)
         obj_dist = self.get_object_distance(goal_tf)
         rospy.loginfo('{0}: Distance to object is "{1}"m.'.format(self._action_name, str(obj_dist)))
+        self.tts.say('I can see the object and it is "{0}"m away.'.format(str(obj_dist)))
+        rospy.sleep(1)
 
         if self.goal_object == 'postcard':
             grasp_type = 'suction'
@@ -385,6 +414,8 @@ class PickUpObjectAction(object):
         self.whole_body.gaze_point(ref_frame_id=self.goal_object)
 
         # Set collision map
+        self.tts.say("I am now evaluating my environment so that I don't collide with anything.")
+        rospy.sleep(1)
         rospy.loginfo('%s: Getting Collision Map.' % self._action_name)
         self.collision_mapper.get_collision_map()
         rospy.loginfo('%s: Collision Map generated.' % self._action_name)
@@ -394,6 +425,7 @@ class PickUpObjectAction(object):
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
+            self.tts.say("I was preempted. Moving to go.")
             rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
             self.whole_body.move_to_go()
             self._as.set_preempted()
@@ -402,12 +434,17 @@ class PickUpObjectAction(object):
         if grasp_type == 'suction':
             self.suck_object()
         else:
+            self.tts.say("I will now pick up the object")
+            rospy.sleep(1)
             grab_success = self.grab_object(chosen_pregrasp_pose, chosen_grasp_pose)
 
         if grab_success == False:
             self.whole_body.move_to_go()
             return
 
+        self.tts.say("Object grasped successfully. Now returning to normal position.")
+        rospy.sleep(1)
+        
         # Now return to moving position
         success = self.finish_position()
 

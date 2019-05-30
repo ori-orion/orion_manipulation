@@ -8,6 +8,9 @@ import tf
 import hsrb_interface.geometry as geometry
 import math
 
+from hsrb_interface import robot as _robot
+_robot.enable_interactive()
+
 from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
 
@@ -27,6 +30,8 @@ class PointToObjectAction(object):
         self.omni_base = self.robot.try_get('omni_base')
         self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = 'hand_palm_link'
+        self.tts = self.robot.try_get('default_tts')
+        self.tts.language = self.tts.ENGLISH
 
         self._CONNECTION_TIMEOUT = 15.0 # Define the vacuum timeouts
         self._HAND_TF = 'hand_palm_link'
@@ -103,7 +108,10 @@ class PointToObjectAction(object):
             if goal_tf is None:
                 rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
 
-        # Found the goal tf so proceed to pick up
+        self.tts.say("I can see the object and will now point towards it.")
+        rospy.sleep(1)
+
+        # Found the goal tf
         rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
 
         # ------------------------------------------------------------------------------
@@ -133,6 +141,9 @@ class PointToObjectAction(object):
                                                              z=req_ratio*object_rel_to_hand[2]),
                                                'hand_palm_link')
 
+        self.tts.say("It is over there.")
+        rospy.sleep(1)
+
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
             rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
@@ -140,6 +151,8 @@ class PointToObjectAction(object):
             self._as.set_preempted()
             return
 
+        rospy.sleep(5)
+        self.whole_body.move_to_go()
 
         rospy.loginfo('%s: Succeeded' % self._action_name)
         _result.result = True
