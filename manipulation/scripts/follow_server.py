@@ -91,10 +91,15 @@ class FollowAction(object):
 
         while goal_tf is None:
             goal_tf = self.get_similar_tf(goal_msg.object_name)
-            if goal_tf is None:
-                # rospy.loginfo('{0}: Found no similar tf frame.'.format(self._action_name))
-            else:
+
+            if goal_tf is not None:
                 rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
+
+            # if goal_tf is None:
+            #     # rospy.loginfo('{0}: Found no similar tf frame.'.format(self._action_name))
+            #     pass
+            # else:
+            #     rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
 
             # Give opportunity to preempt
             if self._as.is_preempt_requested():
