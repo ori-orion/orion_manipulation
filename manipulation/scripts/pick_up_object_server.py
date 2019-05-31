@@ -189,9 +189,9 @@ class PickUpObjectAction(object):
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 if self._as.is_preempt_requested():
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                continue
+                    self.whole_body.move_to_go()
+                    self._as.set_preempted()
+                    return
 
         return np.array([trans[0], trans[1], trans[2]])
 
