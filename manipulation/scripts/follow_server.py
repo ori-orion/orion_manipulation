@@ -56,6 +56,7 @@ class FollowAction(object):
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                     self.whole_body.move_to_go()
                     self._as.set_preempted()
+                    return True
                 continue
 
         return np.array([trans[0], trans[1]])
@@ -72,6 +73,7 @@ class FollowAction(object):
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
+                return True
 
     def get_similar_tf(self, tf_frame):
         listen = tf.TransformListener()
@@ -88,6 +90,8 @@ class FollowAction(object):
         goal_tf = None
 
         rospy.loginfo('{0}: Finding similar tf frame.'.format(self._action_name))
+
+        is_preempted = False
 
         while goal_tf is None:
             goal_tf = self.get_similar_tf(goal_msg.object_name)
@@ -106,14 +110,20 @@ class FollowAction(object):
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
+                is_preempted = True
                 return
+
+        if is_preempted:
+            return
 
         self.tts.say("I will now start following. Please do not go too fast.")
         rospy.sleep(1)
 
         while True:
             # Check the object is in sight
-            self.check_for_object(goal_tf)
+            is_preempted = self.check_for_object(goal_tf)
+            if is_preempted:
+                return
 
             # Look at the object - this is to make sure that we get all of the necessary collision map
             rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
@@ -130,12 +140,17 @@ class FollowAction(object):
                         rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                         self.whole_body.move_to_go()
                         self._as.set_preempted()
+                        is_preempted = True
                         continue
 
-
+            if is_preempted:
+                return
 
             rospy.loginfo('%s: Getting person pose.' % self._action_name)
             person_coords = self.get_object_pose(goal_tf)
+
+            if not person_coords:
+                return
 
             rospy.loginfo('{0}: Found the person pose.'.format(self._action_name))
             distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
@@ -175,8 +190,11 @@ class FollowAction(object):
                 start_client.call(EmptyRequest())
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
+                is_preempted = True
                 return
 
+            if is_preempted:
+                return
 
 
 if __name__ == '__main__':
