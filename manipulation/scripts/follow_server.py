@@ -124,10 +124,7 @@ class FollowAction(object):
             if is_preempted:
                 return
 
-            # Look at the object - this is to make sure that we get all of the necessary collision map
             rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
-            self.whole_body.gaze_point(ref_frame_id=goal_tf)
-
             can_look = False
             while not can_look:
                 try:
