@@ -123,6 +123,7 @@ class FollowAction(object):
             while not can_look:
                 try:
                     self.whole_body.gaze_point(ref_frame_id=goal_tf)
+                    can_look = True
                 except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.Exception):
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                     if self._as.is_preempt_requested():
