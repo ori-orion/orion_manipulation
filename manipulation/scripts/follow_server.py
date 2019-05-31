@@ -148,7 +148,7 @@ class FollowAction(object):
             rospy.loginfo('%s: Getting person pose.' % self._action_name)
             person_coords = self.get_object_pose(goal_tf)
 
-            if not person_coords:
+            if person_coords == True:
                 return
 
             rospy.loginfo('{0}: Found the person pose.'.format(self._action_name))
