@@ -51,7 +51,7 @@ class FollowAction(object):
                 (trans, rot) = listen.lookupTransform('/base_footprint', object_tf, t)
                 found_trans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.Exception):
-                rospy.loginfo('%s: Cant find object pose. Trying again....' % self._action_name)
+                # rospy.loginfo('%s: Cant find object pose. Trying again....' % self._action_name)
                 if self._as.is_preempt_requested():
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                     self.whole_body.move_to_go()
@@ -87,10 +87,12 @@ class FollowAction(object):
 
         goal_tf = None
 
+        rospy.loginfo('{0}: Finding similar tf frame.'.format(self._action_name))
+
         while goal_tf is None:
             goal_tf = self.get_similar_tf(goal_msg.object_name)
             if goal_tf is None:
-                rospy.loginfo('{0}: Found no similar tf frame. Aborting.'.format(self._action_name))
+                # rospy.loginfo('{0}: Found no similar tf frame.'.format(self._action_name))
             else:
                 rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
 
@@ -111,6 +113,20 @@ class FollowAction(object):
             # Look at the object - this is to make sure that we get all of the necessary collision map
             rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
             self.whole_body.gaze_point(ref_frame_id=goal_tf)
+
+            can_look = False
+            while not can_look:
+                try:
+                    self.whole_body.gaze_point(ref_frame_id=goal_tf)
+                except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.Exception):
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                    if self._as.is_preempt_requested():
+                        rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                        self.whole_body.move_to_go()
+                        self._as.set_preempted()
+                        continue
+
+
 
             rospy.loginfo('%s: Getting person pose.' % self._action_name)
             person_coords = self.get_object_pose(goal_tf)
