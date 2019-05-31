@@ -375,8 +375,8 @@ class PickUpObjectAction(object):
 
     def execute_cb(self, goal_msg):
         _result = PickUpObjectResult()
-        _result.result = False
-
+        # _result.result = False
+        is_preempted = False
         # Currently doesn't do anything other than relay to another topic
         rospy.Subscriber("known_object_pre_filter", CollisionObject, self.collision_callback)
 
@@ -390,9 +390,15 @@ class PickUpObjectAction(object):
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
+                is_preempted = True
+                return
+
 
             if goal_tf is None:
                 rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
+
+        if is_preempted:
+            return
 
         # Found the goal tf so proceed to pick up
         rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
