@@ -57,7 +57,6 @@ class FollowAction(object):
                     self.whole_body.move_to_go()
                     self._as.set_preempted()
                     return True
-                continue
 
         return np.array([trans[0], trans[1]])
 
@@ -141,7 +140,7 @@ class FollowAction(object):
                         self.whole_body.move_to_go()
                         self._as.set_preempted()
                         is_preempted = True
-                        continue
+                        return
 
             if is_preempted:
                 return

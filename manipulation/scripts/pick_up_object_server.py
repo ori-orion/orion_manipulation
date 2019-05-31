@@ -399,7 +399,7 @@ class PickUpObjectAction(object):
         self.set_goal_object(goal_tf)
         obj_dist = self.get_object_distance(goal_tf)
         rospy.loginfo('{0}: Distance to object is "{1:.2f}"m.'.format(self._action_name, obj_dist))
-        self.tts.say('I can see the object and it is "{1:.2f}" metres away.'.format(obj_dist))
+        self.tts.say('I can see the object and it is "{:.2f}" metres away.'.format(obj_dist))
         rospy.sleep(1)
 
         if self.goal_object == 'postcard':
