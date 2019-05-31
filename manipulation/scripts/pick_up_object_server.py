@@ -136,9 +136,10 @@ class PickUpObjectAction(object):
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 if self._as.is_preempt_requested():
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                continue
+                    self.whole_body.move_to_go()
+                    self._as.set_preempted()
+                    # TO DO - introudce a self.to_preempt = True
+                    return
 
         odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
         odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
