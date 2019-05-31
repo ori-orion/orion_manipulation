@@ -221,8 +221,12 @@ class PickUpObjectAction(object):
     def collision_mod(self, msg):
         if self.goal_object:
             object_pose = self.get_object_pose(self.goal_object)
-            upper_bound = object_pose + np.array([1, 1, 1])
-            lower_bound = object_pose - np.array([1, 1, 1])
+            upper_bound = object_pose + np.array([0.7, 0.7, 1])
+            lower_bound = object_pose - np.array([0.7, 0.7, 1])
+
+            object_upper_bound = object_pose + np.array([0.05, 0.05, 0.03])
+            object_lower_bound = object_pose - np.array([0.05, 0.05, 0.03])
+
             # Get the message
             message = msg
             rospy.loginfo('%s: Removing excess collision space.' % self._action_name)
@@ -232,7 +236,13 @@ class PickUpObjectAction(object):
             for i in range(len(message.poses)):
                 pose = message.poses[i]
                 pose_arr = np.array([pose.position.x,pose.position.y,pose.position.z])
+
+                # remove excess environment
                 if not(np.all(pose_arr <= upper_bound) and np.all(pose_arr >= lower_bound)):
+                    inds_to_remove.append(i)
+
+                # approx remove the object
+                if np.all(pose_arr <= object_upper_bound) and np.all(object_lower_bound >= lower_bound):
                     inds_to_remove.append(i)
 
             # Remove the boxes
