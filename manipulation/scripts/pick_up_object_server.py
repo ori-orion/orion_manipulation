@@ -275,6 +275,10 @@ class PickUpObjectAction(object):
 
             else:
                 # Move to pregrasp
+                rospy.loginfo('%s: Calculating grasp pose.' % (self._action_name))
+                self.tts.say('I am now calculating the grasp position')
+                rospy.sleep(1)
+
                 goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
 
                 self.goal_pose_br.sendTransform((goal_pose.pos.x, goal_pose.pos.y, goal_pose.pos.z),
@@ -284,18 +288,26 @@ class PickUpObjectAction(object):
                                                 'odom')
 
                 rospy.loginfo('%s: Moving to pre-grasp position.' % (self._action_name))
+                self.tts.say('Moving to pre-grasp position.')
+                rospy.sleep(1)
                 self.whole_body.move_end_effector_pose(goal_pose, 'odom')
 
             # Turn off collision checking to get close and grasp
+            self.tts.say('Turning off collision checking to get closer.')
+            rospy.sleep(1)
             rospy.loginfo('%s: Turning off collision checking to get closer.' % (self._action_name))
             self.whole_body.collision_world = None
             rospy.sleep(1)
 
             # Move to grasp pose
             rospy.loginfo('%s: Moving to grasp position.' % (self._action_name))
+            self.tts.say('Moving to grasp position.')
+            rospy.sleep(1)
             self.whole_body.move_end_effector_pose(chosen_grasp_pose, self.whole_body.end_effector_frame)
 
             # Specify the force to grasp
+            self.tts.say('Grasping object.')
+            rospy.sleep(1)
             self.gripper.apply_force(self._GRASP_FORCE)
             rospy.loginfo('%s: Object grasped.' % self._action_name)
 
