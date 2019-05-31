@@ -111,7 +111,7 @@ class PickUpObjectAction(object):
     def get_head_frame_object_pose(self, object_tf):
         found_trans = False
         listen = tf.TransformListener()
-        rospy.sleep(1)
+        rospy.sleep(3)
         while not found_trans:
             try:
                 t = listen.getLatestCommonTime("/head_rgbd_sensor_rgb_frame", object_tf)
@@ -182,7 +182,7 @@ class PickUpObjectAction(object):
     def get_object_pose(self, object_tf):
         found_trans = False
         listen = tf.TransformListener()
-        rospy.sleep(1)
+        rospy.sleep(3)
         while not found_trans:
             try:
                 t = listen.getLatestCommonTime("/map", object_tf)
@@ -268,7 +268,7 @@ class PickUpObjectAction(object):
         try:
             if self.use_grasp_synthesis:
                 # Segment the object point cloud first
-                object_position_head_frame = self.get_object_pose(self.goal_object)
+                object_position_head_frame = self.get_head_frame_object_pose(self.goal_object)
 
                 # Call segmentation (lasts 10s)
                 seg_response = self.segment_object(object_position_head_frame)
