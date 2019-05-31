@@ -217,12 +217,11 @@ class PickUpObjectAction(object):
     def set_goal_object(self, obj):
         self.goal_object = obj
 
-    def collision_callback(self, msg):
-        # If we have a goal object set then we do pruning first
+    def collision_mod(self, msg):
         if self.goal_object:
             object_pose = self.get_object_pose(self.goal_object)
-            upper_bound = object_pose + np.array([1,1,1])
-            lower_bound = object_pose - np.array([1,1,1])
+            upper_bound = object_pose + np.array([1, 1, 1])
+            lower_bound = object_pose - np.array([1, 1, 1])
             # Get the message
             message = msg
             rospy.loginfo('%s: Removing excess collision space.' % self._action_name)
@@ -243,6 +242,35 @@ class PickUpObjectAction(object):
             self.pub.publish(message)
         else:
             self.pub.publish(msg)
+
+    def collision_callback(self, msg):
+        # If we have a goal object set then we do pruning first
+        self.collision_msg = msg
+
+        # if self.goal_object:
+        #     object_pose = self.get_object_pose(self.goal_object)
+        #     upper_bound = object_pose + np.array([0.6, 0.6, 1])
+        #     lower_bound = object_pose - np.array([0.6, 0.6, 1])
+        #     # Get the message
+        #     message = msg
+        #     rospy.loginfo('%s: Removing excess collision space.' % self._action_name)
+        #
+        #     # Find which boxes to removes
+        #     inds_to_remove = []
+        #     for i in range(len(message.poses)):
+        #         pose = message.poses[i]
+        #         pose_arr = np.array([pose.position.x,pose.position.y,pose.position.z])
+        #         if not(np.all(pose_arr <= upper_bound) and np.all(pose_arr >= lower_bound)):
+        #             inds_to_remove.append(i)
+        #
+        #     # Remove the boxes
+        #     for index in sorted(inds_to_remove, reverse=True):
+        #         del message.poses[index], message.shapes[index]
+        #
+        #     # Publish the filtered message
+        #     self.pub.publish(message)
+        # else:
+        #     self.pub.publish(msg)
 
     def grab_object(self, chosen_pregrasp_pose, chosen_grasp_pose):
         self.whole_body.end_effector_frame = 'hand_palm_link'
@@ -429,6 +457,9 @@ class PickUpObjectAction(object):
         rospy.loginfo('%s: Getting Collision Map.' % self._action_name)
         self.collision_mapper.get_collision_map()
         rospy.loginfo('%s: Collision Map generated.' % self._action_name)
+
+        rospy.loginfo('%s: Pruning the collision map.' % self._action_name)
+        self.collision_mod(self.collision_msg)
 
         # Get the object pose to subtract from collision map
         # self.check_for_object(goal_tf)
