@@ -56,7 +56,7 @@ class FollowAction(object):
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                     self.whole_body.move_to_go()
                     self._as.set_preempted()
-                    return True
+                    return None
 
         return np.array([trans[0], trans[1]])
 
@@ -148,7 +148,7 @@ class FollowAction(object):
             rospy.loginfo('%s: Getting person pose.' % self._action_name)
             person_coords = self.get_object_pose(goal_tf)
 
-            if person_coords == True:
+            if person_coords is None:
                 return
 
             rospy.loginfo('{0}: Found the person pose.'.format(self._action_name))
