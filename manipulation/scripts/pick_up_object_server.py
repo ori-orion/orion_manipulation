@@ -412,8 +412,8 @@ class PickUpObjectAction(object):
             grasp_type = 'suction'
         else:
             grasp_type = 'grab'
-            chosen_pregrasp_pose = geometry.pose(z=-0.05, ek=-math.pi/2)
-            chosen_grasp_pose = geometry.pose(z=0.05)
+            chosen_pregrasp_pose = geometry.pose(z=-0.08, ek=-math.pi/2)
+            chosen_grasp_pose = geometry.pose(z=0.08)
 
         # ------------------------------------------------------------------------------
         # Check the object is in sight
