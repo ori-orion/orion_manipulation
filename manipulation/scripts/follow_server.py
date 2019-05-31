@@ -50,7 +50,7 @@ class FollowAction(object):
                 t = listen.getLatestCommonTime("/base_footprint", object_tf)
                 (trans, rot) = listen.lookupTransform('/base_footprint', object_tf, t)
                 found_trans = True
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.TransformException):
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.Exception):
                 rospy.loginfo('%s: Cant find object pose. Trying again....' % self._action_name)
                 if self._as.is_preempt_requested():
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
