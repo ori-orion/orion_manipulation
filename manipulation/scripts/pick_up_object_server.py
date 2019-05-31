@@ -209,10 +209,9 @@ class PickUpObjectAction(object):
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 if self._as.is_preempt_requested():
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-
-                continue
+                    self.whole_body.move_to_go()
+                    self._as.set_preempted()
+                    return
 
         return math.sqrt(math.pow(trans[0],2) + math.pow(trans[1],2) + math.pow(trans[2],2))
 
