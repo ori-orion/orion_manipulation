@@ -1,4 +1,10 @@
 #! /usr/bin/env python
+""" Action server for putting objects on a surface in front.
+Currently in development
+"""
+
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import hsrb_interface
 import rospy

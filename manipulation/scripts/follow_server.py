@@ -1,4 +1,10 @@
 #! /usr/bin/env python
+""" Action server for following an object (usually a person).
+Takes a tf frame string as input to follow. Maintains 50cm distance away from object and follows
+until pre-empted
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import rospy
 import actionlib

@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+""" Action server for putting objects on the floor.
+Hard coded motion to maintain horizontal grasp and place hand close to the floor and open the gripper.
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import hsrb_interface
 import rospy

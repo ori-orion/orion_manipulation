@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+""" Action server for receiving objects.
+Hard-coded motion to put hand out in front, pause and grasp an object.
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import hsrb_interface
 import rospy

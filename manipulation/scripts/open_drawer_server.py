@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+""" Action server for opening drawers.
+Uses the /drawer_handle_detection service to do segmentation and find a centroid location for the handle to grasp.
+If multiple drawer handles are detected, one is randomly chosen. Performs hard-coded pull back motion with
+speech commentary
+"""
 import time
 import hsrb_interface
 import hsrb_interface.geometry as geometry
@@ -11,6 +16,8 @@ import tf.transformations as T
 import math
 
 from hsrb_interface import robot as _robot
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 _robot.enable_interactive()
 

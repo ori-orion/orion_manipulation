@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+""" Subscriber/Publisher for broadcasting the best grasp pose as tf frame"""
+
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
+
 
 import numpy as np
 import tf.transformations as T
