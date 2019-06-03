@@ -1,6 +1,7 @@
 //
 // Created by Mark Finean on 2019-05-16.
 //
+#include "planes.h"
 
 #include "pcl_conversions/pcl_conversions.h"
 
