@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+""" Action server for giving an object to operator.
+Hard-coded hand over motion with a 5s pause for the operator to grasp
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import hsrb_interface
 import rospy

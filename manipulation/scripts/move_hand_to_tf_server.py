@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+""" Development action server for moving hand to a given tf frame.
+Not used now.
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 # import roslib; roslib.load_manifest('manipulation')
 import hsrb_interface
@@ -108,7 +113,7 @@ class MoveHandToTfAction(object):
         # Set up listener to find the bottle
         check_for_object(goal_tf)
 
-        rospy.loginfo('%s: Exectuting grasp procedure.' % (self._action_name))
+        rospy.loginfo('%s: Executing grasp procedure.' % (self._action_name))
         # Turn on collision checking
         self.whole_body.collision_world = self.collision_world
 

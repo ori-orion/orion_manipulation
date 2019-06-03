@@ -1,5 +1,6 @@
 # orion-manipulation
 Repo for packages related to manipulating objects and opening doors etc.
+Maintained by Mark Finean (mfinean@robots.ox.ac.uk).
 
 ## Packages:
 * manipulation
@@ -12,14 +13,19 @@ Repo for packages related to manipulating objects and opening doors etc.
 	- Needs to be built first. This is required for the collision environment to be populated.
 	- Creates a collision map and publishes this to the `pre\_filter' topic defined above. The collision map later gets modified on the fly to remove an area around the object you're dealing with. 
 	- The key parameter that can be tweaked is the size of the boxes. 1.5cm works well and reduction would be preferred but this has a tradeoff with demand on CPU and graphics.
+* Caffe
+* gpg and gpd for grasp synthesis
+ 
 
 ## Topics published
 * /handle_cloud - Point cloud of the door handle (*sensor\_msgs::PointCloud2*)
-* tf frame 'door_handle' - the centroid of the door handle is published as a tf frame
-=======
-## Pre-requisites
-This code requires the reconstruction\_ws to be built first. 
+* /object_cloud - Point cloud of the object to grasp (*sensor\_msgs::PointCloud2*)
 
+* tf frame 'door_handle' - the centroid of the door handle is published as a tf frame
+* tf frame 'drawer_handle' - the centroid of the drawer door handle is published as a tf frame
+* tf frame 'goal_pose' - the centroid of the door handle is published as a tf frame
+
+=======
 ## What does it do?
 This repo enables the HSR to perform manipulation tasks such as picking up an object, opening a door, or giving the object to a human operator via respective action servers. 
 
@@ -33,7 +39,7 @@ rosrun manipulation open_door_server.py
 rosrun manipulation open_door_client.py 
 ```
 
-## Manipulation
+## Collision avoidance
 
 To launch collision reconstruction:
 ```
@@ -84,59 +90,17 @@ This will generate and publish grasps to /detect\_grasps/clustered\_grasps when 
 
 Note that when using the rotation matrix \[approach, binormal, axis\] to find the quaternion matrix for hand approach, you need to take the quaternion conjugate!
 
-The following commands are used to generate grasp poses:
-```
-roslaunch openni2_launch openni2.launch camera:=hsrb depth_frame_id:=/hsrb/head_rgbd_sensor/depth_registered/image rgb_frame_id:=/hsrb/head_rgbd_sensor/rgb/image_raw
-```
-```
-roslaunch gpd tutorial1.launch cloud_topic:=hsrb/head_rgbd_sensor/depth_registered/rectified_points
-roslaunch gpd tutorial1.launch cloud_topic:=**Object cloud you want to grasp**
-```
-
 ## To do:
-- [x] Add manipulation actions to the orion_actions repo
-- [x] Hard code a door grasp pose given a point cloud of the handle
-- [x] Refactor point cloud filtering
-- [x] Develop door opening motions and introduce into the open door action server
-- [x] Modify manipulation package to use orion_actions for the actions and messages 
-- [x] Fix collision map not generating in pick up action
-- [x] Test new pick up object action on AR bottle
-- [x] Added service to segment an opject given the rough location of it
-- [x] Create launch file to fire up the grasp synthesis
-- [x] Code to segment object point clouds (crop -> remove plane ? )
-- [x] Revamp pick up object server (get rid of config files, counters etc)
-- PickUpObject.action
-	- [x] Created server
-	- [x] Tested
-- OpenDoor.action
-	- [x] Created server
-	- [x] Tested
-	- [x] Finish opening the door fully
-- PutObjectOnFloor.action
-	- [x] Created server
-	- [x] Tested
-- GiveObjectToOperator.action
-	- [x] Created server
-	- [x] Tested
-- ReceiveObjectFromOperator.action
-	- [x] Created server
-	- [x] Tested
 - PutObjectOnSurface.action
 	- [ ] Created server
 	- [ ] Tested
 - OpenFurnitureDoor.action
 	- [ ] Created server
 	- [ ] Tested
-- OpenDrawer.action
-	- [x] Created server
-	- [x] Tested
 - CloseDrawer.action
 	- [x] Created server
 	- [ ] Tested
 - CloseFurnitureDoor.action
-	- [ ] Created server
-	- [ ] Tested
-- PointToObject.action
 	- [ ] Created server
 	- [ ] Tested
 - PlaceObjectRelative.action
@@ -156,15 +120,12 @@ roslaunch gpd tutorial1.launch cloud_topic:=**Object cloud you want to grasp**
 	- [ ] Created server
 	- [ ] Tested
 - [ ] Create launch file to launch all manipulation server nodes
-- [ ] Check the axis conventention for image tf frames
+- [ ] Check the axis convention for image tf frames
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
-- [x] Tune grasp synthesis parameters for HSR
-- [x] Integrate the handle detection and grasp synthesis
-- [x] Document `Caffe' install instructions (needed for grasp pose synthesis)
 
 ## Notes
 
-* The HSR stuggles to generate handles in a point cloud if their material is too specular like taht in the lab. Similarly it can't detect the glass doors.
+* The HSR struggles to generate handles in a point cloud if their material is too specular like that in the lab. Similarly it can't detect the glass doors.
 
 * Grasp pose synthesis is a bit weird when applied to the door handle point cloud. It doesn't give the classic perpendicular pose as I would like. Think this should be hard coded instead.
 

@@ -1,4 +1,11 @@
 #! /usr/bin/env python
+""" Action server for opening a door.
+Uses the /handle_detection service to do segmentation and find a centroid location for the handle to grasp.
+Robust to left and right hinged doors. Currently works on pull down horizontal handles and executes a pull open motion.
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
+
 import time
 import hsrb_interface
 import hsrb_interface.geometry as geometry

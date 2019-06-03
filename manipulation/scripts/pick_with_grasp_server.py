@@ -1,4 +1,7 @@
 #! /usr/bin/env python
+""" Old action server for integrating grasp synthesis. """
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import hsrb_interface
 import rospy
