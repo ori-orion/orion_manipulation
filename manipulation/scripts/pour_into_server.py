@@ -47,27 +47,35 @@ class PourIntoAction(object):
         _result = PourIntoResult()
         _result.result = False
 
+        is_preempted = False
+
         # Get the tf of the object to be poured into, from the message
-        goal_tf = goal_msg.goal_tf_frame
-        goal_tf = self.get_similar_tf(goal_tf)
-        if goal_tf is None:
-            self._as.set_aborted()
-            rospy.loginfo('{0}: Found no similar tf frame. Aborting.'.format(self._action_name))
+        goal_tf_in = goal_msg.goal_tf_frame
+
+        while goal_tf is None:
+            goal_tf = self.get_similar_tf(goal_tf_in)
+
+            # Give opportunity to preempt
+            if self._as.is_preempt_requested():
+                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
+                is_preempted = True
+                return
+
+            if goal_tf is None:
+                rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
+
+        if is_preempted:
             return
 
         rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
-
-
-        # Give opportunity to preempt
-        if self._as.is_preempt_requested():
-            rospy.loginfo('%s: Preempted' % self._action_name)
-            self._as.set_preempted()
-            return
 
         try:
             rospy.loginfo('%s: Executing, pouring into object at %s.' % (self._action_name, goal_tf))
             self.tts.say("I will pour what I am holding into the specified object.")
             rospy.sleep(1)
+
             self.whole_body.move_to_neutral()
             rospy.sleep(1)
 
@@ -80,7 +88,7 @@ class PourIntoAction(object):
             # Delay to make sure pouring is complete
             rospy.sleep(4)
 
-            self.tts.say("Pouring successful. Returning to position.")
+            self.tts.say("Poured successfully. I will now returning to position.")
             rospy.sleep(1)
 
             # Return to "go" pose
