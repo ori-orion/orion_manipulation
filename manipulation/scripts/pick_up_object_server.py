@@ -1,4 +1,11 @@
 #! /usr/bin/env python
+""" Action server for picking up objects.
+Variable self.use_grasp_synthesis can be used to change between using grasp synthesis to determine grasp position and
+using a hard-coded 5cm away horizontal pre-grasp pose. grasp synthesis uses point cloud segmentation and gdp grasp
+synthesis
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import hsrb_interface
 import rospy

@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import rospy
 # from __future__ import print_function

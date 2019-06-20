@@ -1,4 +1,10 @@
 #! /usr/bin/env python
+""" Action server for placing an object relative to another.
+Currently in development.
+"""
+
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
 
 import hsrb_interface
 import rospy

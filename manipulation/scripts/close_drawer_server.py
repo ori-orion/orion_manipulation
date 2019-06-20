@@ -1,4 +1,11 @@
 #! /usr/bin/env python
+""" Action server for closing a drawer.
+This assumes that the handle is already grasped and uses a hard-coded forward
+motion to close the drawer. Includes speech commentary
+"""
+__author__ = "Mark Finean"
+__email__ = "mfinean@robots.ox.ac.uk"
+
 import time
 import hsrb_interface
 import hsrb_interface.geometry as geometry
