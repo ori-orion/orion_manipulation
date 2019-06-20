@@ -1,0 +1,34 @@
+<launch>
+
+
+	 <node name="pick_up_object_server" pkg="manipulation" type="pick_up_object_server.py" output="screen"> </node>
+	 <node name="give_object_to_operator_server" pkg="manipulation" type="give_object_to_operator_server.py" output="screen"> </node>
+	 <node name="receive_object_from_operator_server" pkg="manipulation" type="receive_object_from_operator_server.py" output="screen"> </node>
+	 <node name="follow_server" pkg="manipulation" type="follow_server.py" output="screen"> </node>
+	 
+	 <node name="handle_grasp_pose_node" pkg="point_cloud_filtering" type="handle_grasp_pose" output="screen"> 
+		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+	 </node>
+
+	 <node name="segment_object_node" pkg="point_cloud_filtering" type="segment_object" output="screen"> 
+		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+	 </node>
+
+
+	  <!-- Load the collision map services -->
+	  <include file="$(find tmc_reconstruction)/launch/reconstruction.launch">
+		<arg name="camera_param_path" value="~/.ros/camera_info/hsrb_gazebo.yaml" />
+		<arg name="vocabulary_path" value="~/reconstruction_ws/DBoW2/build/small_voc.yml.gz" />
+		<arg name="world_frame_id_exists" value="true" />
+		<arg name="reference_frame_id" value="head_rgbd_sensor_rgb_frame" />
+		<arg name="rgb_image_topic" value="/hsrb/head_rgbd_sensor/rgb/image_raw" />
+		<arg name="depth_image_topic" value="/hsrb/head_rgbd_sensor/depth_registered/image_raw" />
+		<arg name="resolution" value="0.03" />
+		<arg name="is_loop_detection_enable" value="false" />
+		<arg name="auto_start" value="false" />
+		<arg name="output_collision_object_topic" value="/known_object_pre_filter" />
+	  </include>
+
+	  <include file="$(find manipulation)/launch/grasp_synthesis.launch"> </include>
+
+</launch>
