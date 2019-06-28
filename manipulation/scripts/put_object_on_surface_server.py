@@ -57,7 +57,7 @@ class PutObjectOnSurfaceAction(object):
             self.whole_body.move_to_neutral()
             rospy.sleep(1)
 
-            # Place object of surface
+            # Place object on surface
             ## NEED TO CHANGE THE GOAL LOCATION HERE
             self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
 

@@ -12,7 +12,7 @@ bool get_surface_location(point_cloud_filtering::GetSurfaceGoal::Request  &req,
     ros::NodeHandle nh;
     tf::TransformBroadcaster br;
 
-    // To publish cropped door and handle
+    // To publish valid_surface_cloud
     ros::Publisher goal_pub =
             nh.advertise<sensor_msgs::PointCloud2>("valid_surface_cloud", 1, true);
 
@@ -25,6 +25,21 @@ bool get_surface_location(point_cloud_filtering::GetSurfaceGoal::Request  &req,
     ros::Subscriber sub_handle =
             nh.subscribe("cloud_in", 1, &point_cloud_filtering::SurfacePlacement::Callback,  &surface_placer);
 
+
+    std::clock_t start;
+    double duration = 0;
+    start = std::clock();
+
+    while (not surface_placer.CheckDetection() and duration < 10 )
+    {
+        ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
+        duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+    }
+
+    res.x = surface_placer.GetX();
+    res.y = surface_placer.GetY();
+    res.z = surface_placer.GetZ();
+
     return true;
 }
 
@@ -34,7 +49,7 @@ int main(int argc, char** argv) {
 
     ros::ServiceServer service = nh.advertiseService("surface_placer", get_surface_location);
 
-    ROS_INFO("Ready to detect handles.");
+    ROS_INFO("Ready to detect areas to place on surface.");
 
     ros::spin();
 

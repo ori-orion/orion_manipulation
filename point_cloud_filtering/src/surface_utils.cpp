@@ -50,17 +50,20 @@ namespace point_cloud_filtering {
         table_extract.setIndices(inliers);
         table_extract.filter(*table_cloud);
 
-        // Remove the door
-        PointCloudC::Ptr no_surface_cloud(new PointCloudC());
-        RemoveSurface(first_cropped_cloud, no_surface_cloud, inliers);
-
-        // At this point the object cloud may have anything below the table still in.
-        // The y axis points towards the floor so need to crop anything above max y value in the table inliers.
-
+        float max_z = std::numeric_limits<float>::min();
+        float min_z = std::numeric_limits<float>::max();
         float max_y = std::numeric_limits<float>::min();
         float min_y = std::numeric_limits<float>::max();
 
+        // Find closest point on the table
         for(size_t i=0; i < table_cloud->points.size(); ++i) {
+            if (table_cloud->points[i].z > max_z) {
+                max_z = table_cloud->points[i].z;
+            }
+            if (table_cloud->points[i].z < min_z) {
+                min_z = table_cloud->points[i].z;
+            }
+
             if (table_cloud->points[i].y > max_y) {
                 max_y = table_cloud->points[i].y;
             }
@@ -70,38 +73,85 @@ namespace point_cloud_filtering {
 
         }
 
-        //------ Crop the point cloud used to get all objects above the surface -------
-        Eigen::Vector4f min_crop_pt(-0.2, 0.0, 0, 1);
-        Eigen::Vector4f max_crop_pt(0.2, max_y, 2, 1);
 
-        PointCloudC::Ptr final_cloud(new PointCloudC());
-        CropCloud(no_surface_cloud, final_cloud, min_pt, max_pt);
+
+//        // Remove the door
+//        PointCloudC::Ptr no_surface_cloud(new PointCloudC());
+//        RemoveSurface(first_cropped_cloud, no_surface_cloud, inliers);
+//
+//        // At this point the object cloud may have anything below the table still in.
+//        // The y axis points towards the floor so need to crop anything above max y value in the table inliers.
+//
+//        float max_y = std::numeric_limits<float>::min();
+//        float min_y = std::numeric_limits<float>::max();
+//
+//        for(size_t i=0; i < table_cloud->points.size(); ++i) {
+//            if (table_cloud->points[i].y > max_y) {
+//                max_y = table_cloud->points[i].y;
+//            }
+//            if (table_cloud->points[i].y < min_y) {
+//                min_y = table_cloud->points[i].y;
+//            }
+//
+//        }
+
+//        //------ Crop the point cloud used to get all objects above the surface -------
+//        Eigen::Vector4f min_crop_pt(-0.2, 0.0, 0, 1);
+//        Eigen::Vector4f max_crop_pt(0.2, max_y, 2, 1);
+//
+//        PointCloudC::Ptr p_obstacles(new PointCloudC());
+//        CropCloud(no_surface_cloud, p_obstacles, min_pt, max_pt);
 
         // Publish the object point cloud
         if (not inliers->indices.empty ()) {
             sensor_msgs::PointCloud2 msg_cloud_out;
-            pcl::toROSMsg(*final_cloud, msg_cloud_out);
+            pcl::toROSMsg(*table_cloud, msg_cloud_out);
             goal_pub_.publish(msg_cloud_out);
         }
 
-        // TO DO: This need to eliminate all points on the surface where there is an x,y coordinate in the object point cloud.
-        pcl::PointIndices::Ptr surface_inliers_to_remove (new pcl::PointIndices());
-        pcl::ExtractIndices<PointC> point_extracter;
+        //  If we find a place on the table to put the object
 
-        for (int i = 0; i < (*p_obstacles).size(); i++)
-        {
-            pcl::PointXYZ pt(p_obstacles->points[i].x, p_obstacles->points[i].y, p_obstacles->points[i].z);
-            float zAvg = 0.5f;
-            if (abs(pt.z - zAvg) < THRESHOLD) // e.g. remove all pts below zAvg
-            {
-                inliers->indices.push_back(i);
-            }
-        }
-        extract.setInputCloud(p_obstacles);
-        extract.setIndices(inliers);
-        extract.setNegative(true);
-        extract.filter(*p_obstacles);
+        SurfacePlacement::good_detection_ = true;
+        SurfacePlacement::x_ = 0;
+        SurfacePlacement::y_ = min_y;
+        SurfacePlacement::z_ = min_z; // Need to use head angle to modify this
+        std::cout << "Criteria matched!" << std::endl;
 
+//        // TO DO: This need to eliminate all points on the surface where there is an x,y coordinate in the object point cloud.
+//        pcl::PointIndices::Ptr surface_inliers_to_remove (new pcl::PointIndices());
+//        pcl::ExtractIndices<PointC> point_extracter;
+//
+//        for (int i = 0; i < (*p_obstacles).size(); i++)
+//        {
+//            pcl::PointXYZ pt(p_obstacles->points[i].x, p_obstacles->points[i].y, p_obstacles->points[i].z);
+//            float zAvg = 0.5f;
+//            if (abs(pt.z - zAvg) < THRESHOLD) // e.g. remove all pts below zAvg
+//            {
+//                inliers->indices.push_back(i);
+//            }
+//        }
+//        extract.setInputCloud(p_obstacles);
+//        extract.setIndices(inliers);
+//        extract.setNegative(true);
+//        extract.filter(*p_obstacles);
+//
+//    }
+
+
+    bool SurfacePlacement::CheckDetection() {
+        return SurfacePlacement::good_detection_;
+    }
+
+    double SurfacePlacement::GetX(){
+        return SurfacePlacement::x_;
+    }
+
+    double SurfacePlacement::GetY(){
+        return SurfacePlacement::y_;
+    }
+
+    double SurfacePlacement::GetZ(){
+        return SurfacePlacement::z_;
     }
 
     void SegmentTable(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices, Eigen::Vector3f axis) {

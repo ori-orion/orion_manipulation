@@ -50,16 +50,16 @@ class PlaceObjectRelativeAction(object):
         try:
             self.whole_body.collision_world = self.collision_world
 
-            rospy.loginfo('%s: Placing gripper close to floor in front' % (self._action_name))
+            rospy.loginfo('%s: Placing gripper close to floor in front' % self._action_name)
             self.whole_body.move_end_effector_pose(pose, object_tf)
 
-            rospy.loginfo('%s: Opening gripper.' % (self._action_name))
+            rospy.loginfo('%s: Opening gripper.' % self._action_name)
             self.gripper.command(1.2)
 
         except Exception as e:
             rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
             self.whole_body.collision_world = None
-            rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
+            rospy.loginfo('%s: Returning to neutral pose.' % self._action_name)
             self.whole_body.move_to_neutral()
             self._as.set_aborted()
 

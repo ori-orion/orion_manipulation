@@ -8,6 +8,10 @@
 #include "point_cloud_filtering/DetectHandle.h"
 #include <ros/callback_queue.h>
 
+#include <ctime>
+#include <iostream>
+#include <cstdio>
+
 bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
                    point_cloud_filtering::DetectHandle::Response &res){
 
@@ -36,9 +40,15 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
 
     // Until we get a good validated detection of the handle keep looping
     // Need to insert a timer here using argument from high level
-    while (not handle_centroid.CheckDetection())
+
+    std::clock_t start;
+    double duration = 0;
+    start = std::clock();
+
+    while (not handle_centroid.CheckDetection() and duration < 10 )
     {
         ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
+        duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
     }
 
     res.x = handle_centroid.GetX();

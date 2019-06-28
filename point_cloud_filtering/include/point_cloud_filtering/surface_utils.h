@@ -31,12 +31,16 @@ namespace point_cloud_filtering {
         SurfacePlacement(const ros::Publisher& goal_pub);
         void Callback(const sensor_msgs::PointCloud2& msg);
         void GetHeadAngle(const sensor_msgs::JointState& msg) ;
-
+        bool CheckDetection();
+        double GetX();
+        double GetY();
+        double GetZ();
     private:
         ros::Publisher goal_pub_;
         double head_angle;
+        bool good_detection_ ;
+        double x_, y_, z_;
     };
-
 
     void SegmentSurface(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices, Eigen::Vector3f axis);
 
