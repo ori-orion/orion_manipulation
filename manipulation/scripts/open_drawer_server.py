@@ -112,7 +112,7 @@ class OpenDrawerAction(object):
             rospy.loginfo('%s: Grasping handle...' % (self._action_name))
             rospy.sleep(1)
             handle_goal_pose = self.get_goal_pose(relative=geometry.pose(x=handle_poses.x[0], y=handle_poses.y[0],
-                                                                         z=handle_poses.z[0]), offset=-0.15)
+                                                                         z=handle_poses.z[0]), offset=-0.20)
 
             # self.whole_body.move_end_effector_pose(geometry.pose(x=handle_poses.x[0], y=handle_poses.y[0],  z=handle_poses.z[0]), 'head_rgbd_sensor_rgb_frame')
             self.whole_body.linear_weight = 80
