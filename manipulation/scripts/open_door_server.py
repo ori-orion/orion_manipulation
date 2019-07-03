@@ -80,7 +80,7 @@ class OpenDoorAction(object):
         rospy.loginfo('%s: Grasping handle...' % (self._action_name))
         self.tts.say("Door handle found. Moving to grasp.")
         rospy.sleep(1)
-        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.05), 'head_rgbd_sensor_rgb_frame')
+        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y+0.03,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
 
         # Determine if door hinge is on left or right
         if handle_pose.x > 0:
