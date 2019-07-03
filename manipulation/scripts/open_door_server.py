@@ -41,7 +41,7 @@ class OpenDoorAction(object):
         self.omni_base = self.robot.try_get('omni_base')
         self.gripper = self.robot.try_get('gripper')
         self._HAND_TF = 'hand_palm_link'
-        self._GRASP_FORCE = 0.4
+        self._GRASP_FORCE = 1.0
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
@@ -62,7 +62,7 @@ class OpenDoorAction(object):
         return response
 
     def pull_down_handle(self):
-        self.whole_body.move_end_effector_pose(geometry.pose(y=-0.04), 'hand_palm_link')
+        self.whole_body.move_end_effector_pose(geometry.pose(y=-0.06), 'hand_palm_link')
         return True
 
     def execute_cb(self, goal_msg):
