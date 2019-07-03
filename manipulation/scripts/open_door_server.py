@@ -41,7 +41,7 @@ class OpenDoorAction(object):
         self.omni_base = self.robot.try_get('omni_base')
         self.gripper = self.robot.try_get('gripper')
         self._HAND_TF = 'hand_palm_link'
-        self._GRASP_FORCE = 1.0
+        self._GRASP_FORCE = 2.0
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
@@ -80,7 +80,8 @@ class OpenDoorAction(object):
         rospy.loginfo('%s: Grasping handle...' % (self._action_name))
         self.tts.say("Door handle found. Moving to grasp.")
         rospy.sleep(1)
-        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y - 0.03,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
+        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
+        self.whole_body.move_end_effector_pose(geometry.pose(x=-0.04), 'hand_palm_link')
 
         # Determine if door hinge is on left or right
         if handle_pose.x > 0:
@@ -94,8 +95,8 @@ class OpenDoorAction(object):
             rospy.loginfo("%s: Couldn't move forward..." % (self._action_name))
             pass
 
-        # self.gripper.apply_force(self._GRASP_FORCE)
-        self.gripper.set_distance(0.02)
+        self.gripper.apply_force(self._GRASP_FORCE)
+        # self.gripper.set_distance(0.02)
         rospy.sleep(2)
 
         rospy.loginfo('%s: Executing opening motion...' % (self._action_name))
