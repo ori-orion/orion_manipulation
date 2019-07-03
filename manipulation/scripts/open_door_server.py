@@ -42,6 +42,7 @@ class OpenDoorAction(object):
         self.gripper = self.robot.try_get('gripper')
         self._HAND_TF = 'hand_palm_link'
         self._GRASP_FORCE = 2.0
+
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
@@ -51,11 +52,11 @@ class OpenDoorAction(object):
         rospy.loginfo('%s: Initialised. Ready for clients.' % (self._action_name))
 
     def get_handle_pose(self):
+        # This service has a timeout of 10s
         rospy.wait_for_service('/handle_detection')
         try:
             detect_handle_service = rospy.ServiceProxy('/handle_detection', DetectHandle)
             response = detect_handle_service(True)
-            #print "tmc_reconstruction started."
         except rospy.ServiceException, e:
             print "Service call failed: %s" % e
 
@@ -77,9 +78,20 @@ class OpenDoorAction(object):
         self.tts.say("I'm now looking for the door handle")
         handle_pose = self.get_handle_pose()
 
+        if handle_pose.handle_detected == False:
+            rospy.loginfo('%s: Could not find door handle. Handle detection timed out.' % self._action_name)
+            self._as.set_aborted()
+
+        if self._as.is_preempt_requested():
+            rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+            self.whole_body.move_to_go()
+            self._as.set_preempted()
+            return
+
         rospy.loginfo('%s: Grasping handle...' % (self._action_name))
         self.tts.say("Door handle found. Moving to grasp.")
         rospy.sleep(1)
+        
         self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
         self.whole_body.move_end_effector_pose(geometry.pose(x=-0.06), 'hand_palm_link')
 

@@ -8,6 +8,10 @@
 #include "point_cloud_filtering/DetectHandle.h"
 #include <ros/callback_queue.h>
 
+#include <ctime>
+#include <iostream>
+#include <cstdio>
+
 bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
                    point_cloud_filtering::DetectHandle::Response &res){
 
@@ -25,9 +29,6 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
     point_cloud_filtering::HandleCropper handle_cropper(handle_pub, door_pub);
     point_cloud_filtering::HandleCentroid handle_centroid(br);
 
-//    std::cout<< "This does repeat" << std::endl;
-
-
     ros::Subscriber sub_handle =
             nh.subscribe("cloud_in", 1, &point_cloud_filtering::HandleCropper::Callback,  &handle_cropper);
 
@@ -36,16 +37,35 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
 
     // Until we get a good validated detection of the handle keep looping
     // Need to insert a timer here using argument from high level
-    while (not handle_centroid.CheckDetection())
+
+    std::clock_t start;
+    double duration = 0;
+    start = std::clock();
+
+    while ((not handle_centroid.CheckDetection()) and duration < 10)
     {
         ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
+        duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
     }
 
-    res.x = handle_centroid.GetX();
-    res.y = handle_centroid.GetY();
-    res.z = handle_centroid.GetZ();
+    if (not handle_centroid.CheckDetection()){
+        res.x = 0;
+        res.y = 0;
+        res.z = 0;
+        handle_detected = false;
+        return false;
+    }
+    else {
+        res.x = handle_centroid.GetX();
+        res.y = handle_centroid.GetY();
+        res.z = handle_centroid.GetZ();
+        handle_detected = true;
+        return true;
+    }
 
-    return true;
+
+
+
 }
 
 int main(int argc, char** argv) {
