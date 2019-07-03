@@ -62,6 +62,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
    FILES
    DetectHandle.srv
+   DetectBinHandle.srv
    DetectDrawerHandles.srv
    SegmentObject.srv
    GetSurfaceGoal.srv
