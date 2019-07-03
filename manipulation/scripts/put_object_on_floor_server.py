@@ -56,7 +56,8 @@ class PutObjectOnFloorAction(object):
             self.whole_body.linear_weight = 100
             self.whole_body.move_to_neutral()
             rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(x=-0.2, y=0, z=0.3), 'hand_palm_link')
+            # self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
 
             rospy.sleep(1)
             rospy.loginfo('%s: Opening gripper.' % (self._action_name))
