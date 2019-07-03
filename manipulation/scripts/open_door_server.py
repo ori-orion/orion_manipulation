@@ -95,7 +95,7 @@ class OpenDoorAction(object):
             pass
 
         # self.gripper.apply_force(self._GRASP_FORCE)
-        self.gripper.set_distance(0.1)
+        self.gripper.set_distance(0.02)
         rospy.sleep(2)
 
         rospy.loginfo('%s: Executing opening motion...' % (self._action_name))
