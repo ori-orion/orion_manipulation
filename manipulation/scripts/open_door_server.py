@@ -90,7 +90,7 @@ class OpenDoorAction(object):
             hinge_sign = -1 # hinge on right
 
         try:
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0.05), 'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.065), 'hand_palm_link')
         except:
             rospy.loginfo("%s: Couldn't move forward..." % (self._action_name))
             pass
