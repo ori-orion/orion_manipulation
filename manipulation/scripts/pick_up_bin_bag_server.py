@@ -59,8 +59,9 @@ class PickUpBinBagAction(object):
             self.whole_body.linear_weight = 100
 
             rospy.loginfo('%s: Moving end effector above bin.' % self._action_name)
+            
             # Move grasper over the object to pick up
-            self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=0.7,ei=math.pi),'base_footprint')
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=1.0,ei=math.pi),'base_footprint')
          
             # Move grasper down
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
@@ -69,7 +70,7 @@ class PickUpBinBagAction(object):
             self.tts.say("Grasping the bin bag.")
             rospy.sleep(1)
             rospy.loginfo('%s: Closing gripper.' % self._action_name)
-            self.gripper.set_distance(0)
+            self.gripper.apply_force(2.0)
             
             # Move to bin bag and close gripper
             rospy.loginfo('%s: Lifting bin bag up.' % self._action_name)
