@@ -41,7 +41,8 @@ class OpenDoorAction(object):
         self.omni_base = self.robot.try_get('omni_base')
         self.gripper = self.robot.try_get('gripper')
         self._HAND_TF = 'hand_palm_link'
-        self._GRASP_FORCE = 0.8
+        self._GRASP_FORCE = 2.0
+
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
@@ -90,8 +91,11 @@ class OpenDoorAction(object):
         rospy.loginfo('%s: Grasping handle...' % (self._action_name))
         self.tts.say("Door handle found. Moving to grasp.")
         rospy.sleep(1)
-        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y+0.03,  z=handle_pose.z-0.8), 'head_rgbd_sensor_rgb_frame')
+        
+        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
+        self.whole_body.move_end_effector_pose(geometry.pose(x=-0.06), 'hand_palm_link')
 
+        self.gripper.set_distance
         # Determine if door hinge is on left or right
         if handle_pose.x > 0:
             hinge_sign = 1 # hinge on left
@@ -99,12 +103,13 @@ class OpenDoorAction(object):
             hinge_sign = -1 # hinge on right
 
         try:
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0.02), 'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.05), 'hand_palm_link')
         except:
             rospy.loginfo("%s: Couldn't move forward..." % (self._action_name))
             pass
 
         self.gripper.apply_force(self._GRASP_FORCE)
+        # self.gripper.set_distance(0.02)
         rospy.sleep(2)
 
         rospy.loginfo('%s: Executing opening motion...' % (self._action_name))
@@ -112,7 +117,7 @@ class OpenDoorAction(object):
         rospy.sleep(1)
 
         try:
-            self.whole_body.move_end_effector_pose(geometry.pose(y=0.025), 'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(y=0.06), 'hand_palm_link')
             rospy.loginfo('%s: Successfully pulled handle down...' % (self._action_name))
         except:
             rospy.loginfo('%s: Failed to move to the side...' % (self._action_name))
