@@ -91,7 +91,7 @@ class PickUpBinBagAction(object):
 
         except Exception as e:
             rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
-            self.tts.say("I encountered a problem. Returning to go position and aborting pour.")
+            self.tts.say("I encountered a problem. Returning to go position.")
             rospy.sleep(2)
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
             self.whole_body.move_to_go()
