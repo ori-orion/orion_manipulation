@@ -35,10 +35,6 @@ class PickUpBinBagAction(object):
 
         self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
 
-        # Constants for operation
-        self.pickup_pose = geometry.pose(y=-0.20, z=-0.05, ek=-1.57);
-
-
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def execute_cb(self, goal_msg):
@@ -55,30 +51,36 @@ class PickUpBinBagAction(object):
 
             self.tts.say("I will pick up this bin bag.")
             rospy.sleep(1)
-
+    
+            rospy.loginfo('%s: Moving to go position.' % self._action_name)
             self.whole_body.move_to_go()
             rospy.sleep(1)
 
             self.whole_body.linear_weight = 100
 
+            rospy.loginfo('%s: Moving end effector above bin.' % self._action_name)
             # Move grasper over the object to pick up
             self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=0.7,ei=math.pi),'base_footprint')
          
             # Move grasper down
+            rospy.loginfo('%s: Lowering gripper.' % self._action_name)
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.4),'hand_palm_link')   
             
             self.tts.say("Grasping the bin bag.")
             rospy.sleep(1)
-
+            rospy.loginfo('%s: Closing gripper.' % self._action_name)
             self.gripper.set_distance(0)
+            
             # Move to bin bag and close gripper
+            rospy.loginfo('%s: Lifting bin bag up.' % self._action_name)
             self.tts.say("Lifting bin bag.")
             rospy.sleep(1)
-
             self.whole_body.move_end_effector_pose(geometry.pose(z=-0.4),'hand_palm_link') 
             
-            # Return to "go" pose - TODO make sure collision map is enabled
+            # Return to "go" pose 
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
+            self.tts.say("Returning to go position.")
+            rospy.sleep(1)
             self.whole_body.move_to_go()
 
             self.whole_body.linear_weight = 50
