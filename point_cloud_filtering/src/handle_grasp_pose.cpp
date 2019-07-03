@@ -52,14 +52,14 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
         res.x = 0;
         res.y = 0;
         res.z = 0;
-        handle_detected = false;
+        res.handle_detected = false;
         return false;
     }
     else {
         res.x = handle_centroid.GetX();
         res.y = handle_centroid.GetY();
         res.z = handle_centroid.GetZ();
-        handle_detected = true;
+        res.handle_detected = true;
         return true;
     }
 
