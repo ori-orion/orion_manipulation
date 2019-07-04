@@ -141,46 +141,91 @@ class PickUpBinBagAction(object):
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def pick_up_bin_lid(self):
-        self.omni_base.go_rel(0, -0.20, 0)
-        self.omni_base.go_rel(0.25, 0, 0)
+        self.omni_base.go_rel(0, -0.07, 0)
+        self.omni_base.go_rel(0.35, 0, 0)
 
-        rospy.loginfo('%s: Opening gripper.' % self._action_name)
-        self.gripper.set_distance(1.0)
+        self.tried_bin_lid = True
 
         try:
-            # Move gripper above bin
-            self.move_above_bin()
+            grasp_success_bool = False
+
+            # Start the force sensor capture
+            force_sensor_capture = ForceSensorCapture()
+
+            rospy.loginfo('%s: Opening gripper.' % self._action_name)
+            self.gripper.set_distance(1.0)
+
+            try:
+                # Move gripper above bin
+                self.move_above_bin()
+            except:
+                # Move gripper above bin
+                rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
+                self.move_above_bin()
+
+
+            # Move grasper down
+            rospy.loginfo('%s: Lowering gripper.' % self._action_name)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
+            height_above_object = 0.235
+
+            # Get initial data of force sensor
+            pre_grasp_force_list = force_sensor_capture.get_current_force()
+
+            for i in range(3):
+                x_to_move, y_to_move, theta = analyse_hand_image(self.hand_cam_topic, height_above_object)
+                theta_rad = theta * math.pi / 180.0
+                rospy.loginfo('{0}: Need to rotate "{1:.2f}" degrees.'.format(self._action_name, theta))
+                self.tts.say('I will rotate "{1:.2f}" degrees.'.format(theta))
+
+                self.whole_body.move_end_effector_pose(geometry.pose(x=x_to_move), 'hand_palm_link')
+                rospy.sleep(1)
+                self.whole_body.move_end_effector_pose(geometry.pose(y=y_to_move), 'hand_palm_link')
+                rospy.sleep(1)
+                self.whole_body.move_end_effector_pose(geometry.pose(ek=-theta_rad), 'hand_palm_link')
+                rospy.sleep(1)
+
+                self.whole_body.move_end_effector_pose(geometry.pose(z=height_above_object-0.08),'hand_palm_link')
+
+                self.tts.say("Grasping the bin bag.")
+                rospy.sleep(1)
+                rospy.loginfo('%s: Closing gripper.' % self._action_name)
+                self.gripper.apply_force(2.0)
+
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-height_above_object+0.08),'hand_palm_link')
+
+            post_grasp__force_list = force_sensor_capture.get_current_force()
+
+            # Get the weight of the object and convert newtons to grams
+            force_difference = compute_difference(pre_grasp_force_list, post_grasp__force_list)
+            weight = math.floor(force_difference / 9.81 * 1000)
+
+            print "The weight is " + str(weight) + 'grams.'
+            rospy.loginfo('{0}: The weight in grams is {1}.'.format(self._action_name, str(weight)))
+            self.tts.say('{0}: I can feel a weight of {1} grams.'.format(self._action_name, str(weight)))
+            rospy.sleep(3)
+
+            if weight > 100:
+                rospy.loginfo('%s: Handle grasped successfully.' % self._action_name)
+                self.tts.say("Handle grasped successfully.")
+                rospy.sleep(1)
+                self.omni_base.go_rel(0, 0, -math.pi/8)
+                rospy.loginfo('%s: Opening gripper.' % self._action_name)
+                self.gripper.set_distance(1.0)
+                self.omni_base.go_rel(0, 0, math.pi/8)
+                grasp_success_bool = True
+            else:
+                rospy.loginfo('%s: Failed to grasp handle.' % self._action_name)
+                self.tts.say("Failed to grasp handle.")
+                rospy.sleep(1)
+
         except:
-            # Move gripper above bin
-            rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
-            self.move_above_bin()
+            return False
 
-        # Move grasper down
-        rospy.loginfo('%s: Lowering gripper.' % self._action_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
-        height_above_object = 0.235
 
-        for i in range(3):
-            x_to_move, y_to_move, theta = analyse_hand_image(self.hand_cam_topic, height_above_object)
-            theta_rad = theta * math.pi / 180.0
-            rospy.loginfo('{0}: Need to rotate "{1:.2f}" degrees.'.format(self._action_name, theta))
-            self.tts.say('I will rotate "{1:.2f}" degrees.'.format(theta))
-
-            self.whole_body.move_end_effector_pose(geometry.pose(x=x_to_move), 'hand_palm_link')
-            rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(y=y_to_move), 'hand_palm_link')
-            rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(ek=-theta_rad), 'hand_palm_link')
-            rospy.sleep(1)
-
-            self.whole_body.move_end_effector_pose(geometry.pose(z=height_above_object-0.08),'hand_palm_link')
-
-            self.tts.say("Grasping the bin bag.")
-            rospy.sleep(1)
-            rospy.loginfo('%s: Closing gripper.' % self._action_name)
-            self.gripper.apply_force(2.0)
 
     def move_above_bin(self):
+
             self.tts.say("I will pick up this bin bag.")
             rospy.sleep(1)
 
@@ -208,22 +253,27 @@ class PickUpBinBagAction(object):
         _result = PickUpBinBagResult()
         _result.result = False
 
+        removed_bin_lid_bool = False
+
         # Start the force sensor capture
         force_sensor_capture = ForceSensorCapture()
 
+        # removed_bin_lid_bool = self.pick_up_bin_lid()
+
         try:
 
-            try:
-                # Move gripper above bin
-                self.move_above_bin()
-            except:
-                # Move gripper above bin
-                rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
-                self.move_above_bin()
+            if not removed_bin_lid_bool:
+                try:
+                    # Move gripper above bin
+                    self.move_above_bin()
+                except:
+                    # Move gripper above bin
+                    rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
+                    self.move_above_bin()
 
             if self.tried_bin_lid == False:
-                self.omni_base.go_rel(0, -0.20, 0)
-                self.omni_base.go_rel(0.25, 0, 0)
+                self.omni_base.go_rel(0, -0.07, 0)
+                self.omni_base.go_rel(0.35, 0, 0)
 
             # if self.counter < 0:
             #     try:
@@ -271,7 +321,7 @@ class PickUpBinBagAction(object):
                 return
 
             # Return to "neutral" pose
-            rospy.loginfo('%s: Returning to neural pose.' % (self._action_name))
+            rospy.loginfo('%s: Returning to neutral pose.' % (self._action_name))
             self.tts.say("Returning to neutral position.")
             rospy.sleep(1)
             self.whole_body.move_to_neutral()
@@ -288,7 +338,7 @@ class PickUpBinBagAction(object):
             self.tts.say("Succeeded in pick up.")
             self.counter+=1
             self.tried_bin_lid = False
-
+            
             rospy.sleep(1)
             _result.result = True
             self._as.set_succeeded(_result)
