@@ -69,6 +69,7 @@ class PickUpBinBagAction(object):
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
+        self.omni_base = self.robot.try_get('omni_base')
         self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.tts = self.robot.try_get('default_tts')
@@ -109,13 +110,19 @@ class PickUpBinBagAction(object):
         force_sensor_capture = ForceSensorCapture()
 
         try:
+            self.omni_base.go_rel(0, 0.7, 0)
+            self.omni_base.go_rel(0.1, 0, 0)
+        except:
+            pass
+
+        try:
 
             try:
                 # Move gripper above bin
                 self.move_above_bin()
             except:
                 # Move gripper above bin
-                rospy.loginfo('%s: LEncountered an error. Trying again.' % self._action_name)
+                rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
                 self.move_above_bin()
 
             # Get initial data of force sensor
@@ -123,7 +130,7 @@ class PickUpBinBagAction(object):
 
             # Move grasper down
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0.55),'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.60),'hand_palm_link')
             
             self.tts.say("Grasping the bin bag.")
             rospy.sleep(1)
@@ -134,7 +141,7 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Lifting bin bag up.' % self._action_name)
             self.tts.say("Lifting bin bag.")
             rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.55),'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.60),'hand_palm_link')
 
             post_grasp__force_list = force_sensor_capture.get_current_force()
 
@@ -156,7 +163,7 @@ class PickUpBinBagAction(object):
                 self._as.set_aborted()
                 return
 
-            # Return to "go" pose 
+            # Return to "neutral" pose
             rospy.loginfo('%s: Returning to neural pose.' % (self._action_name))
             self.tts.say("Returning to neutral position.")
             rospy.sleep(1)
@@ -166,7 +173,7 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Moving bin higher to avoid the laser.' % (self._action_name))
             self.tts.say("Moving bin higher to avoid the laser.")
             rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(x=0.2),'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0.5),'hand_palm_link')
 
             self.whole_body.linear_weight = 3
 
