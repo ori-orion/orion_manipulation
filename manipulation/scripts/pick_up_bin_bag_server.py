@@ -178,8 +178,8 @@ class PickUpBinBagAction(object):
             for i in range(3):
                 x_to_move, y_to_move, theta = analyse_hand_image(self.hand_cam_topic, height_above_object)
                 theta_rad = theta * math.pi / 180.0
-                rospy.loginfo('{0}: Need to rotate "{1:.2f}" degrees.'.format(self._action_name, theta))
-                self.tts.say('I will rotate "{1:.2f}" degrees.'.format(theta))
+                rospy.loginfo('{0}: Need to rotate "{:.2f}" degrees.'.format(self._action_name, theta))
+                self.tts.say('I will rotate "{:.2f}" degrees.'.format(theta))
 
                 self.whole_body.move_end_effector_pose(geometry.pose(x=x_to_move), 'hand_palm_link')
                 rospy.sleep(1)
@@ -308,7 +308,7 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
             self.omni_base.go_rel(0.05, 0, 0)
-            self.whole_body.move_to_joint_positions({'wrist_flex_joint': -0.8})
+            self.whole_body.move_to_joint_positions({'wrist_flex_joint': -1.0})
             self.whole_body.move_to_joint_positions({'arm_flex_joint': -2.0})
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.10),'hand_palm_link')
 
