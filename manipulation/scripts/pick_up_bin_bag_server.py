@@ -135,7 +135,7 @@ class PickUpBinBagAction(object):
             weight = math.floor(force_difference / 9.81 * 1000)
 
             print "The weight is " + str(weight) + 'grams.'
-            rospy.loginfo('{0}: The weight is {1} grams.'.format(self._action_name, str(weight)))
+            rospy.loginfo('{0}: The weight in grams is {1}.'.format(self._action_name, str(weight)))
             self.tts.say('{0}: I can feel a weight of {1} grams.'.format(self._action_name, str(weight)))
             rospy.sleep(3)
 
@@ -149,8 +149,8 @@ class PickUpBinBagAction(object):
                 return
 
             # Return to "go" pose 
-            rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
-            self.tts.say("Returning to go position.")
+            rospy.loginfo('%s: Returning to neural pose.' % (self._action_name))
+            self.tts.say("Returning to neutral position.")
             rospy.sleep(1)
             self.whole_body.move_to_neutral()
 
