@@ -360,7 +360,7 @@ class PickUpBinBagAction(object):
             self.tts.say("Moving bin higher to avoid the laser.")
             rospy.sleep(1)
             self.whole_body.move_end_effector_pose(geometry.pose(x=0.5),'hand_palm_link')
-            self.whole_body.move_to_joint_positions({'arm_flex_joint': -0.5})
+            self.whole_body.move_to_joint_positions({'arm_flex_joint': -0.15})
 
             self.whole_body.linear_weight = 3
 
