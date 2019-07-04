@@ -97,6 +97,9 @@ class PickUpBinBagAction(object):
             except:
                 pass
 
+            rospy.loginfo('%s: Opening gripper.' % self._action_name)
+            self.gripper.set_distance(1.0)
+
             rospy.loginfo('%s: Changing linear weight.' % self._action_name)
             self.whole_body.linear_weight = 100
 
@@ -134,7 +137,7 @@ class PickUpBinBagAction(object):
             print "The weight is " + str(weight) + 'grams.'
             rospy.loginfo('{0}: The weight is {1} grams.'.format(self._action_name, str(weight)))
             self.tts.say('{0}: I can feel a weight of {1} grams.'.format(self._action_name, str(weight)))
-            rospy.sleep(1)
+            rospy.sleep(3)
 
             if weight < 300:
                 rospy.loginfo('{0}: No object picked up.'.format(self._action_name))
@@ -155,7 +158,7 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Moving bin higher to avoid the laser.' % (self._action_name))
             self.tts.say("Moving bin higher to avoid the laser.")
             rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(x=-0.2),'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0.2),'hand_palm_link')
 
             self.whole_body.linear_weight = 3
 
