@@ -78,6 +78,28 @@ class PickUpBinBagAction(object):
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
+    def move_above_bin(self):
+        self.tts.say("I will pick up this bin bag.")
+        rospy.sleep(1)
+
+        rospy.loginfo('%s: Moving to go position.' % self._action_name)
+        try:
+            self.whole_body.move_to_go()
+        except:
+            pass
+
+        rospy.loginfo('%s: Opening gripper.' % self._action_name)
+        self.gripper.set_distance(1.0)
+
+        rospy.loginfo('%s: Changing linear weight.' % self._action_name)
+        self.whole_body.linear_weight = 100
+
+        rospy.loginfo('%s: Moving end effector above bin.' % self._action_name)
+        self.tts.say("Moving end effector above bin.")
+        rospy.sleep(1)
+        # Move grasper over the object to pick up
+        self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=1.0,ei=math.pi),'base_footprint')
+
     def execute_cb(self, goal_msg):
         # Messages for feedback / results
         _result = PickUpBinBagResult()
@@ -88,30 +110,16 @@ class PickUpBinBagAction(object):
 
         try:
 
-            self.tts.say("I will pick up this bin bag.")
-            rospy.sleep(1)
-    
-            rospy.loginfo('%s: Moving to go position.' % self._action_name)
             try:
-                self.whole_body.move_to_go()
+                # Move gripper above bin
+                self.move_above_bin()
             except:
-                pass
-
-            rospy.loginfo('%s: Opening gripper.' % self._action_name)
-            self.gripper.set_distance(1.0)
-
-            rospy.loginfo('%s: Changing linear weight.' % self._action_name)
-            self.whole_body.linear_weight = 100
-
-            rospy.loginfo('%s: Moving end effector above bin.' % self._action_name)
-            self.tts.say("Moving end effector above bin.")
-            rospy.sleep(1)
-            # Move grasper over the object to pick up
-            self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=1.0,ei=math.pi),'base_footprint')
+                # Move gripper above bin
+                rospy.loginfo('%s: LEncountered an error. Trying again.' % self._action_name)
+                self.move_above_bin()
 
             # Get initial data of force sensor
             pre_grasp_force_list = force_sensor_capture.get_current_force()
-
 
             # Move grasper down
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
@@ -139,7 +147,7 @@ class PickUpBinBagAction(object):
             self.tts.say('{0}: I can feel a weight of {1} grams.'.format(self._action_name, str(weight)))
             rospy.sleep(3)
 
-            if weight < 300:
+            if weight < 100:
                 rospy.loginfo('{0}: No object picked up.'.format(self._action_name))
                 self.tts.say("Grasp unsuccessful. Returning to go.")
                 rospy.sleep(1)
@@ -163,6 +171,8 @@ class PickUpBinBagAction(object):
             self.whole_body.linear_weight = 3
 
             rospy.loginfo('%s: Succeeded' % self._action_name)
+            self.tts.say("Succeeded in pick up.")
+            rospy.sleep(1)
             _result.result = True
             self._as.set_succeeded(_result)
 
