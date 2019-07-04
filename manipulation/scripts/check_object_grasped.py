@@ -71,7 +71,7 @@ def main():
     # Get the weight of the object and convert newtons to grams
     force_difference = compute_difference(pre_grasp_force_list, post_grasp__force_list)
     weight = math.round(force_difference / 9.81 * 1000, 1)
-
+    print "The weight is " + str(weight) + 'grams.'
     # Speak object weight in first decimal place
 
 if __name__ == '__main__':
