@@ -155,6 +155,9 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Opening gripper.' % self._action_name)
             self.gripper.set_distance(1.0)
 
+            self.tts.say("I will pick up the bin lid.")
+            rospy.sleep(1)
+
             try:
                 # Move gripper above bin
                 self.move_above_bin()
@@ -229,21 +232,18 @@ class PickUpBinBagAction(object):
                 grasp_success_bool = False
                 rospy.loginfo('%s: Encountered a problem.' % self._action_name)
                 self.tts.say("Encountered a problem. Please could you remove the bin lid for me.")
-                rospy.sleep(20)
+                rospy.sleep(10)
                 self.whole_body.move_to_neutral()
-        except:
-            rospy.loginfo('%s: Encountered a problem.' % self._action_name)
+        except Exception as e:
+            rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
             self.whole_body.move_to_neutral()
             self.tts.say("Encountered a problem. Please could you remove the bin lid for me.")
-            rospy.sleep(20)
+            rospy.sleep(10)
 
         return grasp_success_bool
 
 
     def move_above_bin(self):
-
-            self.tts.say("I will pick up this bin bag.")
-            rospy.sleep(1)
 
             rospy.loginfo('%s: Moving to go position.' % self._action_name)
             try:
@@ -276,6 +276,9 @@ class PickUpBinBagAction(object):
 
         removed_bin_lid_bool = self.pick_up_bin_lid()
 
+        self.tts.say("I will pick up this bin bag.")
+        rospy.sleep(1)
+
         try:
 
             if not removed_bin_lid_bool:
@@ -288,8 +291,8 @@ class PickUpBinBagAction(object):
                     self.move_above_bin()
 
             if self.tried_bin_lid == False:
-                self.omni_base.go_rel(0, -0.07, 0)
-                self.omni_base.go_rel(0.35, 0, 0)
+                self.omni_base.go_rel(0, -0.06, 0)
+                self.omni_base.go_rel(0.33, 0, 0)
 
             # if self.counter < 0:
             #     try:
@@ -298,16 +301,18 @@ class PickUpBinBagAction(object):
             #     except:
             #         pass
 
-            self.whole_body.move_to_joint_positions({'arm_flex_joint': -2.0})
 
-            # Get initial data of force sensor
-            pre_grasp_force_list = force_sensor_capture.get_current_force()
 
 
             # Move grasper down
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.60),'hand_palm_link')
-            
+
+            self.whole_body.move_to_joint_positions({'arm_flex_joint': -2.0})
+
+            # Get initial data of force sensor
+            pre_grasp_force_list = force_sensor_capture.get_current_force()
+
             self.tts.say("Grasping the bin bag.")
             rospy.sleep(1)
             rospy.loginfo('%s: Closing gripper.' % self._action_name)
