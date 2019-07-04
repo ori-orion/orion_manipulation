@@ -110,8 +110,8 @@ class PickUpBinBagAction(object):
         force_sensor_capture = ForceSensorCapture()
 
         try:
-            self.omni_base.go_rel(0, -0.07, 0)
-            self.omni_base.go_rel(0.1, 0, 0)
+            self.omni_base.go_rel(0, -0.15, 0)
+            self.omni_base.go_rel(0.17, 0, 0)
         except:
             pass
 
