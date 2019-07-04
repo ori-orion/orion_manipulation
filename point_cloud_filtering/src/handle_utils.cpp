@@ -35,7 +35,40 @@ namespace point_cloud_filtering {
         seg.segment(*points_within, *coefficients);
     }
 
-    void SegmentFurnitureInliers(PointCloudC::Ptr in_cloud,
+    void SegmentBinSurfaceInliers(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices) {
+
+        pcl::PointIndices indices_internal;
+        pcl::SACSegmentation<PointC> seg;
+        seg.setOptimizeCoefficients(true);
+
+        // Search for a plane perpendicular to some axis (specified below).
+        seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
+        seg.setMethodType(pcl::SAC_RANSAC);
+
+        // Set the distance to the plane for a point to be an inlier.
+        seg.setDistanceThreshold(0.03);
+        seg.setInputCloud(cloud);
+
+        // Make sure that the plane is perpendicular to X-axis, 35 degree tolerance.
+        Eigen::Vector3f axis;
+        axis << 0, 1, 0;
+        seg.setAxis(axis);
+        seg.setEpsAngle(pcl::deg2rad(35.0));
+
+        // coeff contains the coefficients of the plane:
+        // ax + by + cz + d = 0
+        pcl::ModelCoefficients coeff;
+        seg.segment(indices_internal, coeff);
+
+        *indices = indices_internal;
+
+        if (indices->indices.empty()) {
+        ROS_ERROR("Unable to find surface.");
+        }
+    }
+
+
+void SegmentFurnitureInliers(PointCloudC::Ptr in_cloud,
                             pcl::PointIndices::Ptr points_within,
                             pcl::ModelCoefficients::Ptr coefficients,
                             Eigen::Vector3f axis) {
