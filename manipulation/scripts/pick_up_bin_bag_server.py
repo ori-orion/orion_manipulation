@@ -309,6 +309,7 @@ class PickUpBinBagAction(object):
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
             self.omni_base.go_rel(0.05, 0, 0)
             self.whole_body.move_to_joint_positions({'arm_flex_joint': -2.0})
+            self.whole_body.move_to_joint_positions({'wrist_flex_joint': -1})
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.10),'hand_palm_link')
 
 
@@ -324,6 +325,7 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Lifting bin bag up.' % self._action_name)
             self.tts.say("Lifting bin bag.")
             rospy.sleep(1)
+            self.whole_body.move_to_joint_positions({'arm_flex_joint': -math.pi/2})
             self.whole_body.move_end_effector_pose(geometry.pose(z=-0.60),'hand_palm_link')
 
             post_grasp__force_list = force_sensor_capture.get_current_force()
