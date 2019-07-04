@@ -115,6 +115,7 @@ catkin_package(
   INCLUDE_DIRS include/
   LIBRARIES
         point_cloud_filtering_handle_segmentation
+        point_cloud_filtering_bin_handle_segmentation
         point_cloud_filtering_handle_utils
         point_cloud_filtering_object_segmentation
 # point_cloud_filtering_crop point_cloud_filtering_planes
@@ -140,6 +141,7 @@ include_directories(
 add_library(point_cloud_filtering_handle_segmentation src/handle_segmentation.cpp)
 add_library(point_cloud_filtering_handle_utils src/handle_utils.cpp)
 add_library(point_cloud_filtering_object_segmentation src/segment_object_utils.cpp)
+add_library(point_cloud_filtering_bin_handle_segmentation src/bin_handle_segmentation.cpp)
 #add_library(point_cloud_filtering_planes src/handle_grasp_pose.cpp)
 #add_library(point_cloud_filtering_crop src/crop.cpp)
 #add_library(point_cloud_filtering_planes src/planes.cpp)
@@ -156,6 +158,8 @@ add_library(point_cloud_filtering_object_segmentation src/segment_object_utils.c
 add_executable(point_cloud_filtering_handle_grasp_pose src/handle_grasp_pose.cpp)
 add_executable(point_cloud_filtering_drawer_handle_pose src/drawer_handle_pose.cpp)
 add_executable(point_cloud_filtering_segment_object  src/segment_object.cpp)
+add_executable(point_cloud_filtering_bin_handle_grasp_pose src/bin_handle_grasp_pose.cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -164,11 +168,14 @@ add_executable(point_cloud_filtering_segment_object  src/segment_object.cpp)
 set_target_properties(point_cloud_filtering_handle_grasp_pose PROPERTIES OUTPUT_NAME handle_grasp_pose PREFIX "")
 set_target_properties(point_cloud_filtering_drawer_handle_pose PROPERTIES OUTPUT_NAME drawer_handle_pose PREFIX "")
 set_target_properties(point_cloud_filtering_segment_object PROPERTIES OUTPUT_NAME segment_object PREFIX "")
+set_target_properties(point_cloud_filtering_bin_handle_grasp_pose PROPERTIES OUTPUT_NAME bin_handle_grasp_pose PREFIX "")
+
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(point_cloud_filtering_handle_grasp_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(point_cloud_filtering_bin_handle_grasp_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(point_cloud_filtering_drawer_handle_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(point_cloud_filtering_segment_object ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
@@ -179,6 +186,7 @@ add_dependencies(point_cloud_filtering_segment_object ${${PROJECT_NAME}_EXPORTED
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+target_link_libraries(point_cloud_filtering_bin_handle_segmentation ${catkin_LIBRARIES} point_cloud_filtering_handle_utils)
 target_link_libraries(point_cloud_filtering_handle_segmentation ${catkin_LIBRARIES} point_cloud_filtering_handle_utils)
 target_link_libraries(point_cloud_filtering_handle_utils ${catkin_LIBRARIES})
 target_link_libraries(point_cloud_filtering_object_segmentation ${catkin_LIBRARIES})
@@ -197,6 +205,12 @@ target_link_libraries(point_cloud_filtering_drawer_handle_pose
 
 target_link_libraries(point_cloud_filtering_segment_object
         point_cloud_filtering_object_segmentation
+        ${catkin_LIBRARIES}
+        )
+
+target_link_libraries(point_cloud_filtering_bin_handle_grasp_pose
+        point_cloud_filtering_handle_utils
+        point_cloud_filtering_bin_handle_segmentation
         ${catkin_LIBRARIES}
         )
 
