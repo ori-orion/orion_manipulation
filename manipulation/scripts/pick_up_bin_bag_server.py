@@ -29,7 +29,6 @@ class PickUpBinBagAction(object):
         self.whole_body = self.robot.try_get('whole_body')
         self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = 'hand_palm_link'
-        self.whole_body.looking_hand_constraint = True
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
@@ -53,13 +52,17 @@ class PickUpBinBagAction(object):
             rospy.sleep(1)
     
             rospy.loginfo('%s: Moving to go position.' % self._action_name)
-            self.whole_body.move_to_go()
-            rospy.sleep(1)
+            try:
+                self.whole_body.move_to_go()
+            except:
+                pass
 
+            rospy.loginfo('%s: Changing linear weight.' % self._action_name)
             self.whole_body.linear_weight = 100
 
             rospy.loginfo('%s: Moving end effector above bin.' % self._action_name)
-            
+            self.tts.say("Moving end effector above bin.")
+            rospy.sleep(1)
             # Move grasper over the object to pick up
             self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=1.0,ei=math.pi),'base_footprint')
          
