@@ -178,7 +178,7 @@ class PickUpBinBagAction(object):
             for i in range(3):
                 x_to_move, y_to_move, theta = analyse_hand_image(self.hand_cam_topic, height_above_object)
                 theta_rad = theta * math.pi / 180.0
-                rospy.loginfo('{0}: Need to rotate "{:.2f}" degrees.'.format(self._action_name, theta))
+                rospy.loginfo('{:}: Need to rotate "{:.2f}" degrees.'.format(self._action_name, theta))
                 self.tts.say('I will rotate "{:.2f}" degrees.'.format(theta))
 
                 self.whole_body.move_end_effector_pose(geometry.pose(x=x_to_move), 'hand_palm_link')
