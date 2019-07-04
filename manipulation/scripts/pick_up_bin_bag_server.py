@@ -77,6 +77,8 @@ class PickUpBinBagAction(object):
 
         self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
 
+        self.counter = 0
+
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def move_above_bin(self):
@@ -110,12 +112,6 @@ class PickUpBinBagAction(object):
         force_sensor_capture = ForceSensorCapture()
 
         try:
-            self.omni_base.go_rel(0, -0.15, 0)
-            self.omni_base.go_rel(0.17, 0, 0)
-        except:
-            pass
-
-        try:
 
             try:
                 # Move gripper above bin
@@ -124,6 +120,13 @@ class PickUpBinBagAction(object):
                 # Move gripper above bin
                 rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
                 self.move_above_bin()
+
+            if self.counter < 0:
+                try:
+                    self.omni_base.go_rel(0, -0.10, 0)
+                    self.omni_base.go_rel(0.25, 0, 0)
+                except:
+                    pass
 
             # Get initial data of force sensor
             pre_grasp_force_list = force_sensor_capture.get_current_force()
@@ -179,6 +182,7 @@ class PickUpBinBagAction(object):
 
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self.tts.say("Succeeded in pick up.")
+            self.counter+=1
             rospy.sleep(1)
             _result.result = True
             self._as.set_succeeded(_result)
@@ -187,8 +191,12 @@ class PickUpBinBagAction(object):
             rospy.loginfo('{0}: Encountered exception {1}.'.format(self._action_name, str(e)))
             self.tts.say("I encountered a problem. Returning to go position.")
             rospy.sleep(2)
+            rospy.loginfo('%s: Opening gripper.' % self._action_name)
+            self.gripper.set_distance(1.0)
+
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
             self.whole_body.move_to_go()
+            self.counter+=1
             self._as.set_aborted()
 
 
