@@ -274,13 +274,9 @@ class PickUpBinBagAction(object):
         # Start the force sensor capture
         force_sensor_capture = ForceSensorCapture()
 
-        # removed_bin_lid_bool = self.pick_up_bin_lid()
+        removed_bin_lid_bool = self.pick_up_bin_lid()
 
         try:
-
-            if self.tried_bin_lid == False:
-                self.omni_base.go_rel(0, -0.07, 0)
-                self.omni_base.go_rel(0.35, 0, 0)
 
             if not removed_bin_lid_bool:
                 try:
@@ -291,7 +287,9 @@ class PickUpBinBagAction(object):
                     rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
                     self.move_above_bin()
 
-
+            if self.tried_bin_lid == False:
+                self.omni_base.go_rel(0, -0.07, 0)
+                self.omni_base.go_rel(0.35, 0, 0)
 
             # if self.counter < 0:
             #     try:
@@ -300,8 +298,11 @@ class PickUpBinBagAction(object):
             #     except:
             #         pass
 
+            self.whole_body.move_to_joint_positions({'arm_flex_joint': -2.0})
+
             # Get initial data of force sensor
             pre_grasp_force_list = force_sensor_capture.get_current_force()
+
 
             # Move grasper down
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
