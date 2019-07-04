@@ -44,10 +44,9 @@ class ForceSensorCapture(object):
         # Wait for connection
         try:
             rospy.wait_for_message(ft_sensor_topic, WrenchStamped,
-                                   timeout=_CONNECTION_TIMEOUT)
+                                   timeout=10)
         except Exception as e:
             rospy.logerr(e)
-            sys.exit(1)
 
     def get_current_force(self):
         return [self._force_data_x, self._force_data_y, self._force_data_z]
