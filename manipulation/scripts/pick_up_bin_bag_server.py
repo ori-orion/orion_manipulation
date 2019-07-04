@@ -308,8 +308,9 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
             self.omni_base.go_rel(0.05, 0, 0)
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
             self.whole_body.move_to_joint_positions({'arm_flex_joint': -2.0})
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.10),'hand_palm_link')
+
 
             # Get initial data of force sensor
             pre_grasp_force_list = force_sensor_capture.get_current_force()
