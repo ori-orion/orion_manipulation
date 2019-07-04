@@ -142,7 +142,7 @@ class PickUpBinBagAction(object):
 
     def pick_up_bin_lid(self):
         self.omni_base.go_rel(0, -0.07, 0)
-        self.omni_base.go_rel(0.35, 0, 0)
+        self.omni_base.go_rel(0.27, 0, 0)
 
         self.tried_bin_lid = True
 
@@ -292,7 +292,7 @@ class PickUpBinBagAction(object):
 
             if self.tried_bin_lid == False:
                 self.omni_base.go_rel(0, -0.06, 0)
-                self.omni_base.go_rel(0.33, 0, 0)
+                self.omni_base.go_rel(0.27, 0, 0)
 
             # if self.counter < 0:
             #     try:
