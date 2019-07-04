@@ -142,7 +142,7 @@ class PickUpBinBagAction(object):
 
     def pick_up_bin_lid(self):
         self.omni_base.go_rel(0, -0.07, 0)
-        self.omni_base.go_rel(0.34, 0, 0)
+        self.omni_base.go_rel(0.32, 0, 0)
 
         self.tried_bin_lid = True
 
@@ -274,7 +274,7 @@ class PickUpBinBagAction(object):
         # Start the force sensor capture
         force_sensor_capture = ForceSensorCapture()
 
-        removed_bin_lid_bool = self.pick_up_bin_lid()
+        # removed_bin_lid_bool = self.pick_up_bin_lid()
 
         self.tts.say("I will pick up this bin bag.")
         rospy.sleep(1)
@@ -292,7 +292,7 @@ class PickUpBinBagAction(object):
 
             if self.tried_bin_lid == False:
                 self.omni_base.go_rel(0, -0.06, 0)
-                self.omni_base.go_rel(0.27, 0, 0)
+                self.omni_base.go_rel(0.32, 0, 0)
 
             # if self.counter < 0:
             #     try:
