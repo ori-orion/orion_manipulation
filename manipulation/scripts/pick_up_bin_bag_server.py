@@ -9,6 +9,13 @@ import math
 import hsrb_interface.geometry as geometry
 from hsrb_interface import robot as _robot
 
+import cv2
+import imutils
+import message_filters
+from sensor_msgs.msg import Image, CameraInfo
+from cv_bridge import CvBridge, CvBridgeError
+import numpy as np
+
 _robot.enable_interactive()
 
 from actionlib_msgs.msg import GoalStatus
@@ -26,6 +33,56 @@ def compute_difference(pre_data_list, post_data_list):
                        for (a, b) in zip(pre_data_list, post_data_list)])
 
     return math.sqrt(square_sums)
+
+def analyse_hand_image(hand_cam_topic, height_above_object):
+
+    camera_matrix = np.array([[554.3827128226441, 0.0, 320.5], [0.0, 554.3827128226441, 240.5], [0.0, 0.0, 1.0]])
+    inv_mat = np.linalg.inv(camera_matrix)
+
+    rgb_sub = message_filters.Subscriber(hand_cam_topic, Image, queue_size=1, buff_size=2**24)
+    image_msg = rospy.wait_for_message(hand_cam_topic, Image)
+    bridge = CvBridge()
+    img_in = bridge.imgmsg_to_cv2(image_msg, desired_encoding="bgr8")
+
+
+    mean_0 = img_in[:, :, 0].mean()
+    mean_1 = img_in[:, :, 1].mean()
+    mean_2 = img_in[:, :, 2].mean()
+
+    image_cp = img_in
+    image_cp[:, :, 0][image_cp[:, :, 0] >= mean_0 - 30] = 255
+    image_cp[:, :, 1][image_cp[:, :, 1] >= mean_1 - 30] = 255
+    image_cp[:, :, 2][image_cp[:, :, 2] >= mean_2 - 30] = 255
+
+    mask = np.logical_and(np.logical_and(image_cp[:, :, 0] < 255, image_cp[:, :, 1] < 255), image_cp[:, :, 2] < 255)
+    coords = np.where(mask)
+
+    y_coords = coords[0] # y coord
+    x_coords = coords[1] # x coord
+
+    mean_y = y_coords.mean()
+    mean_x = x_coords.mean()
+
+    x_len = np.shape(img_in)[1]
+    y_len = np.shape(img_in)[0]
+
+    # off_y_px = mean_y - y_len / 2.0  # if positive need to go lower
+    # off_x_px = mean_x - x_len / 2.0  # if positive need to move right
+
+    y_coords_no_mean = y_coords - y_coords.mean()
+    x_coords_no_mean = x_coords - x_coords.mean()
+
+    inds = np.where(x_coords_no_mean > 0)
+
+    y_coords_no_mean_pos = y_coords_no_mean[inds]
+    x_coords_no_mean_pos = x_coords_no_mean[inds]
+
+    theta = np.mean(np.arctan(np.divide(-y_coords_no_mean_pos.astype(float), x_coords_no_mean_pos.astype(float))) * 180 / math.pi)
+
+    X = np.array([[mean_x], [mean_y], [1]])
+    distance_to_move = np.matmul(inv_mat, X) * height_above_object
+
+    return distance_to_move[0][0], distance_to_move[1][0], theta
 
 
 class ForceSensorCapture(object):
@@ -78,30 +135,73 @@ class PickUpBinBagAction(object):
         self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
 
         self.counter = 0
+        self.tried_bin_lid = False
+        self.hand_cam_topic = '/hsrb/hand_camera/image_raw'
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
-    def move_above_bin(self):
-        self.tts.say("I will pick up this bin bag.")
-        rospy.sleep(1)
-
-        rospy.loginfo('%s: Moving to go position.' % self._action_name)
-        try:
-            self.whole_body.move_to_go()
-        except:
-            pass
+    def pick_up_bin_lid(self):
+        self.omni_base.go_rel(0, -0.20, 0)
+        self.omni_base.go_rel(0.25, 0, 0)
 
         rospy.loginfo('%s: Opening gripper.' % self._action_name)
         self.gripper.set_distance(1.0)
 
-        rospy.loginfo('%s: Changing linear weight.' % self._action_name)
-        self.whole_body.linear_weight = 100
+        try:
+            # Move gripper above bin
+            self.move_above_bin()
+        except:
+            # Move gripper above bin
+            rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
+            self.move_above_bin()
 
-        rospy.loginfo('%s: Moving end effector above bin.' % self._action_name)
-        self.tts.say("Moving end effector above bin.")
-        rospy.sleep(1)
-        # Move grasper over the object to pick up
-        self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=1.0,ei=math.pi),'base_footprint')
+        # Move grasper down
+        rospy.loginfo('%s: Lowering gripper.' % self._action_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
+        height_above_object = 0.235
+
+        for i in range(3):
+            x_to_move, y_to_move, theta = analyse_hand_image(self.hand_cam_topic, height_above_object)
+            theta_rad = theta * math.pi / 180.0
+            rospy.loginfo('{0}: Need to rotate "{1:.2f}" degrees.'.format(self._action_name, theta))
+            self.tts.say('I will rotate "{1:.2f}" degrees.'.format(theta))
+
+            self.whole_body.move_end_effector_pose(geometry.pose(x=x_to_move), 'hand_palm_link')
+            rospy.sleep(1)
+            self.whole_body.move_end_effector_pose(geometry.pose(y=y_to_move), 'hand_palm_link')
+            rospy.sleep(1)
+            self.whole_body.move_end_effector_pose(geometry.pose(ek=-theta_rad), 'hand_palm_link')
+            rospy.sleep(1)
+
+            self.whole_body.move_end_effector_pose(geometry.pose(z=height_above_object-0.08),'hand_palm_link')
+
+            self.tts.say("Grasping the bin bag.")
+            rospy.sleep(1)
+            rospy.loginfo('%s: Closing gripper.' % self._action_name)
+            self.gripper.apply_force(2.0)
+
+    def move_above_bin(self):
+            self.tts.say("I will pick up this bin bag.")
+            rospy.sleep(1)
+
+            rospy.loginfo('%s: Moving to go position.' % self._action_name)
+            try:
+                self.whole_body.move_to_go()
+            except:
+                pass
+
+            rospy.loginfo('%s: Opening gripper.' % self._action_name)
+            self.gripper.set_distance(1.0)
+
+            rospy.loginfo('%s: Changing linear weight.' % self._action_name)
+            self.whole_body.linear_weight = 100
+
+            rospy.loginfo('%s: Moving end effector above bin.' % self._action_name)
+            self.tts.say("Moving end effector above bin.")
+            rospy.sleep(1)
+
+            # Move grasper over the object to pick up
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=1.0,ei=math.pi),'base_footprint')
 
     def execute_cb(self, goal_msg):
         # Messages for feedback / results
@@ -121,12 +221,16 @@ class PickUpBinBagAction(object):
                 rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
                 self.move_above_bin()
 
-            if self.counter < 0:
-                try:
-                    self.omni_base.go_rel(0, -0.10, 0)
-                    self.omni_base.go_rel(0.25, 0, 0)
-                except:
-                    pass
+            if self.tried_bin_lid == False:
+                self.omni_base.go_rel(0, -0.20, 0)
+                self.omni_base.go_rel(0.25, 0, 0)
+
+            # if self.counter < 0:
+            #     try:
+            #         self.omni_base.go_rel(0, -0.10, 0)
+            #         self.omni_base.go_rel(0.25, 0, 0)
+            #     except:
+            #         pass
 
             # Get initial data of force sensor
             pre_grasp_force_list = force_sensor_capture.get_current_force()
@@ -183,6 +287,8 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self.tts.say("Succeeded in pick up.")
             self.counter+=1
+            self.tried_bin_lid = False
+
             rospy.sleep(1)
             _result.result = True
             self._as.set_succeeded(_result)
@@ -197,6 +303,7 @@ class PickUpBinBagAction(object):
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
             self.whole_body.move_to_go()
             self.counter+=1
+            self.tried_bin_lid = False
             self._as.set_aborted()
 
 
