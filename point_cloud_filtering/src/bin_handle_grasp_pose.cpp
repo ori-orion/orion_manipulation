@@ -5,7 +5,7 @@
 #include "bin_handle_segmentation.h"
 #include "handle_utils.h"
 #include "geometry_msgs/PointStamped.h"
-#include "point_cloud_filtering/DetectHandle.h"
+#include "point_cloud_filtering/DetectBinHandle.h"
 #include <ros/callback_queue.h>
 
 #include <ctime>
@@ -15,6 +15,7 @@
 bool detect_bin_handle(point_cloud_filtering::DetectBinHandle::Request  &req,
                    point_cloud_filtering::DetectBinHandle::Response &res){
 
+    ROS_INFO("Message request received.");
     ros::NodeHandle nh;
     tf::TransformBroadcaster br;
 

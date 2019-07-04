@@ -17,8 +17,8 @@ namespace point_cloud_filtering {
         void Callback(const sensor_msgs::PointCloud2& msg);
 
     private:
-        ros::Publisher bin_handle_pub;
-        ros::Publisher bin_surface_pub;
+        ros::Publisher bin_handle_pub_;
+        ros::Publisher bin_surface_pub_;
     };
 
     class BinHandleCentroid {

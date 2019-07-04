@@ -22,7 +22,7 @@ from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
 # For grasp synthesis
-from point_cloud_filtering.srv import SegmentObject
+from point_cloud_filtering.srv import DetectBinHandle
 from gpd.msg import GraspConfigList
 
 class PickUpObjectAction(object):
@@ -99,14 +99,13 @@ class PickUpObjectAction(object):
 
         return geometry.Pose(geometry.Vector3(approach_center[0], approach_center[1], approach_center[2]), geometry.Quaternion(q[0], q[1], q[2], q[3]))
 
-    # TO DO - NEED TO CHANGE
-    def segment_object(self, object_pos_head_frame):
-        rospy.wait_for_service('/object_segmentation')
+
+    def get_bin_handle_poses(self):
+        rospy.wait_for_service('/bin_handle_detection')
         try:
-            segment_object_service = rospy.ServiceProxy('/object_segmentation', SegmentObject)
-            response = segment_object_service(object_pos_head_frame[0],
-                                              object_pos_head_frame[1],
-                                              object_pos_head_frame[2])
+            detect_handle_service = rospy.ServiceProxy('/bin_handle_detection', DetectDrawerHandles)
+            response = detect_handle_service(True)
+            # response should contain and array of x,y,z coords
         except rospy.ServiceException, e:
             print "Service call failed: %s" % e
 
@@ -233,7 +232,7 @@ class PickUpObjectAction(object):
         object_position_head_frame = self.get_head_frame_object_pose(self.goal_object)
 
         # Call segmentation (lasts 10s)
-        seg_response = self.segment_object(object_position_head_frame)
+        seg_response = self.get_bin_handle_poses()
 
         self.tts.say('I am trying to calculate the best possible grasp position')
         rospy.sleep(1)
