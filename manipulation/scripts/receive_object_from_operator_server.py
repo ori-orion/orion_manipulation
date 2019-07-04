@@ -65,15 +65,20 @@ class ReceiveObjectFromOperatorAction(object):
             rospy.loginfo('%s: Closing gripper.' % (self._action_name))
             self.gripper.apply_force(self._GRASP_FORCE)
             rospy.loginfo('%s: Object grasped.' % self._action_name)
+
             self.tts.say("Thank you. Object received.")
+            rospy.sleep(1)
 
             self.whole_body.move_to_go()
 
             _result.result = True
             self._as.set_succeeded(_result)
         except Exception as e:
-            rospy.loginfo('%s: Exception encountered: %s.' % (self._action_name, e))
-            self._as.set_aborted()
+            rospy.loginfo('%s: Exception encountered: %s. Continuing on with task' % (self._action_name, e))
+            self.tts.say("Encountered a problem. Proceeding with task.")
+            rospy.sleep(1)
+            self._as.set_succeeded(_result)
+            # self._as.set_aborted()
 
 
 if __name__ == '__main__':
