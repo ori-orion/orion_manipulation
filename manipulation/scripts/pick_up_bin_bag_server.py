@@ -274,7 +274,7 @@ class PickUpBinBagAction(object):
         # Start the force sensor capture
         force_sensor_capture = ForceSensorCapture()
 
-        removed_bin_lid_bool = self.pick_up_bin_lid()
+        # removed_bin_lid_bool = self.pick_up_bin_lid()
 
         self.tts.say("I will pick up this bin bag.")
         rospy.sleep(1)
@@ -306,8 +306,9 @@ class PickUpBinBagAction(object):
 
             # Move grasper down
             rospy.loginfo('%s: Lowering gripper.' % self._action_name)
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0.60),'hand_palm_link')
-
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
+            self.omni_base.go_rel(0.05, 0, 0)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.30),'hand_palm_link')
             self.whole_body.move_to_joint_positions({'arm_flex_joint': -2.0})
 
             # Get initial data of force sensor
