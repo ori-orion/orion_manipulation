@@ -141,8 +141,15 @@ class PickUpBinBagAction(object):
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def pick_up_bin_lid(self):
-        self.omni_base.go_rel(0, -0.07, 0)
-        self.omni_base.go_rel(0.32, 0, 0)
+
+        if self.counter==1:
+            try:
+                self.omni_base.go_rel(0.25, 0, 0)
+            except:
+                pass
+        else:
+            self.omni_base.go_rel(0, -0.06, 0)
+            self.omni_base.go_rel(0.32, 0, 0)
 
         self.tried_bin_lid = True
 
@@ -291,15 +298,16 @@ class PickUpBinBagAction(object):
                     self.move_above_bin()
 
             if self.tried_bin_lid == False:
-                self.omni_base.go_rel(0, -0.06, 0)
-                self.omni_base.go_rel(0.32, 0, 0)
 
-            # if self.counter < 0:
-            #     try:
-            #         self.omni_base.go_rel(0, -0.10, 0)
-            #         self.omni_base.go_rel(0.25, 0, 0)
-            #     except:
-            #         pass
+                if self.counter==1:
+                    try:
+                        self.omni_base.go_rel(0.25, 0, 0)
+                    except:
+                        pass
+                else:
+                    self.omni_base.go_rel(0, -0.06, 0)
+                    self.omni_base.go_rel(0.32, 0, 0)
+
 
 
 
