@@ -129,10 +129,12 @@ class PickUpBinBagAction(object):
 
             # Get the weight of the object and convert newtons to grams
             force_difference = compute_difference(pre_grasp_force_list, post_grasp__force_list)
-            weight = math.round(force_difference / 9.81 * 1000, 1)
+            weight = math.floor(force_difference / 9.81 * 1000, 1)
 
             print "The weight is " + str(weight) + 'grams.'
             rospy.loginfo('{0}: The weight is {1} grams.'.format(self._action_name, str(weight)))
+            self.tts.say('{0}: I can feel a weight of {1} grams.'.format(self._action_name, str(weight)))
+            rospy.sleep(1)
 
             if weight < 300:
                 rospy.loginfo('{0}: No object picked up.'.format(self._action_name))

@@ -77,6 +77,7 @@ class ReceiveObjectFromOperatorAction(object):
             rospy.loginfo('%s: Exception encountered: %s. Continuing on with task' % (self._action_name, e))
             self.tts.say("Encountered a problem. Proceeding with task.")
             rospy.sleep(1)
+            _result.result = True
             self._as.set_succeeded(_result)
             # self._as.set_aborted()
 
