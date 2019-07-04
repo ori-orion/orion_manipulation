@@ -69,7 +69,18 @@ class ReceiveObjectFromOperatorAction(object):
             self.tts.say("Thank you. Object received.")
             rospy.sleep(1)
 
-            self.whole_body.move_to_go()
+            # Return to "neutral" pose
+            rospy.loginfo('%s: Returning to neural pose.' % (self._action_name))
+            self.tts.say("Returning to neutral position.")
+            rospy.sleep(1)
+            self.whole_body.move_to_neutral()
+
+            # Return to "go" pose
+            rospy.loginfo('%s: Moving bin higher to avoid the laser.' % (self._action_name))
+            self.tts.say("Moving bin higher to avoid the laser.")
+            rospy.sleep(1)
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0.5),'hand_palm_link')
+
 
             _result.result = True
             self._as.set_succeeded(_result)
