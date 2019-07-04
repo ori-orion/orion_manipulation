@@ -146,9 +146,9 @@ class PickUpBinBagAction(object):
 
         self.tried_bin_lid = True
 
-        try:
-            grasp_success_bool = False
+        grasp_success_bool = False
 
+        try:
             # Start the force sensor capture
             force_sensor_capture = ForceSensorCapture()
 
@@ -210,18 +210,34 @@ class PickUpBinBagAction(object):
                 self.tts.say("Handle grasped successfully.")
                 rospy.sleep(1)
                 self.omni_base.go_rel(0, 0, -math.pi/8)
+
+                if self.counter > 0:
+                    self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'hand_palm_link')
+
                 rospy.loginfo('%s: Opening gripper.' % self._action_name)
                 self.gripper.set_distance(1.0)
                 self.omni_base.go_rel(0, 0, math.pi/8)
+
+                if self.counter > 0:
+                    self.whole_body.move_end_effector_pose(geometry.pose(z=0.1),'hand_palm_link')
+
                 grasp_success_bool = True
             else:
                 rospy.loginfo('%s: Failed to grasp handle.' % self._action_name)
                 self.tts.say("Failed to grasp handle.")
                 rospy.sleep(1)
-
+                grasp_success_bool = False
+                rospy.loginfo('%s: Encountered a problem.' % self._action_name)
+                self.tts.say("Encountered a problem. Please could you remove the bin lid for me.")
+                rospy.sleep(20)
+                self.whole_body.move_to_neutral()
         except:
-            return False
+            rospy.loginfo('%s: Encountered a problem.' % self._action_name)
+            self.whole_body.move_to_neutral()
+            self.tts.say("Encountered a problem. Please could you remove the bin lid for me.")
+            rospy.sleep(20)
 
+        return grasp_success_bool
 
 
     def move_above_bin(self):
