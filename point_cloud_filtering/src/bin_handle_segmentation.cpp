@@ -85,8 +85,8 @@ namespace point_cloud_filtering {
         ROS_INFO("Max z: %ld", max_z);
 
         //------ Crop the point cloud used to get the handle --------
-        Eigen::Vector4f min_pt(min_x, 0, min_z);
-        Eigen::Vector4f max_pt(max_x, min_y, min_z);
+        Eigen::Vector4f min_pt(min_x, 0, min_z,1);
+        Eigen::Vector4f max_pt(max_x, min_y, min_z, 1);
         PointCloudC::Ptr cropped_cloud(new PointCloudC());
         CropCloud(cloud, cropped_cloud, min_pt, max_pt);
 
