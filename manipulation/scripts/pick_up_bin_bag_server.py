@@ -142,7 +142,7 @@ class PickUpBinBagAction(object):
 
     def pick_up_bin_lid(self):
         self.omni_base.go_rel(0, -0.07, 0)
-        self.omni_base.go_rel(0.27, 0, 0)
+        self.omni_base.go_rel(0.34, 0, 0)
 
         self.tried_bin_lid = True
 
@@ -188,12 +188,12 @@ class PickUpBinBagAction(object):
                 self.whole_body.move_end_effector_pose(geometry.pose(ek=-theta_rad), 'hand_palm_link')
                 rospy.sleep(1)
 
-                self.whole_body.move_end_effector_pose(geometry.pose(z=height_above_object-0.08),'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(z=height_above_object-0.08),'hand_palm_link')
 
-                self.tts.say("Grasping the bin bag.")
-                rospy.sleep(1)
-                rospy.loginfo('%s: Closing gripper.' % self._action_name)
-                self.gripper.apply_force(2.0)
+            self.tts.say("Grasping the bin lid.")
+            rospy.sleep(1)
+            rospy.loginfo('%s: Closing gripper.' % self._action_name)
+            self.gripper.apply_force(2.0)
 
             self.whole_body.move_end_effector_pose(geometry.pose(z=-height_above_object+0.08),'hand_palm_link')
 
@@ -208,7 +208,7 @@ class PickUpBinBagAction(object):
             self.tts.say('{0}: I can feel a weight of {1} grams.'.format(self._action_name, str(weight)))
             rospy.sleep(3)
 
-            if weight > 100:
+            if weight > 300:
                 rospy.loginfo('%s: Handle grasped successfully.' % self._action_name)
                 self.tts.say("Handle grasped successfully.")
                 rospy.sleep(1)
