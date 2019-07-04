@@ -262,6 +262,10 @@ class PickUpBinBagAction(object):
 
         try:
 
+            if self.tried_bin_lid == False:
+                self.omni_base.go_rel(0, -0.07, 0)
+                self.omni_base.go_rel(0.35, 0, 0)
+
             if not removed_bin_lid_bool:
                 try:
                     # Move gripper above bin
@@ -271,9 +275,7 @@ class PickUpBinBagAction(object):
                     rospy.loginfo('%s: Encountered an error. Trying again.' % self._action_name)
                     self.move_above_bin()
 
-            if self.tried_bin_lid == False:
-                self.omni_base.go_rel(0, -0.07, 0)
-                self.omni_base.go_rel(0.35, 0, 0)
+
 
             # if self.counter < 0:
             #     try:
@@ -338,7 +340,7 @@ class PickUpBinBagAction(object):
             self.tts.say("Succeeded in pick up.")
             self.counter+=1
             self.tried_bin_lid = False
-            
+
             rospy.sleep(1)
             _result.result = True
             self._as.set_succeeded(_result)
