@@ -15,6 +15,8 @@
 bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
                    point_cloud_filtering::DetectHandle::Response &res){
 
+    ROS_INFO("Handle detection message received by server.");
+
     ros::NodeHandle nh;
     tf::TransformBroadcaster br;
 
@@ -44,11 +46,13 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
 
     while ((not handle_centroid.CheckDetection()) and duration < 10)
     {
+        ROS_INFO("Trying to get a good detection.");
         ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
         duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
     }
 
     if (not handle_centroid.CheckDetection()){
+        ROS_INFO("No good detection found.");
         res.x = 0;
         res.y = 0;
         res.z = 0;
@@ -56,6 +60,7 @@ bool detect_handle(point_cloud_filtering::DetectHandle::Request  &req,
         return false;
     }
     else {
+        ROS_INFO("Handle detected and returning values.");
         res.x = handle_centroid.GetX();
         res.y = handle_centroid.GetY();
         res.z = handle_centroid.GetZ();
