@@ -133,7 +133,7 @@ namespace point_cloud_filtering {
         handle_tf_br_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame", "door_handle"));
 
         //  If the pose seems reasonable then store and prepare to exit the service
-        if(z>0.3 && z<1.2 && x>-0.5 && x<0.5 && y>-0.5 && y<0.5){
+        if(z>0.3 && z<1.5 && x>-0.5 && x<0.5 && y>-0.5 && y<0.5){
             HandleCentroid::good_detection_ = true;
             HandleCentroid::x_ = x;
             HandleCentroid::y_ = y;
