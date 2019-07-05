@@ -58,12 +58,12 @@ class PutObjectInBinAction(object):
         self.tts.say("Moving end effector above bin.")
         rospy.sleep(1)
 
-        # Move grasper over the object to pick up
+        # Move grasper over the bin
         self.whole_body.move_end_effector_pose(geometry.pose(x=0.4,z=1.0,ei=math.pi),'base_footprint')
 
     def execute_cb(self, goal_msg):
         # Messages for feedback / results
-        _result = PickUpBinBagResult()
+        _result = PutObjectInBinResult()
         _result.result = False
 
         self.tts.say("I will put the object in the bin.")
@@ -118,5 +118,5 @@ class PutObjectInBinAction(object):
 
 if __name__ == '__main__':
     rospy.init_node('put_object_in_bin_server')
-    server = PickUpBinBagAction(rospy.get_name())
+    server = PutObjectInBinAction(rospy.get_name())
     rospy.spin()
