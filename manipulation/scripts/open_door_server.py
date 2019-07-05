@@ -57,6 +57,7 @@ class OpenDoorAction(object):
         try:
             detect_handle_service = rospy.ServiceProxy('/handle_detection', DetectHandle)
             response = detect_handle_service(True)
+            print response
         except rospy.ServiceException, e:
             print "Service call failed: %s" % e
 
@@ -91,16 +92,17 @@ class OpenDoorAction(object):
         rospy.loginfo('%s: Grasping handle...' % (self._action_name))
         self.tts.say("Door handle found. Moving to grasp.")
         rospy.sleep(1)
-        
-        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
-        self.whole_body.move_end_effector_pose(geometry.pose(x=-0.06), 'hand_palm_link')
 
-        self.gripper.set_distance
+        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
+
         # Determine if door hinge is on left or right
         if handle_pose.x > 0:
             hinge_sign = 1 # hinge on left
+            self.whole_body.move_end_effector_pose(geometry.pose(x=-0.06), 'hand_palm_link')
         else:
             hinge_sign = -1 # hinge on right
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0.06), 'hand_palm_link')
+
 
         try:
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.05), 'hand_palm_link')
@@ -109,7 +111,6 @@ class OpenDoorAction(object):
             pass
 
         self.gripper.apply_force(self._GRASP_FORCE)
-        # self.gripper.set_distance(0.02)
         rospy.sleep(2)
 
         rospy.loginfo('%s: Executing opening motion...' % (self._action_name))
