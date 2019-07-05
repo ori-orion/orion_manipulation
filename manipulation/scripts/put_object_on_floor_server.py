@@ -11,10 +11,52 @@ import actionlib
 import hsrb_interface.geometry as geometry
 from hsrb_interface import robot as _robot
 
+import math
+import numpy as np
+
 _robot.enable_interactive()
 
 from actionlib_msgs.msg import GoalStatus
 from orion_actions.msg import *
+from geometry_msgs.msg import WrenchStamped
+
+def compute_difference(pre_data_list, post_data_list):
+    if len(pre_data_list) != len(post_data_list):
+        raise ValueError('Argument lists differ in length')
+
+    # Calculate square sum of difference
+    square_sums = sum([math.pow(b - a, 2)
+                       for (a, b) in zip(pre_data_list, post_data_list)])
+
+    return math.sqrt(square_sums)
+
+class ForceSensorCapture(object):
+    """Subscribe and hold force sensor data - Copyright (C) 2016 Toyota Motor Corporation"""
+
+    def __init__(self):
+        self._force_data_x = 0.0
+        self._force_data_y = 0.0
+        self._force_data_z = 0.0
+
+        # Subscribe force torque sensor data
+        ft_sensor_topic = '/hsrb/wrist_wrench/raw'
+        self._wrist_wrench_sub = rospy.Subscriber(
+            ft_sensor_topic, WrenchStamped, self.__hand_force_sensor_cb)
+
+        # Wait for connection
+        try:
+            rospy.wait_for_message(ft_sensor_topic, WrenchStamped,
+                                   timeout=10)
+        except Exception as e:
+            rospy.logerr(e)
+
+    def get_current_force(self):
+        return [self._force_data_x, self._force_data_y, self._force_data_z]
+
+    def __hand_force_sensor_cb(self, data):
+        self._force_data_x = data.wrench.force.x
+        self._force_data_y = data.wrench.force.y
+        self._force_data_z = data.wrench.force.z
 
 
 class PutObjectOnFloorAction(object):
@@ -59,9 +101,37 @@ class PutObjectOnFloorAction(object):
             self.whole_body.move_end_effector_pose(geometry.pose(x=-0.2, y=0, z=0.3), 'hand_palm_link')
             # self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
 
+            force_sensor_capture = ForceSensorCapture()
+
+            # Get initial data of force sensor
+            pre_grasp_force_list = force_sensor_capture.get_current_force()
+
             rospy.sleep(1)
             rospy.loginfo('%s: Opening gripper.' % (self._action_name))
             self.gripper.command(1.2)
+
+            post_grasp__force_list = force_sensor_capture.get_current_force()
+
+            # Get the weight of the object and convert newtons to grams
+            force_difference = compute_difference(pre_grasp_force_list, post_grasp__force_list)
+            weight = math.floor(force_difference / 9.81 * 1000)
+
+            rospy.loginfo('{0}: The weight change by grams is {1}.'.format(self._action_name, str(weight)))
+            self.tts.say('{0}: The weight change by grams is {1}.'.format(self._action_name, str(weight)))
+            rospy.sleep(3)
+
+            if weight > 100:
+                self.tts.say('{0}: I can still feel the object.'.format(self._action_name))
+                rospy.sleep(3)
+                rospy.loginfo('%s: Now shaking the object off.' % (self._action_name))
+                self.tts.say("Now shaking the object off.")
+                rospy.sleep(2)
+                self.whole_body.move_to_joint_positions({'wrist_roll_joint': -1.8})
+                self.whole_body.move_to_joint_positions({'arm_lift_joint': 0.3})
+                self.whole_body.move_to_joint_positions({'wrist_roll_joint': 1.8})
+                self.whole_body.move_to_joint_positions({'arm_lift_joint': 0.4})
+                self.whole_body.move_to_joint_positions({'wrist_roll_joint': 0})
+                self.whole_body.move_to_joint_positions({'arm_lift_joint': 0.2})
 
             self.tts.say("Object placed successfully. Returning to go position.")
             rospy.sleep(2)
