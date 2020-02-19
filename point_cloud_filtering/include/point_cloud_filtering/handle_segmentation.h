@@ -13,12 +13,13 @@ namespace point_cloud_filtering {
 
     class HandleCropper {
     public:
-        HandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& door_pub);
+        HandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& surface_pub);
         void Callback(const sensor_msgs::PointCloud2& msg);
 
     private:
         ros::Publisher cloud_pub_;
-        ros::Publisher door_pub_;
+        ros::Publisher surface_pub_;
+        
     };
 
     class HandleCentroid {
@@ -38,13 +39,14 @@ namespace point_cloud_filtering {
 
     class DrawerHandleCropper {
     public:
-        DrawerHandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& plane_pub);
+        DrawerHandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& plane_pub, const ros::Publisher& cropped_pub_);
         void Callback(const sensor_msgs::PointCloud2& msg);
         void GetHeadAngle(const sensor_msgs::JointState& msg) ;
 
     private:
         ros::Publisher cloud_pub_;
         ros::Publisher plane_pub_;
+        ros::Publisher cropped_pub_;
         double head_angle;
     };
 
@@ -56,6 +58,7 @@ namespace point_cloud_filtering {
         std::vector<double> GetX();
         std::vector<double> GetY();
         std::vector<double> GetZ();
+        tf::Transform handle_transform_;
     private:
         tf::TransformBroadcaster handle_tf_br_;
         bool good_detection_ ;

@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
       nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 1, true);
 
   // To publish cropped door and handle
-  ros::Publisher door_pub =
+  ros::Publisher surface_pub =
       nh.advertise<sensor_msgs::PointCloud2>("door_cloud", 1, true);
 
   // To publish cropped door and handle
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
       nh.subscribe("cloud_in", 1, &point_cloud_filtering::Cropper::Callback, &cropper);
 
   // Crop for the door
-  point_cloud_filtering::PlaneCropper door_cropper(door_pub);
+  point_cloud_filtering::PlaneCropper door_cropper(surface_pub);
   ros::Subscriber sub_door =
       nh.subscribe("cloud_in", 1, &point_cloud_filtering::PlaneCropper::Callback, &door_cropper);
 

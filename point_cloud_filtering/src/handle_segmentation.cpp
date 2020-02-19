@@ -13,11 +13,11 @@
 
 namespace point_cloud_filtering {
 
-    HandleCropper::HandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& door_pub ) : cloud_pub_(cloud_pub), door_pub_(door_pub) {}
+    HandleCropper::HandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& surface_pub ) : cloud_pub_(cloud_pub), surface_pub_(surface_pub) {}
 
     HandleCentroid::HandleCentroid(const tf::TransformBroadcaster& br) : handle_tf_br_(br), good_detection_(false) {}
 
-    DrawerHandleCropper::DrawerHandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& plane_pub ) : cloud_pub_(cloud_pub), plane_pub_(plane_pub) {}
+    DrawerHandleCropper::DrawerHandleCropper(const ros::Publisher& cloud_pub, const ros::Publisher& plane_pub, const ros::Publisher& cropped_pub  ) : cloud_pub_(cloud_pub), plane_pub_(plane_pub), cropped_pub_(cropped_pub) {}
 
     DrawerHandleCentroid::DrawerHandleCentroid(const tf::TransformBroadcaster& br) : handle_tf_br_(br), good_detection_(false) {}
 
@@ -36,7 +36,7 @@ namespace point_cloud_filtering {
         CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
 
 
-      //------ Get the door --------
+      //------ Get the main ruface plane --------
       pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
       SegmentDoorInliers(first_cropped_cloud, inliers);
 
@@ -47,10 +47,10 @@ namespace point_cloud_filtering {
 
       // Extract the plane indices subset of cloud into output_cloud:
       pcl::ExtractIndices<PointC> door_extract;
-      PointCloudC::Ptr door_cloud (new PointCloudC());
+      PointCloudC::Ptr plane_cloud (new PointCloudC());
       door_extract.setInputCloud(first_cropped_cloud);
       door_extract.setIndices(inliers);
-      door_extract.filter(*door_cloud);
+      door_extract.filter(*plane_cloud);
 
 
       float min_x = std::numeric_limits<float>::max();
@@ -60,24 +60,24 @@ namespace point_cloud_filtering {
       float max_y = std::numeric_limits<float>::min();
       float max_z = std::numeric_limits<float>::min();
 
-      for(size_t i=0; i < door_cloud->points.size(); ++i) {
-        if (door_cloud->points[i].x < min_x) {
-          min_x = door_cloud->points[i].x;
+      for(size_t i=0; i < plane_cloud->points.size(); ++i) {
+        if (plane_cloud->points[i].x < min_x) {
+          min_x = plane_cloud->points[i].x;
         }
-        if (door_cloud->points[i].y < min_y) {
-          min_y = door_cloud->points[i].y;
+        if (plane_cloud->points[i].y < min_y) {
+          min_y = plane_cloud->points[i].y;
         }
-        if (door_cloud->points[i].z < min_z) {
-          min_z = door_cloud->points[i].z;
+        if (plane_cloud->points[i].z < min_z) {
+          min_z = plane_cloud->points[i].z;
         }
-        if (door_cloud->points[i].x > max_x) {
-          max_x = door_cloud->points[i].x;
+        if (plane_cloud->points[i].x > max_x) {
+          max_x = plane_cloud->points[i].x;
         }
-        if (door_cloud->points[i].y > max_y) {
-          max_y = door_cloud->points[i].y;
+        if (plane_cloud->points[i].y > max_y) {
+          max_y = plane_cloud->points[i].y;
         }
-        if (door_cloud->points[i].z > max_z) {
-          max_z = door_cloud->points[i].z;
+        if (plane_cloud->points[i].z > max_z) {
+          max_z = plane_cloud->points[i].z;
         }
       }
 
@@ -101,9 +101,9 @@ namespace point_cloud_filtering {
       cloud_pub_.publish(msg_cloud_out);
 
       // Publish the door point cloud
-      sensor_msgs::PointCloud2 msg_door_cloud_out;
-      pcl::toROSMsg(*door_cloud, msg_door_cloud_out);
-      door_pub_.publish(msg_door_cloud_out);
+      sensor_msgs::PointCloud2 msg_plane_cloud_out;
+      pcl::toROSMsg(*plane_cloud, msg_plane_cloud_out);
+      surface_pub_.publish(msg_plane_cloud_out);
 
     }
 
@@ -167,6 +167,10 @@ namespace point_cloud_filtering {
 
     void DrawerHandleCropper::Callback(const sensor_msgs::PointCloud2& msg) {
 
+        // Rememeber: 
+        // (x,y,z in world frame, (x',y',z') in robot frame)
+        // Handle protrudes about 5cm
+        
         // Check the incoming point cloud
         PointCloudC::Ptr cloud(new PointCloudC());
         pcl::fromROSMsg(msg, *cloud);
@@ -175,14 +179,13 @@ namespace point_cloud_filtering {
 
         //------ Crop the point cloud used to get the handle --------
         // z in direction of looking, x to right, y perpendicular (down and back)
-        Eigen::Vector4f min_crop_pt(-0.2, 0.0, 0, 1);
-        Eigen::Vector4f max_crop_pt(0.2, 1.0, 2, 1);
+        Eigen::Vector4f min_crop_pt(-0.3, -0.2, 0, 1);
+        Eigen::Vector4f max_crop_pt(0.3, 0.2, 1.2, 1);
         PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
         CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
         ROS_INFO("Initial crop leaves point cloud with %ld points", first_cropped_cloud->size());
 
-
-        //------ Get the door --------
+        //------ Get the plane --------
         Eigen::Vector3f axis;
         axis << 0, sin(head_angle), cos(head_angle);
 
@@ -196,12 +199,14 @@ namespace point_cloud_filtering {
             PCL_ERROR ("Could not estimate a planar model for the given dataset.");
         }
 
+        ROS_INFO("Extracting the plane indices... ");
+
         // Extract the plane indices subset of cloud into output_cloud:
-        pcl::ExtractIndices<PointC> door_extract;
-        PointCloudC::Ptr door_cloud (new PointCloudC());
-        door_extract.setInputCloud(first_cropped_cloud);
-        door_extract.setIndices(inliers);
-        door_extract.filter(*door_cloud);
+        pcl::ExtractIndices<PointC> plane_extract;
+        PointCloudC::Ptr plane_cloud (new PointCloudC());
+        plane_extract.setInputCloud(first_cropped_cloud);
+        plane_extract.setIndices(inliers);
+        plane_extract.filter(*plane_cloud);
 
 
         float min_x = std::numeric_limits<float>::max();
@@ -211,24 +216,24 @@ namespace point_cloud_filtering {
         float max_y = std::numeric_limits<float>::min();
         float max_z = std::numeric_limits<float>::min();
 
-        for(size_t i=0; i < door_cloud->points.size(); ++i) {
-            if (door_cloud->points[i].x < min_x) {
-                min_x = door_cloud->points[i].x;
+        for(size_t i=0; i < plane_cloud->points.size(); ++i) {
+            if (plane_cloud->points[i].x < min_x) {
+                min_x = plane_cloud->points[i].x;
             }
-            if (door_cloud->points[i].y < min_y) {
-                min_y = door_cloud->points[i].y;
+            if (plane_cloud->points[i].y < min_y) {
+                min_y = plane_cloud->points[i].y;
             }
-            if (door_cloud->points[i].z < min_z) {
-                min_z = door_cloud->points[i].z;
+            if (plane_cloud->points[i].z < min_z) {
+                min_z = plane_cloud->points[i].z;
             }
-            if (door_cloud->points[i].x > max_x) {
-                max_x = door_cloud->points[i].x;
+            if (plane_cloud->points[i].x > max_x) {
+                max_x = plane_cloud->points[i].x;
             }
-            if (door_cloud->points[i].y > max_y) {
-                max_y = door_cloud->points[i].y;
+            if (plane_cloud->points[i].y > max_y) {
+                max_y = plane_cloud->points[i].y;
             }
-            if (door_cloud->points[i].z > max_z) {
-                max_z = door_cloud->points[i].z;
+            if (plane_cloud->points[i].z > max_z) {
+                max_z = plane_cloud->points[i].z;
             }
         }
 
@@ -239,26 +244,37 @@ namespace point_cloud_filtering {
         ROS_INFO("Min z: %f", min_z);
         ROS_INFO("Max z: %f", max_z);
 
-        // Remove the door
+        // Remove the surface to leave the handle
         PointCloudC::Ptr filtered_cloud(new PointCloudC());
         RemoveDoor(first_cropped_cloud, filtered_cloud, inliers);
 
 
         //------ Crop the point cloud used to get the handle --------
-        Eigen::Vector4f min_pt(min_x + 0.1,
-                               min_y + 0.03,
+        // Eigen::Vector4f min_pt(min_x + 0.1,
+        //                        min_y + 0.03,
+        //                        min_z,
+        //                        1);
+
+        // Eigen::Vector4f max_pt(max_x - 0.1, max_y - 0.1 * axis[2], max_z+0.1*axis[1], 1);
+        Eigen::Vector4f min_pt(min_x,
+                               min_y,
                                min_z,
                                1);
 
-        Eigen::Vector4f max_pt(max_x - 0.1, max_y - 0.1 * axis[2], max_z+0.1*axis[1], 1);
+        Eigen::Vector4f max_pt(max_x, max_y - 0.1 * axis[2], max_z+0.1*axis[1], 1);
 
         PointCloudC::Ptr handle_cloud(new PointCloudC());
         CropCloud(filtered_cloud, handle_cloud, min_pt, max_pt);
 
         // Publish the plane point cloud
-        sensor_msgs::PointCloud2 msg_door_cloud_out;
-        pcl::toROSMsg(*door_cloud, msg_door_cloud_out);
-        plane_pub_.publish(msg_door_cloud_out);
+        sensor_msgs::PointCloud2 msg_cropped_cloud_out;
+        pcl::toROSMsg(*first_cropped_cloud, msg_cropped_cloud_out);
+        cropped_pub_.publish(msg_cropped_cloud_out);
+
+        // Publish the plane point cloud
+        sensor_msgs::PointCloud2 msg_plane_cloud_out;
+        pcl::toROSMsg(*plane_cloud, msg_plane_cloud_out);
+        plane_pub_.publish(msg_plane_cloud_out);
 
         // Publish the handle point cloud
         sensor_msgs::PointCloud2 msg_cloud_out;
@@ -309,17 +325,17 @@ namespace point_cloud_filtering {
                 transform.setOrigin(tf::Vector3(x, y, z));
                 transform.setRotation(tf::Quaternion(0, 0, 0));
 
-                std::stringstream ss;
-                ss << i;
+                // std::stringstream ss;
+                // ss << i;
 
-                std::string drawer_handle_name = "drawer_handle_" + ss.str();
+                // std::string drawer_handle_name = "drawer_handle_" + ss.str();
 
 
                 //            std::string drawer_handle_name = "drawer_handle_" + ss.str();
-                handle_tf_br_.sendTransform(
-                        tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame",
-                                             drawer_handle_name));
-                std::cout << "Sent transform for: " << drawer_handle_name << std::endl;
+                // handle_tf_br_.sendTransform(
+                //         tf::StampedTransform(transform, ros::Time::now(), "head_rgbd_sensor_rgb_frame",
+                //                              drawer_handle_name));
+                // std::cout << "Sent transform for: " << drawer_handle_name << std::endl;
 
                 //  If the pose seems reasonable then store and prepare to exit the service
                 if (z > 0.2 && z < 1.5 && x > -0.5 && x < 0.5 && y > -0.5 && y < 1.0) {
@@ -327,7 +343,7 @@ namespace point_cloud_filtering {
                     DrawerHandleCentroid::x_.push_back(x);
                     DrawerHandleCentroid::y_.push_back(y);
                     DrawerHandleCentroid::z_.push_back(z);
-
+                    handle_transform_ = transform;
 //                    DrawerHandleCentroid::good_detection_ == false
                     std::cout << "Criteria matched!" << std::endl;
                 }

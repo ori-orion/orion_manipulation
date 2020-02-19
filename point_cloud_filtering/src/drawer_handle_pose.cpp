@@ -17,6 +17,8 @@ bool detect_handle(point_cloud_filtering::DetectDrawerHandles::Request  &req,
     tf::TransformBroadcaster br;
     ros::NodeHandle nh;
 
+    std::string drawer_handle_name = "drawer_handle";
+
     // To publish cropped door and handle
     ros::Publisher handle_pub =
             nh.advertise<sensor_msgs::PointCloud2>("handle_cloud", 1, true);
@@ -24,8 +26,11 @@ bool detect_handle(point_cloud_filtering::DetectDrawerHandles::Request  &req,
     ros::Publisher plane_pub =
             nh.advertise<sensor_msgs::PointCloud2>("plane_cloud", 1, true);
 
+    ros::Publisher cropped_pub =
+            nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 1, true);
+
     // Crop for the handle
-    point_cloud_filtering::DrawerHandleCropper handle_cropper(handle_pub, plane_pub);
+    point_cloud_filtering::DrawerHandleCropper handle_cropper(handle_pub, plane_pub, cropped_pub);
     point_cloud_filtering::DrawerHandleCentroid handle_centroid(br);
 
     ros::Subscriber joint_sub =
@@ -42,6 +47,21 @@ bool detect_handle(point_cloud_filtering::DetectDrawerHandles::Request  &req,
     while (not handle_centroid.CheckDetection())
     {
         ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
+    }
+
+    std::cout << "Sending transform for: " << drawer_handle_name << std::endl;
+
+    std::clock_t start;
+    double duration = 0;
+    start = std::clock();
+
+    while (duration < 10)
+    {
+        br.sendTransform(
+        tf::StampedTransform(handle_centroid.handle_transform_, ros::Time::now(), "head_rgbd_sensor_rgb_frame",
+                                drawer_handle_name));
+
+        duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
     }
 
     res.x = handle_centroid.GetX();
