@@ -39,6 +39,8 @@ class PickUpObjectAction(object):
         self._as.start()
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
 
+        self.use_collision_map = False
+
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
@@ -50,7 +52,8 @@ class PickUpObjectAction(object):
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
-        self.collision_mapper = CollisionMapper(self.robot)
+        if self.use_collision_map:
+            self.collision_mapper = CollisionMapper(self.robot)
 
         self._CONNECTION_TIMEOUT = 15.0 # Define the vacuum timeouts
         self._SUCTION_TIMEOUT = rospy.Duration(20.0) # Define the vacuum timeouts
@@ -270,7 +273,10 @@ class PickUpObjectAction(object):
 
         rospy.loginfo('%s: Opening gripper.' % (self._action_name))
         self.gripper.command(1.2)
-        self.whole_body.collision_world = self.collision_world
+        if self.use_collision_map:
+            self.whole_body.collision_world = self.collision_world
+        else:
+            self.whole_body.collision_world = None
 
         try:
             if self.use_grasp_synthesis:
@@ -370,7 +376,10 @@ class PickUpObjectAction(object):
             rospy.loginfo('Suction failed')
             return
 
-        self.whole_body.collision_world = self.collision_world
+        if self.use_collision_map:
+            self.whole_body.collision_world = self.collision_world
+        else:
+            self.whole_body.collision_world = None
         self.whole_body.move_end_effector_pose(geometry.pose(z=0.05, ei=3.14), self.goal_object)
 
         # Turn off collision checking to get close and grasp
@@ -379,7 +388,10 @@ class PickUpObjectAction(object):
         self.whole_body.move_end_effector_pose(geometry.pose(z=0.045), self.goal_object)
 
     def finish_position(self):
-        self.whole_body.collision_world = self.collision_world
+        if self.use_collision_map:
+            self.whole_body.collision_world = self.collision_world
+        else:
+            self.whole_body.collision_world = None
 
         try:
             rospy.loginfo('%s: Trying to move back and get into go position.' % self._action_name)
@@ -457,14 +469,16 @@ class PickUpObjectAction(object):
         self.whole_body.gaze_point(ref_frame_id=self.goal_object)
 
         # Set collision map
-        self.tts.say("I am now evaluating my environment so that I don't collide with anything.")
-        rospy.sleep(1)
-        rospy.loginfo('%s: Getting Collision Map.' % self._action_name)
-        self.collision_mapper.get_collision_map()
-        rospy.loginfo('%s: Collision Map generated.' % self._action_name)
+        if self.use_collision_map:
+            self.tts.say("I am now evaluating my environment so that I don't collide with anything.")
+            rospy.sleep(1)
+            rospy.loginfo('%s: Getting Collision Map.' % self._action_name)
+        
+            self.collision_mapper.get_collision_map()
+            rospy.loginfo('%s: Collision Map generated.' % self._action_name)
 
-        rospy.loginfo('%s: Pruning the collision map.' % self._action_name)
-        self.collision_mod(self.collision_msg)
+            rospy.loginfo('%s: Pruning the collision map.' % self._action_name)
+            self.collision_mod(self.collision_msg)
 
         # Get the object pose to subtract from collision map
         # self.check_for_object(goal_tf)
