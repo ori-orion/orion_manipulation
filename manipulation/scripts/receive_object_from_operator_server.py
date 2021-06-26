@@ -76,10 +76,10 @@ class ReceiveObjectFromOperatorAction(object):
             self.whole_body.move_to_neutral()
 
             # Return to "go" pose
-            rospy.loginfo('%s: Moving bin higher to avoid the laser.' % (self._action_name))
-            self.tts.say("Moving bin higher to avoid the laser.")
-            rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(geometry.pose(x=0.5),'hand_palm_link')
+            #rospy.loginfo('%s: Moving bin higher to avoid the laser.' % (self._action_name))
+            #self.tts.say("Moving bin higher to avoid the laser.")
+            #rospy.sleep(1)
+            #self.whole_body.move_end_effector_pose(geometry.pose(x=0.5),'hand_palm_link')
 
 
             _result.result = True
