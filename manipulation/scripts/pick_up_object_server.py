@@ -457,7 +457,7 @@ class PickUpObjectAction(object):
             grasp_type = 'suction'
         else:
             grasp_type = 'grab'
-            chosen_pregrasp_pose = geometry.pose(z=-0.08, ek=-math.pi/2)
+            chosen_pregrasp_pose = geometry.pose(z=-0.08, ek=0)
             chosen_grasp_pose = geometry.pose(z=0.08)
 
         # ------------------------------------------------------------------------------
