@@ -30,6 +30,9 @@ _robot.enable_interactive()
 from point_cloud_filtering.srv import SegmentObject
 from gpd.msg import GraspConfigList
 
+# How many times can we fail to find the Tf frame before returning?
+NUM_TF_FAILS=10
+
 class PickUpObjectAction(object):
 
     def __init__(self, name):
@@ -172,13 +175,19 @@ class PickUpObjectAction(object):
         found_marker = False
         listen = tf.TransformListener()
         rospy.sleep(1)
-        while not found_marker:
+        num_tf_fails = 0
+        while not found_marker and num_tf_fails <= NUM_TF_FAILS:
             if self._as.is_preempt_requested():
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
             all_frames = listen.getFrameStrings()
             found_marker = object_tf in all_frames
+            if not found_marker:
+                num_tf_fails += 1
+        
+        return found_marker
+
 
     def get_similar_tf(self, tf_frame):
         listen = tf.TransformListener()
@@ -428,8 +437,10 @@ class PickUpObjectAction(object):
         goal_tf_in = goal_msg.goal_tf
         goal_tf = None
 
-        while goal_tf is None:
+        num_tf_fails = 0
+        while goal_tf is None and num_tf_fails <= NUM_TF_FAILS:
             goal_tf = self.get_similar_tf(goal_tf_in)
+                
 
             if self._as.is_preempt_requested():
                 rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
@@ -440,7 +451,14 @@ class PickUpObjectAction(object):
 
 
             if goal_tf is None:
+                num_tf_fails += 1
                 rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
+
+        # Set aborted if we couldn't find a TF frame
+        if num_tf_fails > NUM_TF_FAILS:
+            rospy.logerr("Couldn't find similar tf frame.")
+            self._as.set_aborted()
+            return
 
         if is_preempted:
             return
@@ -462,7 +480,12 @@ class PickUpObjectAction(object):
 
         # ------------------------------------------------------------------------------
         # Check the object is in sight
-        self.check_for_object(self.goal_object)
+        found_marker = self.check_for_object(self.goal_object)
+
+        if not found_marker:
+            rospy.logerr("Unable to find TF frame...")
+            self._as.set_aborted()
+            return
 
         # Look at the object - this is to make sure that we get all of the necessary collision map
         rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
