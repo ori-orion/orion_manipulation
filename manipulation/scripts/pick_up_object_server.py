@@ -29,7 +29,6 @@ _robot.enable_interactive()
 # For grasp synthesis
 from point_cloud_filtering.srv import SegmentObject
 from gpd.msg import GraspConfigList
-from geometry_msgs.msg import Vector3
 
 # How many times can we fail to find the Tf frame before returning?
 NUM_TF_FAILS=10
@@ -436,9 +435,9 @@ class PickUpObjectAction(object):
         rospy.Subscriber("known_object_pre_filter", CollisionObject, self.collision_callback)
 
         # First reset the whole body to see objects properly
-        self.whole_body.gaze_point(point=Vector3(x=0.0, y=0.0, z=0.0), ref_frame_id='base_link')
+        self.whole_body.move_to_neutral()
         # Sleep to ensure we have time to see objects properly
-        rospy.sleep(3)
+        rospy.sleep(2)
 
         goal_tf_in = goal_msg.goal_tf
         goal_tf = None
