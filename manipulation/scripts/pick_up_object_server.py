@@ -434,6 +434,11 @@ class PickUpObjectAction(object):
         # Currently doesn't do anything other than relay to another topic
         rospy.Subscriber("known_object_pre_filter", CollisionObject, self.collision_callback)
 
+        # First reset the whole body to see objects properly
+        self.whole_body.move_to_neutral()
+        # Sleep to ensure we have time to see objects properly
+        rospy.sleep(3)
+
         goal_tf_in = goal_msg.goal_tf
         goal_tf = None
 
