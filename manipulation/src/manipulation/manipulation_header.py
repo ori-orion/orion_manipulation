@@ -6,54 +6,33 @@ class CollisionMapper:
     def __init__(self, robot):
         self.robot = robot
 
-    def reset_collision_map_build(self):
-        rospy.wait_for_service('/tmc_reconstruction/system/reset')
+    def reset_collision_map(self):
+        rospy.wait_for_service('/octomap_server/reset')
         try:
-            reset_service = rospy.ServiceProxy('/tmc_reconstruction/system/reset', Empty)
+            reset_service = rospy.ServiceProxy('/octomap_server/reset', Empty)
             reset_service()
-        except rospy.ServiceException as e:
-            print ("Service call failed: %s" % e)
+        except rospy.ServiceException, e:
+            print "Service call failed: %s" % e
 
-    def start_collision_map_build(self):
-        rospy.wait_for_service('/tmc_reconstruction/system/start')
+    def get_converted_octomap(self):
+        rospy.wait_for_service('/GetReconstruction')
         try:
-            start_service = rospy.ServiceProxy('/tmc_reconstruction/system/start', Empty)
-            start_service()
-        except rospy.ServiceException as e:
-            print( "Service call failed: %s" % e)
-
-    def stop_collision_map_build(self):
-        rospy.wait_for_service('/tmc_reconstruction/system/stop')
-        try:
-            stop_service = rospy.ServiceProxy('/tmc_reconstruction/system/stop', Empty)
-            stop_service()
-        except rospy.ServiceException as e:
-            print( "Service call failed: %s" % e)
-
-    def remove_all_collision_objects(self):
-        collision_world = self.robot.try_get('global_collision_world')
-        collision_world.remove_all()
+            map_service = rospy.ServiceProxy('/GetReconstruction', Empty)
+            resp = map_service()
+            return resp.resp
+        except rospy.ServiceException, e:
+            print "Service call failed: %s" % e
 
     def get_collision_map(self):
 
-        # Clear objects
-        self.remove_all_collision_objects()
-
         # Reset reconstruction
-        self.reset_collision_map_build()
-
-        # Clear objects again to be sure
-        self.remove_all_collision_objects()
-
-        # Start reconstruction
-        self.start_collision_map_build()
+        self.reset_collision_map()
 
         # Wait for map to populate
         rospy.sleep(3)
 
-        # Stop reconstruction
-        self.stop_collision_map_build()
-        rospy.sleep(2)
+        # Get and return collision map generated over last 3s
+        return self.get_converted_octomap()
 
 # import numpy as np
 # import tf
