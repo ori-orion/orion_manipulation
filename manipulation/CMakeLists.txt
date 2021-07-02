@@ -16,7 +16,10 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   move_base_msgs
   actionlib_msgs
+  tmc_mapping_msgs
   point_cloud_filtering
+  octomap_ros
+  octomap_msgs
   orion_actions
   gpd
 )
@@ -35,7 +38,6 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
-generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
 
 # System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -78,11 +80,10 @@ generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+ add_service_files(
+   FILES
+   GetReconstruction.srv
+ )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -92,10 +93,13 @@ generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs std_msgs)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+	DEPENDENCIES
+	tmc_mapping_msgs
+	actionlib_msgs
+	geometry_msgs
+	std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -165,6 +169,14 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/manipulation_node.cpp)
+add_executable(octomap_to_reconstruction_service src/octomap_to_reconstruction_service.cpp)
+
+## Rename C++ executable without prefix
+## The above recommended prefix causes long target names, the following renames the
+## target back to the shorter version for ease of user use
+## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
+# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
+set_target_properties(octomap_to_reconstruction_service PROPERTIES OUTPUT_NAME octomap_to_reconstruction PREFIX "")
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -175,11 +187,15 @@ include_directories(
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(octomap_to_reconstruction_service ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+target_link_libraries(octomap_to_reconstruction_service
+        ${catkin_LIBRARIES}
+        )
 
 #############
 ## Install ##

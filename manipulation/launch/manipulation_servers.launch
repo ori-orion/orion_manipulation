@@ -16,19 +16,7 @@
 
 
 	  <!-- Load the collision map services -->
-	  <include file="$(find tmc_reconstruction)/launch/reconstruction.launch">
-		<arg name="camera_param_path" value="~/.ros/camera_info/hsrb_gazebo.yaml" />
-		<arg name="vocabulary_path" value="~/reconstruction_ws/DBoW2/build/small_voc.yml.gz" />
-		<arg name="world_frame_id_exists" value="true" />
-		<arg name="reference_frame_id" value="head_rgbd_sensor_rgb_frame" />
-		<arg name="rgb_image_topic" value="/hsrb/head_rgbd_sensor/rgb/image_raw" />
-		<arg name="depth_image_topic" value="/hsrb/head_rgbd_sensor/depth_registered/image_raw" />
-		<arg name="resolution" value="0.03" />
-		<arg name="is_loop_detection_enable" value="false" />
-		<arg name="auto_start" value="false" />
-		<arg name="output_collision_object_topic" value="/known_object_pre_filter" />
-	  </include>
-
+	  <include file="$(find manipulation)/launch/octomap_server.launch"> </include>
 	  <include file="$(find manipulation)/launch/grasp_synthesis.launch"> </include>
 
 </launch>
