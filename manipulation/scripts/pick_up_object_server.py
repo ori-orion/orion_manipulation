@@ -142,17 +142,23 @@ class PickUpObjectAction(object):
     def get_goal_pose(self, relative=geometry.pose()):
         rospy.loginfo('%s: Trying to lookup goal pose...' % self._action_name)
         foundTrans = False
-        while not foundTrans:
+        num_fails = 0
+        while not foundTrans and num_fails <= NUM_TF_FAILS:
             try:
                 odom_to_ref_pose = self.whole_body._lookup_odom_to_ref(self.goal_object)
                 foundTrans = True
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                num_fails += 1
                 if self._as.is_preempt_requested():
                     rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
                     self.whole_body.move_to_go()
                     self._as.set_preempted()
                     # TO DO - introudce a self.to_preempt = True
                     return
+
+        # Allowing some error checking
+        if num_fails > NUM_TF_FAILS:
+            return None
 
         odom_to_ref = geometry.pose_to_tuples(odom_to_ref_pose)
         odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
@@ -312,6 +318,11 @@ class PickUpObjectAction(object):
                 rospy.sleep(1)
 
                 goal_pose = self.get_goal_pose(relative=chosen_pregrasp_pose)
+
+                # Error checking in case can't find goal pose
+                if goal_pose is None:
+                    self._as.set_aborted()
+                    return False
 
                 self.goal_pose_br.sendTransform((goal_pose.pos.x, goal_pose.pos.y, goal_pose.pos.z),
                                                 (goal_pose.ori.x, goal_pose.ori.y, goal_pose.ori.z, goal_pose.ori.w),
