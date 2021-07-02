@@ -428,16 +428,15 @@ class PickUpObjectAction(object):
             return False
 
     def execute_cb(self, goal_msg):
+        
+        self.tts.say("Finding stable view of object")
+        rospy.sleep(5)
+
         _result = PickUpObjectResult()
         # _result.result = False
         is_preempted = False
         # Currently doesn't do anything other than relay to another topic
         rospy.Subscriber("known_object_pre_filter", CollisionObject, self.collision_callback)
-
-        # First reset the whole body to see objects properly
-        self.whole_body.move_to_neutral()
-        # Sleep to ensure we have time to see objects properly
-        rospy.sleep(2)
 
         goal_tf_in = goal_msg.goal_tf
         goal_tf = None
@@ -481,7 +480,7 @@ class PickUpObjectAction(object):
         else:
             grasp_type = 'grab'
             chosen_pregrasp_pose = geometry.pose(z=-0.08, ek=0)
-            chosen_grasp_pose = geometry.pose(z=0.08)
+            chosen_grasp_pose = geometry.pose(z=0.06)
 
         # ------------------------------------------------------------------------------
         # Check the object is in sight
