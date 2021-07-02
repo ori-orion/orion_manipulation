@@ -48,7 +48,7 @@ class PickUpObjectAction(object):
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
         self.omni_base = self.robot.try_get('omni_base')
-        self.collision_world = self.robot.try_get('global_collision_world')
+        self.collision_world = None
         self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.whole_body.looking_hand_constraint = True        
@@ -512,7 +512,7 @@ class PickUpObjectAction(object):
             rospy.sleep(1)
             rospy.loginfo('%s: Getting Collision Map.' % self._action_name)
         
-            self.collision_mapper.get_collision_map()
+            self.collision_world = self.collision_mapper.get_collision_map()
             rospy.loginfo('%s: Collision Map generated.' % self._action_name)
 
             rospy.loginfo('%s: Pruning the collision map.' % self._action_name)
