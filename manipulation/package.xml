@@ -42,12 +42,18 @@
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
+  <build_depend>point_cloud_filtering</build_depend>
+  <build_depend>gpd</build_depend>
+  <build_depend>orion_actions</build_depend>
   
   <build_export_depend>actionlib_msgs</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>geometry_msgs</build_export_depend>
+  <build_export_depend>point_cloud_filtering</build_export_depend>
+  <build_export_depend>gpd</build_export_depend>
+  <build_export_depend>orion_actions</build_export_depend>
   
   <exec_depend>actionlib_msgs</exec_depend>
   <exec_depend>roscpp</exec_depend>
@@ -55,6 +61,9 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>message_generation</exec_depend>
+  <exec_depend>point_cloud_filtering</exec_depend>
+  <exec_depend>gpd</exec_depend>
+  <exec_depend>orion_actions</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
