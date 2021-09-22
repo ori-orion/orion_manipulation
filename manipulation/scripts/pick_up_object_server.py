@@ -46,13 +46,27 @@ class PickUpObjectAction(object):
 
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
-        self.whole_body = self.robot.try_get('whole_body')
-        self.omni_base = self.robot.try_get('omni_base')
-        self.collision_world = self.robot.try_get('global_collision_world')
-        self.gripper = self.robot.try_get('gripper')
+        objList = self.robot.list();        
+        
+        def getcomponent(component):
+            for element in objList:
+                if element[0] == component:
+                    return element[1];
+            pass;
+
+        # try_get was the original implementation but threw an error. 
+        self.whole_body = getcomponent('whole_body')
+        self.omni_base = getcomponent('omni_base')
+        self.collision_world = getcomponent('global_collision_world')
+        self.gripper = getcomponent('gripper')
+        # self.whole_body = self.robot.try_get('whole_body')
+        # self.omni_base = self.robot.try_get('omni_base')
+        # self.collision_world = self.robot.try_get('global_collision_world')
+        # self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.whole_body.looking_hand_constraint = True
-        self.tts = self.robot.try_get('default_tts')
+        self.tts = getcomponent('default_tts')
+        # self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
         if self.use_collision_map:
