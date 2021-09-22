@@ -11,24 +11,24 @@ class CollisionMapper:
         try:
             reset_service = rospy.ServiceProxy('/tmc_reconstruction/system/reset', Empty)
             reset_service()
-        except rospy.ServiceException, e:
-            print "Service call failed: %s" % e
+        except rospy.ServiceException as e:
+            print ("Service call failed: %s" % e)
 
     def start_collision_map_build(self):
         rospy.wait_for_service('/tmc_reconstruction/system/start')
         try:
             start_service = rospy.ServiceProxy('/tmc_reconstruction/system/start', Empty)
             start_service()
-        except rospy.ServiceException, e:
-            print "Service call failed: %s" % e
+        except rospy.ServiceException as e:
+            print( "Service call failed: %s" % e)
 
     def stop_collision_map_build(self):
         rospy.wait_for_service('/tmc_reconstruction/system/stop')
         try:
             stop_service = rospy.ServiceProxy('/tmc_reconstruction/system/stop', Empty)
             stop_service()
-        except rospy.ServiceException, e:
-            print "Service call failed: %s" % e
+        except rospy.ServiceException as e:
+            print( "Service call failed: %s" % e)
 
     def remove_all_collision_objects(self):
         collision_world = self.robot.try_get('global_collision_world')
