@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for opening the bin lid.
 """
 __author__ = "Mark Finean"
@@ -106,8 +106,8 @@ class PickUpObjectAction(object):
             detect_handle_service = rospy.ServiceProxy('/bin_handle_detection', DetectDrawerHandles)
             response = detect_handle_service(True)
             # response should contain and array of x,y,z coords
-        except rospy.ServiceException, e:
-            print "Service call failed: %s" % e
+        except rospy.ServiceException as e:
+            print ("Service call failed: %s" % e)
 
         return response
 

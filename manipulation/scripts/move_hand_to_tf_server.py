@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Development action server for moving hand to a given tf frame.
 Not used now.
 """

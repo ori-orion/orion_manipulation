@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for pointing objects.
 Takes a tf frame string and the robot will turn and point towards the object. Includes speech commentary
 """

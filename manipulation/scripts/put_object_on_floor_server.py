@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for putting objects on the floor.
 Hard coded motion to maintain horizontal grasp and place hand close to the floor and open the gripper.
 """

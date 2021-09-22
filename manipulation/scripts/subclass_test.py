@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for picking up objects.
 Variable self.use_grasp_synthesis can be used to change between using grasp synthesis to determine grasp position and
 using a hard-coded 5cm away horizontal pre-grasp pose. grasp synthesis uses point cloud segmentation and gdp grasp

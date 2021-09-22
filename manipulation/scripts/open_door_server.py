@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for opening a door.
 Uses the /handle_detection service to do segmentation and find a centroid location for the handle to grasp.
 Robust to left and right hinged doors. Currently works on pull down horizontal handles and executes a pull open motion.
@@ -57,9 +57,9 @@ class OpenDoorAction(object):
         try:
             detect_handle_service = rospy.ServiceProxy('/handle_detection', DetectHandle)
             response = detect_handle_service(True)
-            print response
-        except rospy.ServiceException, e:
-            print "Service call failed: %s" % e
+            print (response)
+        except rospy.ServiceException as e:
+            print( "Service call failed: %s" % e)
 
         return response
 

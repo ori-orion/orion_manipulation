@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Get the weight of a grasped object
 To integrate with all grasping servers. Adapted code (ForceSensorCapture) from Toyota Motor Corporation
 """
@@ -71,7 +71,7 @@ def main():
     # Get the weight of the object and convert newtons to grams
     force_difference = compute_difference(pre_grasp_force_list, post_grasp__force_list)
     weight = math.round(force_difference / 9.81 * 1000, 1)
-    print "The weight is " + str(weight) + 'grams.'
+    print ("The weight is " + str(weight) + 'grams.')
     # Speak object weight in first decimal place
 
 if __name__ == '__main__':

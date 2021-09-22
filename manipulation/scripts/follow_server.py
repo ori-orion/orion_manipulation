@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for following an object (usually a person).
 Takes a tf frame string as input to follow. Maintains 50cm distance away from object and follows
 until pre-empted

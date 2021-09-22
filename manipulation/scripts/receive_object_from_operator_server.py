@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for receiving objects.
 Hard-coded motion to put hand out in front, pause and grasp an object.
 """

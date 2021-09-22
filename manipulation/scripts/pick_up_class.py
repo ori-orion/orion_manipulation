@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Base class for picking up objects.
 """
 __author__ = "Mark Finean"
@@ -95,8 +95,8 @@ class PickUpBase(object):
             response = segment_object_service(object_pos_head_frame[0],
                                               object_pos_head_frame[1],
                                               object_pos_head_frame[2])
-        except rospy.ServiceException, e:
-            print "Service call failed: %s" % e
+        except rospy.ServiceException as e:
+            print( "Service call failed: %s" % e)
 
         return response
 

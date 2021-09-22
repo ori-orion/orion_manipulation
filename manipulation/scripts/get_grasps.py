@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Subscriber/Publisher for broadcasting the best grasp pose as tf frame"""
 
 __author__ = "Mark Finean"
@@ -23,7 +23,7 @@ def callback(msg):
         rospy.loginfo('Received %d grasps.', len(grasps))
 
         grasp = grasps[0] # grasps are sorted in descending order by score
-        print 'Selected grasp with score:', grasp.score
+        print ('Selected grasp with score:', grasp.score)
 
         # This gives the approach point correctly
         bottom = np.array([grasp.bottom.x, grasp.bottom.y, grasp.bottom.z])

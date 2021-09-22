@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 __author__ = "Mark Finean"
 __email__ = "mfinean@robots.ox.ac.uk"
 

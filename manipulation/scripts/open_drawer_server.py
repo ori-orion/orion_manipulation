@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """ Action server for opening drawers.
 Uses the /drawer_handle_detection service to do segmentation and find a centroid location for the handle to grasp.
 If multiple drawer handles are detected, one is randomly chosen. Performs hard-coded pull back motion with
@@ -55,8 +55,8 @@ class OpenDrawerAction(object):
             detect_handle_service = rospy.ServiceProxy('/drawer_handle_detection', DetectDrawerHandles)
             response = detect_handle_service(True)
             # response should contain and array of x,y,z coords
-        except rospy.ServiceException, e:
-            print "Service call failed: %s" % e
+        except rospy.ServiceException as e:
+            print ("Service call failed: %s" % e)
 
         return response
 
