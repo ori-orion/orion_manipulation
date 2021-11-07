@@ -22,6 +22,7 @@ from tmc_suction.msg import (SuctionControlAction, SuctionControlGoal)
 from tmc_manipulation_msgs.msg import CollisionObject
 from orion_actions.msg import *
 
+from ebbhrd_msgs.srv import GenericEBBInput, GenericEBBInputRequest
 
 from hsrb_interface import robot as _robot
 _robot.enable_interactive()
