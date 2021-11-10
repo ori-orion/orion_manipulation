@@ -22,6 +22,7 @@ from tmc_suction.msg import (SuctionControlAction, SuctionControlGoal)
 from tmc_manipulation_msgs.msg import CollisionObject
 from orion_actions.msg import *
 
+from ebbhrd_msgs.msg import GenericEBBInputType;
 from ebbhrd_msgs.srv import GenericEBBInput, GenericEBBInputRequest
 
 from hsrb_interface import robot as _robot
@@ -74,6 +75,10 @@ class PickUpObjectAction(object):
         self.use_grasp_synthesis = False
 
         self.goal_object = None
+
+        rospy.wait_for_service('/ebb/generic_in_out');
+        self.ebb_input_service = rospy.ServiceProxy('/ebb/generic_in_out', GenericEBBInput);
+
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def grasp_callback(self, msg):
@@ -453,6 +458,14 @@ class PickUpObjectAction(object):
                 self.whole_body.move_to_go()
                 self._as.set_preempted()
                 is_preempted = True
+
+                ebb_in:GenericEBBInputRequest = GenericEBBInputRequest();
+                ebb_in.data_in.system_inputting_from = GenericEBBInputType.MANIPULATION;
+                ebb_in.data_in.message_type = GenericEBBInputType.PREEMPT;
+                ebb_in.data_in.message = "Preempted. Moving to go and exiting.";
+                ebb_in.data_in.num_fails = 0;
+                self.ebb_input_service(ebb_in);
+
                 return
 
 
@@ -460,10 +473,25 @@ class PickUpObjectAction(object):
                 num_tf_fails += 1
                 rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
 
+                ebb_in:GenericEBBInputRequest = GenericEBBInputRequest();
+                ebb_in.data_in.system_inputting_from = GenericEBBInputType.MANIPULATION;
+                ebb_in.data_in.message_type = GenericEBBInputType.WARN;
+                ebb_in.data_in.message = "Found no similar tf frame. Trying again.";
+                ebb_in.data_in.num_fails = num_tf_fails;
+                self.ebb_input_service(ebb_in);
+
         # Set aborted if we couldn't find a TF frame
         if num_tf_fails > NUM_TF_FAILS:
             rospy.logerr("Couldn't find similar tf frame.")
             self._as.set_aborted()
+
+            ebb_in:GenericEBBInputRequest = GenericEBBInputRequest();
+            ebb_in.data_in.system_inputting_from = GenericEBBInputType.MANIPULATION;
+            ebb_in.data_in.message_type = GenericEBBInputType.ERROR;
+            ebb_in.data_in.message = "Couldn't find similar tf frame.";
+            ebb_in.data_in.num_fails = num_tf_fails;
+            self.ebb_input_service(ebb_in);
+
             return
 
         if is_preempted:
@@ -491,6 +519,14 @@ class PickUpObjectAction(object):
         if not found_marker:
             rospy.logerr("Unable to find TF frame...")
             self._as.set_aborted()
+
+            ebb_in:GenericEBBInputRequest = GenericEBBInputRequest();
+            ebb_in.data_in.system_inputting_from = GenericEBBInputType.MANIPULATION;
+            ebb_in.data_in.message_type = GenericEBBInputType.ERROR;
+            ebb_in.data_in.message = "Unable to find TF frame...";
+            ebb_in.data_in.num_fails = num_tf_fails;
+            self.ebb_input_service(ebb_in);
+
             return
 
         # Look at the object - this is to make sure that we get all of the necessary collision map
@@ -518,6 +554,14 @@ class PickUpObjectAction(object):
             rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
             self.whole_body.move_to_go()
             self._as.set_preempted()
+
+            ebb_in:GenericEBBInputRequest = GenericEBBInputRequest();
+            ebb_in.data_in.system_inputting_from = GenericEBBInputType.MANIPULATION;
+            ebb_in.data_in.message_type = GenericEBBInputType.PREEMPT;
+            ebb_in.data_in.message = "Preempted. Moving to go and exiting.";
+            ebb_in.data_in.num_fails = 0;
+            self.ebb_input_service(ebb_in);
+
             return
 
         if grasp_type == 'suction':
@@ -541,10 +585,24 @@ class PickUpObjectAction(object):
             rospy.loginfo('%s: Succeeded' % self._action_name)
             _result.result = True
             self._as.set_succeeded(_result)
+
+            ebb_in:GenericEBBInputRequest = GenericEBBInputRequest();
+            ebb_in.data_in.system_inputting_from = GenericEBBInputType.MANIPULATION;
+            ebb_in.data_in.message_type = GenericEBBInputType.SUCCESS;
+            ebb_in.data_in.message = "Pickup succeeded.";
+            ebb_in.data_in.num_fails = 0;
+            self.ebb_input_service(ebb_in);
         else:
             rospy.loginfo('%s: Failed' % self._action_name)
             _result.result = False
             self._as.set_aborted()
+
+            ebb_in:GenericEBBInputRequest = GenericEBBInputRequest();
+            ebb_in.data_in.system_inputting_from = GenericEBBInputType.MANIPULATION;
+            ebb_in.data_in.message_type = GenericEBBInputType.ERROR;
+            ebb_in.data_in.message = "Pickup Failed.";
+            ebb_in.data_in.num_fails = 0;
+            self.ebb_input_service(ebb_in);
 
 
 if __name__ == '__main__':
