@@ -24,7 +24,7 @@ This collision map is then modified on the fly to remove an area around the obje
 
 
 #### Running / Testing
-To call this action via a script: `$ rosrun orion_manipulation pick_up_object_client.py <name_of_target_tf>`.
+To call this action via a script: `$ rosrun manipulation pick_up_object_client.py <name_of_target_tf>`.
 * An example name of a target TF would be `potted_plant`. The published tf name will be `<object_id>_01` etc. You do not need to specify the `_0n` number - manipulation will choose whichever is available.
 * A node must be running to publish TFs for manipulation to attempt to pick up:
     * [Object recognition](https://github.com/ori-orion/orion-documentation/wiki/Running-the-object-detector-on-the-Alienware) will publish TFs from vision input.
