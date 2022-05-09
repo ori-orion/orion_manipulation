@@ -21,7 +21,6 @@ find_package(catkin REQUIRED COMPONENTS
   octomap_ros
   octomap_msgs
   orion_actions
-  gpd
 )
 
 #add_action_files(DIRECTORY
