@@ -37,15 +37,17 @@ class CollisionMapper:
         # Clear everything in global collision map
         self.global_collision_world.remove_all()
 
-    def get_converted_octomap(self):
+    def get_converted_octomap(self, external_bb, crop_bbs):
         try:
-            resp = self.reconstruction_service()
+            resp = self.reconstruction_service(external_bb, crop_bbs)
             return resp.resp
 
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
 
-    def build_collision_world(self):
+    def build_collision_world(self, external_bounding_box, crop_bounding_boxes=None):
+
+        crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
 
         # Reset reconstruction
         self.reset_collision_map()
@@ -55,7 +57,7 @@ class CollisionMapper:
         rospy.sleep(3)
 
         # Get and return collision map generated over last 3s
-        tmc_collision_map = self.get_converted_octomap()
+        tmc_collision_map = self.get_converted_octomap(external_bounding_box, crop_bbs)
 
         # Add the collision map (from octomap) to the global collision world
         self.add_map_to_global_collision_world(tmc_collision_map)
