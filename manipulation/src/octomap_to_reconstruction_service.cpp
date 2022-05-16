@@ -34,18 +34,21 @@ bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
       
       for(octomap::OcTree::leaf_iterator it = octree->begin_leafs(),
        end=octree->end_leafs(); it!= end; ++it) {
-	tmc_geometry_msgs::OrientedBoundingBox box;
-        box.center.x = it.getCoordinate().x();
-        box.center.y = it.getCoordinate().y();
-        box.center.z = it.getCoordinate().z();
-	box.extents.x = it.getSize();
-	box.extents.y = it.getSize();
-	box.extents.z = it.getSize();
-	box.axis.x = 1.0;
-	box.axis.y = 0.0;
-	box.axis.z = 0.0;
-	box.angle = 0.0;
-        res.resp.boxes.push_back(box);
+
+        if (it.getOccupancy() > 0.5) {
+          tmc_geometry_msgs::OrientedBoundingBox box;
+          box.center.x = it.getCoordinate().x();
+          box.center.y = it.getCoordinate().y();
+          box.center.z = it.getCoordinate().z();
+          box.extents.x = it.getSize();
+          box.extents.y = it.getSize();
+          box.extents.z = it.getSize();
+          box.axis.x = 1.0;
+          box.axis.y = 0.0;
+          box.axis.z = 0.0;
+          box.angle = 0.0;
+          res.resp.boxes.push_back(box);
+        }
       } 
     }
     else
