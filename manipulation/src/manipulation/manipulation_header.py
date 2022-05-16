@@ -66,7 +66,7 @@ class CollisionMapper:
 
         i = 0
         for box in collision_map_msg.boxes:
-            print("Processing" + str(i))
+            print("Processing" + str(i) + ", pos =" + str(box.center.x) + ", " + str(box.center.y) + ", " + str(box.center.z))
             i += 1
             # pos = Vector3(box.center.x, box.center.y, box.center.z)
             size_x = box.extents.x
