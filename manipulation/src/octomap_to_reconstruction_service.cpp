@@ -2,6 +2,7 @@
 // Created by Mark Finean on 2019-07-04.
 //
 #include "manipulation/GetReconstruction.h"
+#include "manipulation/BoundingBox.h"
 //#include "handle_utils.h"
 
 #include <ros/ros.h>
@@ -17,8 +18,14 @@
 #include <iostream>
 #include <cstdio>
 
+static inline octomap::point3d pointMsgToOctomap(const geometry_msgs::Point& ptMsg){
+    return octomap::point3d(ptMsg.x, ptMsg.y, ptMsg.z);
+    }
+
 bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
                                manipulation::GetReconstruction::Response &res){
+
+
 
     ROS_INFO("Message request received.");
     ros::NodeHandle nh;
@@ -31,11 +38,33 @@ bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
 
       octomap::AbstractOcTree* tree = octomap_msgs::binaryMsgToMap(srv.response.map);
       octomap::OcTree* octree = dynamic_cast<octomap::OcTree*>(tree);
-      
-      for(octomap::OcTree::leaf_iterator it = octree->begin_leafs(),
-       end=octree->end_leafs(); it!= end; ++it) {
 
-        if (it.getOccupancy() > 0.5) {
+      double thresMin = octree->getClampingThresMin();
+
+      // iterating through areas to prune
+      std::vector<manipulation::BoundingBox> crop_bbs = req.crop_bbs;
+      for (auto crop_bb: crop_bbs) {
+          // extracting the boundary boxes for the area of interest
+          octomap::point3d crop_min = pointMsgToOctomap(crop_bb.min);
+          octomap::point3d crop_max = pointMsgToOctomap(crop_bb.max);
+          // iterate through all boxes inside te pruning region and prune them
+          for(octomap::OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(crop_min,crop_max),
+          end=octree->end_leafs_bbx(); it!= end; ++it) {
+              it->setLogOdds(octomap::logodds(thresMin));
+              //                  m_octree->updateNode(it.getKey(), -6.0f);
+          }
+      }
+      octree->updateInnerOccupancy();
+
+      // extracting the boundary boxes for the area of interest
+      octomap::point3d ex_min = pointMsgToOctomap(req.external_bb.min);
+      octomap::point3d ex_max = pointMsgToOctomap(req.external_bb.max);
+
+      // iterate through all existing boxes in the area of interest
+      for(octomap::OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(ex_min,ex_max),
+       end=octree->end_leafs_bbx(); it!= end; ++it) {
+
+        if (it->getOccupancy() > 0.5) {
           tmc_geometry_msgs::OrientedBoundingBox box;
           box.center.x = it.getCoordinate().x();
           box.center.y = it.getCoordinate().y();

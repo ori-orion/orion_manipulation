@@ -1,2 +1,4 @@
+BoundingBox external_bb
+BoundingBox[] crop_bbs
 ---
 tmc_mapping_msgs/CollisionMap resp
