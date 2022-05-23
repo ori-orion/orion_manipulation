@@ -64,28 +64,29 @@ class CollisionMapper:
 
     def add_map_to_global_collision_world(self, collision_map_msg):
 
-        i = 0
-        for box in collision_map_msg.boxes:
-            print("Processing" + str(i) + ", pos =" + str(box.center.x) + ", " + str(box.center.y) + ", " + str(box.center.z))
-            i += 1
-            # pos = Vector3(box.center.x, box.center.y, box.center.z)
-            size_x = box.extents.x
-            size_y = box.extents.y
-            size_z = box.extents.z
-            # Other variables in msg:
-            # box.axis.x = 1.0;
-            # box.axis.y = 0.0;
-            # box.axis.z = 0.0;
-            # box.angle = 0.0;
-
-            self.global_collision_world.add_box(
-                x=size_x,
-                y=size_y,
-                z=size_z,
-                pose=geometry.pose(x=box.center.x, y=box.center.y, z=box.center.z),
-                frame_id="map",
-                timeout=0.0,
-            )
+        self.global_collision_world.add_mesh("../tmp.stl", frame_id="map", timeout=0.0)
+        # i = 0
+        # for box in collision_map_msg.boxes:
+        #     print("Processing" + str(i) + ", pos =" + str(box.center.x) + ", " + str(box.center.y) + ", " + str(box.center.z))
+        #     i += 1
+        #     # pos = Vector3(box.center.x, box.center.y, box.center.z)
+        #     size_x = box.extents.x
+        #     size_y = box.extents.y
+        #     size_z = box.extents.z
+        #     # Other variables in msg:
+        #     # box.axis.x = 1.0;
+        #     # box.axis.y = 0.0;
+        #     # box.axis.z = 0.0;
+        #     # box.angle = 0.0;
+        #
+        #     self.global_collision_world.add_box(
+        #         x=size_x,
+        #         y=size_y,
+        #         z=size_z,
+        #         pose=geometry.pose(x=box.center.x, y=box.center.y, z=box.center.z),
+        #         frame_id="map",
+        #         timeout=0.0,
+        #     )
 
         return
 

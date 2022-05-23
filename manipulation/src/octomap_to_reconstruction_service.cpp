@@ -5,6 +5,10 @@
 #include "manipulation/BoundingBox.h"
 //#include "handle_utils.h"
 
+#include "../stl-creator/vec3.h"
+#include "../stl-creator/triangle.h"
+#include "../stl-creator/mesh.h"
+
 #include <ros/ros.h>
 #include <ros/callback_queue.h>
 
@@ -24,8 +28,6 @@ static inline octomap::point3d pointMsgToOctomap(const geometry_msgs::Point& ptM
 
 bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
                                manipulation::GetReconstruction::Response &res){
-
-
 
     ROS_INFO("Message request received.");
     ros::NodeHandle nh;
@@ -60,11 +62,22 @@ bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
       octomap::point3d ex_min = pointMsgToOctomap(req.external_bb.min);
       octomap::point3d ex_max = pointMsgToOctomap(req.external_bb.max);
 
+
+      Mesh all_mesh, box_mesh;
+
+
+
       // iterate through all existing boxes in the area of interest
       for(octomap::OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(ex_min,ex_max),
        end=octree->end_leafs_bbx(); it!= end; ++it) {
 
         if (it->getOccupancy() > 0.5) {
+          box_mesh = create_cube();
+          box_mesh.scale(Vec3(it.getSize(), it.getSize(), it.getSize()));
+          box_mesh.translate(Vec3(it.getCoordinate().x(), it.getCoordinate().y(), it.getCoordinate().z()));
+
+          all_mesh += box_mesh;
+
           tmc_geometry_msgs::OrientedBoundingBox box;
           box.center.x = it.getCoordinate().x();
           box.center.y = it.getCoordinate().y();
@@ -78,7 +91,8 @@ bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
           box.angle = 0.0;
           res.resp.boxes.push_back(box);
         }
-      } 
+      }
+      all_mesh.stl_write("../tmp.stl");
     }
     else
     {
