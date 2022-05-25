@@ -32,12 +32,12 @@ bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
     ROS_INFO("Message request received.");
     ros::NodeHandle nh;
 
+    res.flag = false;
+
     ros::ServiceClient client = nh.serviceClient<octomap_msgs::GetOctomap>("octomap_binary");
     octomap_msgs::GetOctomap srv;
     if (client.call(srv))
     {
-      res.resp.header = srv.response.map.header;
-
       octomap::AbstractOcTree* tree = octomap_msgs::binaryMsgToMap(srv.response.map);
       octomap::OcTree* octree = dynamic_cast<octomap::OcTree*>(tree);
 
@@ -62,37 +62,24 @@ bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
       octomap::point3d ex_min = pointMsgToOctomap(req.external_bb.min);
       octomap::point3d ex_max = pointMsgToOctomap(req.external_bb.max);
 
-
       Mesh all_mesh, box_mesh;
-
-
 
       // iterate through all existing boxes in the area of interest
       for(octomap::OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(ex_min,ex_max),
        end=octree->end_leafs_bbx(); it!= end; ++it) {
 
         if (it->getOccupancy() > 0.5) {
+          // add box
           box_mesh = create_cube();
           box_mesh.scale(Vec3(it.getSize(), it.getSize(), it.getSize()));
           box_mesh.translate(Vec3(it.getCoordinate().x(), it.getCoordinate().y(), it.getCoordinate().z()));
 
           all_mesh += box_mesh;
-
-          tmc_geometry_msgs::OrientedBoundingBox box;
-          box.center.x = it.getCoordinate().x();
-          box.center.y = it.getCoordinate().y();
-          box.center.z = it.getCoordinate().z();
-          box.extents.x = it.getSize();
-          box.extents.y = it.getSize();
-          box.extents.z = it.getSize();
-          box.axis.x = 1.0;
-          box.axis.y = 0.0;
-          box.axis.z = 0.0;
-          box.angle = 0.0;
-          res.resp.boxes.push_back(box);
         }
       }
-      all_mesh.stl_write("../tmp.stl");
+      //save mesh to file
+      all_mesh.stl_write(req.stl_path);
+      res.flag = true;
     }
     else
     {
