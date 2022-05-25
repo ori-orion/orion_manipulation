@@ -1,32 +1,179 @@
-from std_srvs.srv import Empty
-from manipulation.srv import GetReconstruction, GetReconstructionResponse
-from geometry_msgs.msg import Vector3, Pose, Quaternion
-import rospy
+#! /usr/bin/env python3
+""" Common manipulation action server functionality.
+"""
 
-from hsrb_interface.collision_world import CollisionWorld
+import rospy
+import actionlib
+import math
+import tf2_ros
+import hsrb_interface
 import hsrb_interface.geometry as geometry
+from std_srvs.srv import Empty
+
+from manipulation.srv import GetReconstruction
 
 from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
 
+class ManipulationAction(object):
+
+    # Robot default parameters
+    DEFAULT_BODY_PLANNING_TIMEOUT = 20.0  # Robot planning timeout - default is 10s
+    DEFAULT_BODY_TF_TIMEOUT = 10.0  # Robot TF timeout - default is 5s
+
+    # Frame name constants
+    HAND_FRAME = "hand_palm_link"
+    SUCKER_FRAME = "hand_l_finger_vacuum_frame"
+    RGBD_CAMERA_FRAME = "head_rgbd_sensor_rgb_frame"
+    ODOM_FRAME = "odom"
+    MAP_FRAME = "map"
+    BASE_FRAME = "base_link"
+
+    def __init__(self, action_name, action_msg_type, use_collision_map=True, tts_narrate=True):
+        """
+        Base class for manipulation actions.
+        Args:
+            action_name: The name of the action server
+            action_msg_type: ROS message type for the action
+            use_collision_map: Whether to use dynamic collision mapping to avoid obstacles
+            tts_narrate: Whether to narrate what the robot is doing out loud with
+                text-to-speech
+
+        """
+
+        self._action_name = action_name
+        self._action_msg_type = action_msg_type
+        self.use_collision_map = use_collision_map
+
+        # Preparation for using the robot functions
+        self.robot = hsrb_interface.Robot()
+        self.whole_body = self.robot.try_get('whole_body')
+        self.omni_base = self.robot.try_get('omni_base')
+        self.collision_world = None
+        self.gripper = self.robot.try_get('gripper')
+        self.whole_body.end_effector_frame = self.HAND_FRAME
+        self.whole_body.looking_hand_constraint = True
+        self.tts_narrate = tts_narrate
+        if self.tts_narrate:
+            self.tts = self.robot.try_get('default_tts')
+            self.tts.language = self.tts.ENGLISH
+
+        self.whole_body.planning_timeout = self.DEFAULT_BODY_PLANNING_TIMEOUT
+        self.whole_body.tf_timeout = self.DEFAULT_BODY_TF_TIMEOUT
+
+        self.collision_mapper = CollisionMapper(self.robot) if use_collision_map else None
+
+        # TF, defaults to buffering 10 seconds of transforms
+        self._tf_buffer = tf2_ros.Buffer()
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
+
+        # All manipulation actions can publish a "goal" tf
+        self.goal_pose_br = tf2_ros.TransformBroadcaster()
+
+        self._as = actionlib.SimpleActionServer(self._action_name, self._action_msg_type,
+                                                execute_cb=self.execute_cb, auto_start=False)
+        self._as.start()
+        rospy.loginfo("%s: Action server started." % self._action_name)
+
+    def execute_cb(self, goal_msg):
+        """
+        Do any bookkeeping here e.g. store pre-action map pose.
+        """
+        rospy.loginfo("%s: Received goal: %s" % (self._action_name, goal_msg))
+        return self._execute_cb(goal_msg)
+
+    def abandon_action(self):
+        """
+        Abandon manipulation action: move robot to go position and abort action server.
+        """
+        rospy.loginfo('%s: Aborted. Moving to go and exiting.' % self._action_name)
+        self.whole_body.move_to_go()
+        self._as.set_aborted()
+
+    def preempt_action(self):
+        """
+        Preempt manipulation action: move robot to go position and preempt action server.
+        """
+        rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+        self.tts_say("I was preempted. Moving to go.")
+        self.whole_body.move_to_go()
+        self._as.set_preempted()
+
+    def publish_goal_pose_tf(self, p):
+        """
+        Publish a tf to the goal pose, in odom frame
+        Args:
+            p:mgoal pose
+        """
+        self.goal_pose_br.sendTransform((p.pos.x, p.pos.y, p.pos.z),
+                                        (p.ori.x, p.ori.y, p.ori.z, p.ori.w),
+                                        rospy.Time.now(),
+                                        'goal_pose',
+                                        'odom')
+
+    def lookup_transform(self, source, dest):
+        """
+        Lookup a transfrom and its timestamp.
+        Args:
+            source: name of source frame
+            dest: name of dest frame
+        Returns: (transform, time) where transform is a geometry_msgs Transform and time
+                  is a rostime.Time
+        """
+        try:
+            trans_stamped = self._tf_buffer.lookup_transform(source, dest, rospy.Time())
+            return trans_stamped.transform, trans_stamped.header.stamp
+
+        except (
+            tf2_ros.LookupException,
+            tf2_ros.ConnectivityException,
+            tf2_ros.ExtrapolationException,
+        ):
+            return None, None
+
+    def calc_transform_distance(self, t):
+        """
+        Calculate the L2 distance represented by a transform.
+        Args:
+            t: transform
+        """
+        return math.sqrt(math.pow(t[0], 2) + math.pow(t[1], 2) + math.pow(t[2], 2))
+
+    def tts_say(self, string_to_say):
+        """
+        Say something via text-to-speech, if text-to-speech narration is enabled.
+        Args:
+            string_to_say: string to be said out loud by the robot.
+        """
+        if self.tts_narrate:
+            self.tts.say(string_to_say)
+
+
 class CollisionMapper:
     """
-    This class is an interface to the robot's global collision world - the only collision
-    world we are allowed to have...
+    This class is an interface to collision mapping on the robot.
+    This is not intended to be used asynchronously, but avoids being broken by
+    asynchronous by nodes to the robot's collision map.
     """
 
     def __init__(self, robot):
         self.robot = robot
-        self.global_collision_world = self.robot.try_get('global_collision_world')
+        self.global_collision_world = self.robot.try_get("global_collision_world")
 
-        print(f"Waiting for octomap reset service")
+        rospy.loginfo(
+            "%s: Waiting for octomap reset service..." % self.__class__.__name__
+        )
         rospy.wait_for_service("/octomap_server/reset")
         self.reset_service = rospy.ServiceProxy("/octomap_server/reset", Empty)
 
-        print(f"Waiting for reconstruction service...")
+        rospy.loginfo(
+            "%s: Waiting for reconstruction service..." % self.__class__.__name__
+        )
         rospy.wait_for_service("/GetReconstruction")
-        self.reconstruction_service = rospy.ServiceProxy("/GetReconstruction", GetReconstruction)
+        self.reconstruction_service = rospy.ServiceProxy(
+            "/GetReconstruction", GetReconstruction
+        )
 
     def reset_collision_map(self):
         try:
@@ -88,42 +235,3 @@ class CollisionMapper:
             )
 
         return
-
-
-# import numpy as np
-# import tf
-
-# def check_for_object(object_tf):
-#     tf_listener = tf.TransformListener()
-#     foundMarker = False
-#     while not foundMarker:
-#         all_frames = tf_listener.getFrameStrings()
-#         foundMarker = object_tf in all_frames
-#
-#
-# def get_similar_tf(tf_frame):
-#     tf_listener = tf.TransformListener()
-#     rospy.sleep(3)
-#     all_frames = tf_listener.getFrameStrings()
-#     print(all_frames)
-#     for object_tf in all_frames:
-#         print '----------------'
-#         print object_tf
-#         print object_tf.split('-')[0]
-#         print '----------------'
-#         if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
-#             return object_tf
-#
-#
-# def get_object_pose(object_tf):
-#     tf_listener = tf.TransformListener()
-#     foundTrans = False
-#     while not foundTrans:
-#         try:
-#             t = tf_listener.getLatestCommonTime("/map", object_tf)
-#             (trans, rot) = tf_listener.lookupTransform('/map', object_tf, t)
-#             foundTrans = True
-#         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-#             continue
-#
-#     return np.array([trans[0], trans[1], trans[2]])
