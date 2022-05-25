@@ -209,6 +209,8 @@ class CollisionMapper:
         # Add the collision map (from octomap) to the global collision world
         self.add_map_to_global_collision_world(tmc_collision_map)
 
+        return self.global_collision_world
+
     def add_map_to_global_collision_world(self, collision_map_msg):
 
         i = 0
