@@ -30,6 +30,9 @@ class ManipulationAction(object):
     MAP_FRAME = "map"
     BASE_FRAME = "base_link"
 
+    # Whether to finally return to the map position the manipulation action was called at
+    RETURN_TO_START_AFTER_ACTION = True  
+
     def __init__(self, action_name, action_msg_type, use_collision_map=True, tts_narrate=True):
         """
         Base class for manipulation actions.
@@ -81,7 +84,23 @@ class ManipulationAction(object):
         Do any bookkeeping here e.g. store pre-action map pose.
         """
         rospy.loginfo("%s: Received goal: %s" % (self._action_name, goal_msg))
-        return self._execute_cb(goal_msg)
+
+        action_start_pose = self.omni_base.pose
+        rospy.loginfo("%s: Stored action start pose: %s"
+                      % (self._action_name, action_start_pose))
+
+        retval = self._execute_cb(goal_msg)
+
+        if self.RETURN_TO_START_AFTER_ACTION:
+            rospy.loginfo("%s: Returning to start pose: %s"
+                          % (self._action_name, action_start_pose))
+            self.omni_base.go_abs(
+                x=action_start_pose[0],
+                y=action_start_pose[1],
+                yaw=action_start_pose[2],
+                timeout=10.0)
+
+        return retval
 
     def abandon_action(self):
         """
