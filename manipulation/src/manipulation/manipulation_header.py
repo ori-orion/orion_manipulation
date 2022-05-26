@@ -296,16 +296,15 @@ class CollisionMapper:
         # Clear everything in global collision map
         self.global_collision_world.remove_all()
 
-    def get_converted_octomap(self, external_bb, crop_bbs):
+    def get_converted_octomap(self, external_bb, crop_bbs, stl_path):
         try:
-            resp = self.reconstruction_service(external_bb, crop_bbs)
-            return resp.resp
+            resp = self.reconstruction_service(external_bb, crop_bbs, stl_path)
+            return resp.flag
 
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
 
-    def build_collision_world(self, external_bounding_box, crop_bounding_boxes=None):
-
+    def build_collision_world(self, external_bounding_box, crop_bounding_boxes=None, stl_path = "/tmp/tmp.stl"):
         crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
 
         # Reset reconstruction
@@ -316,36 +315,16 @@ class CollisionMapper:
         rospy.sleep(3)
 
         # Get and return collision map generated over last 3s
-        tmc_collision_map = self.get_converted_octomap(external_bounding_box, crop_bbs)
+        flag = self.get_converted_octomap(external_bounding_box, crop_bbs, stl_path)
 
         # Add the collision map (from octomap) to the global collision world
-        self.add_map_to_global_collision_world(tmc_collision_map)
+        if flag:
+            self.add_map_to_global_collision_world(stl_path)
 
         return self.global_collision_world
 
-    def add_map_to_global_collision_world(self, collision_map_msg):
-
-        i = 0
-        for box in collision_map_msg.boxes:
-            print("Processing" + str(i) + ", pos =" + str(box.center.x) + ", " + str(box.center.y) + ", " + str(box.center.z))
-            i += 1
-            # pos = Vector3(box.center.x, box.center.y, box.center.z)
-            size_x = box.extents.x
-            size_y = box.extents.y
-            size_z = box.extents.z
-            # Other variables in msg:
-            # box.axis.x = 1.0;
-            # box.axis.y = 0.0;
-            # box.axis.z = 0.0;
-            # box.angle = 0.0;
-
-            self.global_collision_world.add_box(
-                x=size_x,
-                y=size_y,
-                z=size_z,
-                pose=geometry.pose(x=box.center.x, y=box.center.y, z=box.center.z),
-                frame_id="map",
-                timeout=0.0,
-            )
+    def add_map_to_global_collision_world(self, stl_path):
+        self.global_collision_world.add_mesh(stl_path, frame_id="map", timeout=0.0)
 
         return
+

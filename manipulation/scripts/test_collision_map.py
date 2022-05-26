@@ -22,7 +22,7 @@ if __name__ == "__main__":
     crop_bounding_box = BoundingBox(min=Point(-1.5,2.0,0), max=Point(-0.9, 2.4, 10))
 
     collision_mapper = CollisionMapper(robot)
-    collision_mapper.build_collision_world(external_bounding_box, [crop_bounding_box])
+    collision_mapper.build_collision_world(external_bounding_box, [crop_bounding_box], stl_path = "/tmp/tmp.stl")
 
     print("Done")
 

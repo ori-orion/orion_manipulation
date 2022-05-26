@@ -1,4 +1,5 @@
 BoundingBox external_bb
 BoundingBox[] crop_bbs
+string stl_path
 ---
-tmc_mapping_msgs/CollisionMap resp
+bool flag
