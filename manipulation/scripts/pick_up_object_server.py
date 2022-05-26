@@ -113,13 +113,17 @@ class PickUpObjectAction(ManipulationAction):
 
         if trans is None:
             rospy.logerr("Unable to find TF frame")
-            self.tts_say("Unable to find object to pick up.")
+            self.tts_say("I don't know the object you want picked up.")
             self.abandon_action()
             return
 
+        # Look at the object - make sure that we get all of the necessary collision map
+        rospy.loginfo("%s: Moving head to look at the object." % self._action_name)
+        self.look_at_object(goal_tf)
+
         if (rospy.Time.now() - lookup_time).to_sec() > self.GOAL_OBJECT_TF_TIMEOUT:
             rospy.logerr("Most recent published goal TF frame is too old")
-            self.tts_say("I haven't seen this object recently enough.")
+            self.tts_say("I can't see the object you want picked up.")
             self.abandon_action()
             return
 
@@ -133,10 +137,6 @@ class PickUpObjectAction(ManipulationAction):
         )
         self.tts_say('The object is "{:.2f}" metres away.'.format(obj_dist))
         rospy.sleep(1)
-
-        # Look at the object - make sure that we get all of the necessary collision map
-        rospy.loginfo("%s: Moving head to look at the object." % self._action_name)
-        self.whole_body.gaze_point(ref_frame_id=goal_tf)
 
         if self._as.is_preempt_requested():
             self.preempt_action()
