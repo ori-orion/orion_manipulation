@@ -31,7 +31,24 @@ class ManipulationAction(object):
     BASE_FRAME = "base_link"
 
     # Whether to finally return to the map position the manipulation action was called at
-    RETURN_TO_START_AFTER_ACTION = True  
+    RETURN_TO_START_AFTER_ACTION = True
+
+    # Kinematic parameters
+    MAX_HEIGHT_ARM_LIFT_JOINT = 0.69
+    # every 2cm the arm lift join lifts, the RGBD camera moves up by 1cm
+    H_ARM_RGBD_SCALE_FACTOR = 2
+    RGBD_MIN_HEIGHT = 0.967
+    RGBD_MAX_HEIGHT = 1.312
+    MIN_ANGLE_ARM_FLEX_HEIGHT = -2.6
+
+    # Parameters estimated from RViz / robot
+    # How far the arm swings when switching it from 0 to MIN_ANGLE_ARM_FLEX_HEIGHT radians
+    ARM_SWING_DIST = 0.3  # metres
+    MAX_HEIGHT_PLANE_VISIBLE = 3.0  # metres
+    # Should aim to look down from about 10cm above
+    LOOK_ANGLE_OFFSET = 0.1  # metres
+    # How far up can ARM LIGHT JOINT go without the hand blocking the RGBD camera?
+    MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION = 0.25  # metres
 
     def __init__(self, action_name, action_msg_type, use_collision_map=True, tts_narrate=True):
         """
@@ -157,7 +174,7 @@ class ManipulationAction(object):
         Args:
             t: transform
         """
-        return math.sqrt(math.pow(t[0], 2) + math.pow(t[1], 2) + math.pow(t[2], 2))
+        return math.sqrt(math.pow(t.translation.x, 2) + math.pow(t.translation.y, 2) + math.pow(t.translation.z, 2))
 
     def tts_say(self, string_to_say):
         """
@@ -167,6 +184,82 @@ class ManipulationAction(object):
         """
         if self.tts_narrate:
             self.tts.say(string_to_say)
+
+    # Common kinematic functionality
+
+    def move_arm_down(self, arm_lift_joint_height, back_away=True):
+        """
+        Move backwards and flip arm down.
+        """
+        if back_away:
+            self.omni_base.go_pose(
+                geometry.pose(x=-self.ARM_SWING_DIST), 10.0, ref_frame_id=self.BASE_FRAME
+            )
+
+        if arm_lift_joint_height < self.MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION:
+            rospy.logerr(
+                "%s: Arm lift joint height too low to move arm down" % self._action_name
+            )
+            return
+
+        self.whole_body.move_to_joint_positions(
+            {'arm_lift_joint': arm_lift_joint_height,
+             'arm_flex_joint': self.MIN_ANGLE_ARM_FLEX_HEIGHT}
+        )
+
+        if back_away:
+            self.omni_base.go_pose(
+                geometry.pose(x=self.ARM_SWING_DIST), 10.0, ref_frame_id=self.BASE_FRAME
+            )
+
+    def look_at_object(self, object_tf, rotate_to_face=True):
+        """
+        Get a "best-view" look at the object at the specified tf.
+        Args:
+            object_transform: tf
+            rotate_to_face: whether to rotate whole robot body to face object
+        Returns: success, true or false
+        """
+        (trans, _) = self.lookup_transform(self.BASE_FRAME, object_tf)
+
+        if trans is None:
+            return False
+
+        if rotate_to_face:
+            yaw = math.atan2(trans.translation.y, trans.translation.x)
+            self.omni_base.go_rel(0.0, 0.0, yaw, 10.0)
+
+        object_height = trans.translation.z
+        self.move_camera_to_height(object_height + self.LOOK_ANGLE_OFFSET)
+
+        self.whole_body.gaze_point(point=geometry.Vector3(0, 0, 0), ref_frame_id=object_tf)
+
+        return True
+
+    def move_camera_to_height(self, h):
+        """
+        Move the RGBD camera to a specified height. Assumes start state is go position.
+        Args:
+            h: height in metres
+        """
+        if h <= self.RGBD_MIN_HEIGHT:
+            return
+
+        arm_joint_height = (h - self.RGBD_MIN_HEIGHT) * self.H_ARM_RGBD_SCALE_FACTOR
+
+        if arm_joint_height > self.MAX_HEIGHT_ARM_LIFT_JOINT:
+            rospy.logwarn(
+                "%s: Can't get RGBD camera high enough to look down at goal. Target height %f m"
+                % (self._action_name, h)
+            )
+            arm_joint_height = self.MAX_HEIGHT_ARM_LIFT_JOINT
+
+        if arm_joint_height < self.MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION:
+            self.whole_body.move_to_joint_positions(
+                {'arm_lift_joint': arm_joint_height}
+            )
+        else:
+            self.move_arm_down(arm_lift_joint_height=arm_joint_height)
 
 
 class CollisionMapper:
@@ -219,7 +312,7 @@ class CollisionMapper:
         self.reset_collision_map()
 
         # Wait for map to populate
-        # TODO confirm that Octomap is actually building the map during this sleep
+        # TODO confirm that Octomap server is actually building the map during this sleep
         rospy.sleep(3)
 
         # Get and return collision map generated over last 3s
