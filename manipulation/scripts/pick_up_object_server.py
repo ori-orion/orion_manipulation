@@ -150,9 +150,9 @@ class PickUpObjectAction(ManipulationAction):
             rospy.loginfo("%s: Getting Collision Map." % self._action_name)
 
             (trans, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
-            goal_x = trans.transform.translation.x
-            goal_y = trans.transform.translation.y
-            goal_z = trans.transform.translation.z
+            goal_x = trans.translation.x
+            goal_y = trans.translation.y
+            goal_z = trans.translation.z
 
             external_bounding_box = BoundingBox(
                 min=Point(goal_x - 0.7, goal_y - 0.7, goal_z - 1.0),
