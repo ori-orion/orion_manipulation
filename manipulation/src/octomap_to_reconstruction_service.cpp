@@ -5,9 +5,9 @@
 #include "manipulation/BoundingBox.h"
 //#include "handle_utils.h"
 
-#include "../stl-creator/vec3.h"
-#include "../stl-creator/triangle.h"
-#include "../stl-creator/mesh.h"
+#include "../include/stl-creator/vec3.h"
+#include "../include/stl-creator/triangle.h"
+#include "../include/stl-creator/mesh.h"
 
 #include <ros/ros.h>
 #include <ros/callback_queue.h>
