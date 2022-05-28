@@ -29,7 +29,6 @@ def pick_up_object_client(goal_tf):
 
 if __name__ == '__main__':
     rospy.init_node('pick_up_object_client_py')
-    print("Provided {0} arguments to client.".format(len(sys.argv)))
 
     if len(sys.argv) == 2:
         goal_tf = sys.argv[1]
@@ -40,5 +39,3 @@ if __name__ == '__main__':
 
     result = pick_up_object_client(goal_tf)
     print("Result:" + str(result.result))
-
-

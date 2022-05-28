@@ -17,14 +17,16 @@ if __name__ == "__main__":
 
     robot = hsrb_interface.Robot()
 
-    external_bounding_box = BoundingBox(min=Point(-1000, -1000, -1000), max=Point(1000, 1000, 1000))
+    external_bounding_box = BoundingBox(min=Point(-100, -100, -100), max=Point(100, 100, 100))
 
-    crop_bounding_box = BoundingBox(min=Point(-1.5,2.0,0), max=Point(-0.9, 2.4, 10))
+    crop_point = [7.10, 2.05, 0.82]
+    crop_bounding_box = BoundingBox(
+        min=Point(crop_point[0] - 0.1, crop_point[1] - 0.1, crop_point[2] - 0.1),
+        max=Point(crop_point[0] + 0.1, crop_point[1] + 0.1, crop_point[2] + 0.1))
 
     collision_mapper = CollisionMapper(robot)
-    collision_mapper.build_collision_world(external_bounding_box, [crop_bounding_box], stl_path = "/tmp/tmp.stl")
+    collision_mapper.build_collision_world(external_bounding_box, [crop_bounding_box])
 
     print("Done")
-
-    while not rospy.is_shutdown():
-        rospy.spin()
+    rospy.signal_shutdown("Done")
+    exit()

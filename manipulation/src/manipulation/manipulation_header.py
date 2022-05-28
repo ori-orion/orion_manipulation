@@ -288,6 +288,9 @@ class CollisionMapper:
         )
 
     def reset_collision_map(self):
+        """
+        Clears all objects from the HSR's collision map and the octomap server node's map.
+        """
         try:
             self.reset_service()
         except rospy.ServiceException as e:
@@ -297,6 +300,15 @@ class CollisionMapper:
         self.global_collision_world.remove_all()
 
     def get_converted_octomap(self, external_bb, crop_bbs, stl_path):
+        """
+        Requests the octomap_to_reconstruction node to build an STL mesh from the octomap
+        produced by octomap_server.
+        Args:
+            external_bb: external BoundingBox that bounds the STL mesh to be created
+            crop_bbs: list of BoundingBox to crop out of the map (e.g. covering an object)
+            stl_path: path to save the STL mesh file to
+        Returns: success flag returned from octomap_to_reconstruction node
+        """
         try:
             resp = self.reconstruction_service(external_bb, crop_bbs, stl_path)
             return resp.flag
@@ -304,7 +316,18 @@ class CollisionMapper:
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
 
-    def build_collision_world(self, external_bounding_box, crop_bounding_boxes=None, stl_path = "/tmp/tmp.stl"):
+    def build_collision_world(self, external_bounding_box, crop_bounding_boxes=None):
+        """
+        Add the robot's 3D occupancy map of a specified area to the HSR collision world.
+        Args:
+            external_bb: external BoundingBox that bounds the STL mesh to be created
+            crop_bbs: list of BoundingBox to crop out of the map (e.g. covering an object)
+        """
+
+        # STL path to save to
+        timestamp_str = str(rospy.get_time()).replace(".", "-")
+        stl_path = "/tmp/collision_mesh_" + timestamp_str + ".stl"
+
         crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
 
         # Reset reconstruction
@@ -320,11 +343,17 @@ class CollisionMapper:
         # Add the collision map (from octomap) to the global collision world
         if flag:
             self.add_map_to_global_collision_world(stl_path)
+        else:
+            rospy.logwarn(
+                "%s: Octomap reconstruction node returned an empty collision mesh."
+                % (self.__class__.__name__)
+            )
 
         return self.global_collision_world
 
     def add_map_to_global_collision_world(self, stl_path):
+        """
+        Add an STL mesh to the HSR's global collision world.
+        """
         self.global_collision_world.add_mesh(stl_path, frame_id="map", timeout=0.0)
-
         return
-
