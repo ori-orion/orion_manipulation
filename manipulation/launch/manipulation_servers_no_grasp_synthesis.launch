@@ -1,0 +1,10 @@
+<launch>
+
+	 <node name="segment_object_node" pkg="point_cloud_filtering" type="segment_object" output="screen"> 
+		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+	 </node>
+
+	  <!-- Load the collision map services -->
+	  <include file="$(find manipulation)/launch/octomap_server.launch"> </include>
+
+</launch>
