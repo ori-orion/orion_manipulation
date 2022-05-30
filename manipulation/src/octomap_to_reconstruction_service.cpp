@@ -1,6 +1,6 @@
-"""
-Reconstructs STL meshes from Octomap occupancy map input.
-"""
+//
+// Reconstructs STL meshes from Octomap occupancy map input.
+//
 
 #include "manipulation/GetReconstruction.h"
 #include "manipulation/BoundingBox.h"

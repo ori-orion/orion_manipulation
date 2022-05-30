@@ -16,6 +16,7 @@ from actionlib_msgs.msg import GoalStatus
 import hsrb_interface.geometry as geometry
 from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 from geometry_msgs.msg import Point
+from manipulation.msg import BoundingBox
 
 from orion_actions.msg import *
 from manipulation.manipulation_header import ManipulationAction
