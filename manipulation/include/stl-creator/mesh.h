@@ -4,12 +4,31 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <cstdint>
 
 #include <fstream>
 #include <string>
+#include <stdexcept>
+
+#include <endian.h>
 
 #include "vec3.h"
 #include "triangle.h"
+
+
+static unsigned char stlBinaryHeaderEmpty[80] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 
 class Mesh {
 	public:
@@ -107,6 +126,62 @@ class Mesh {
 			file.close();
 		}
 
+		// STL write binary version
+		// M Budd
+                // This is terribly written, but you can't fault it if it works
+		void stl_write_binary(const std::string& filename, const std::string& name="") const {
+			std::ofstream file(filename);
+
+			// Write 80 byte header
+			file.write(reinterpret_cast<char *>(stlBinaryHeaderEmpty), sizeof(stlBinaryHeaderEmpty));
+
+			// Write 4 byte little endian number of triangles
+			uint32_t num_triangles = htole32(static_cast<unsigned int>(Triangles.size()));
+			if (num_triangles != Triangles.size())
+			{
+				throw std::runtime_error("Size type error");
+			}
+			file.write(reinterpret_cast<char *>(&num_triangles), 4);
+
+			float normal_x, normal_y, normal_z;
+			float vertex1_x, vertex1_y, vertex1_z, vertex2_x, vertex2_y, vertex2_z, vertex3_x, vertex3_y, vertex3_z;
+
+			for (const auto& t : Triangles) {
+
+				normal_x = (float)(t.normal().x());
+				file.write(reinterpret_cast<char *>(&normal_x), 4);
+				normal_y = (float)(t.normal().y());
+				file.write(reinterpret_cast<char *>(&normal_y), 4);
+				normal_z = (float)(t.normal().z());
+				file.write(reinterpret_cast<char *>(&normal_z), 4);
+
+				vertex1_x = (float)(t.vertex1().x());
+				file.write(reinterpret_cast<char *>(&vertex1_x), 4);
+				vertex1_y = (float)(t.vertex1().y());
+				file.write(reinterpret_cast<char *>(&vertex1_y), 4);
+				vertex1_z = (float)(t.vertex1().z());
+				file.write(reinterpret_cast<char *>(&vertex1_z), 4);
+
+				vertex2_x = (float)(t.vertex2().x());
+				file.write(reinterpret_cast<char *>(&vertex2_x), 4);
+				vertex2_y = (float)(t.vertex2().y());
+				file.write(reinterpret_cast<char *>(&vertex2_y), 4);
+				vertex2_z = (float)(t.vertex2().z());
+				file.write(reinterpret_cast<char *>(&vertex2_z), 4);
+
+				vertex3_x = (float)(t.vertex3().x());
+				file.write(reinterpret_cast<char *>(&vertex3_x), 4);
+				vertex3_y = (float)(t.vertex3().y());
+				file.write(reinterpret_cast<char *>(&vertex3_y), 4);
+				vertex3_z = (float)(t.vertex3().z());
+				file.write(reinterpret_cast<char *>(&vertex3_z), 4);
+
+				uint16_t attribute_bytes = 0;
+				file.write(reinterpret_cast<char *>(&attribute_bytes), 2);
+
+			}
+			file.close();
+		}
 
 		Mesh& operator+=(const Mesh &m) {
 			Triangles.insert(Triangles.end(), (m.Triangles).begin(), (m.Triangles).end());

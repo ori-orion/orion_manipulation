@@ -1,6 +1,7 @@
-//
-// Created by Mark Finean on 2019-07-04.
-//
+"""
+Reconstructs STL meshes from Octomap occupancy map input.
+"""
+
 #include "manipulation/GetReconstruction.h"
 #include "manipulation/BoundingBox.h"
 //#include "handle_utils.h"
@@ -81,7 +82,7 @@ bool octomap_to_reconstruction(manipulation::GetReconstruction::Request &req,
         //save mesh to file
         if (num_boxes > 0)
         {
-            all_mesh.stl_write(req.stl_path);
+            all_mesh.stl_write_binary(req.stl_path);
             res.flag = true;
         }
         else
