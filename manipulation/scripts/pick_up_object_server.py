@@ -15,6 +15,7 @@ import actionlib
 from actionlib_msgs.msg import GoalStatus
 import hsrb_interface.geometry as geometry
 from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
+from geometry_msgs.msg import Point
 
 from orion_actions.msg import *
 from manipulation.manipulation_header import ManipulationAction
@@ -47,7 +48,7 @@ class PickUpObjectAction(ManipulationAction):
         use_grasp_synthesis=True,
     ):
 
-        super(PickUpObjectAction, self).__init(
+        super(PickUpObjectAction, self).__init__(
             action_name, action_msg_type, use_collision_map
         )
 
@@ -83,7 +84,7 @@ class PickUpObjectAction(ManipulationAction):
 
         return response.result
 
-    def get_hand_pose(self, goal_tf, relative=geometry.pose()):
+    def get_default_grasp_pose(self, goal_tf, relative=geometry.pose()):
         """
         Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
         goal tf, all in frame "odom".
@@ -155,17 +156,16 @@ class PickUpObjectAction(ManipulationAction):
             goal_z = trans.translation.z
 
             external_bounding_box = BoundingBox(
-                min=Point(goal_x - 0.7, goal_y - 0.7, goal_z - 1.0),
-                max=Point(goal_x + 0.7, goal_y + 0.7, goal_z + 1.0),
+                min=Point(goal_x - 1.0, goal_y - 1.0, goal_z - 1.0),
+                max=Point(goal_x + 1.0, goal_y + 1.0, goal_z + 1.0),
             )
 
             # TODO this is a hard-coded ~10cm box
             object_bounding_box = BoundingBox(
-                min=Point(goal_x - 0.05, goal_y - 0.05, goal_z - 0.03),
-                max=Point(goal_x + 0.05, goal_y + 0.05, goal_z + 0.03),
+                min=Point(goal_x - 0.05, goal_y - 0.05, goal_z - 0.05),
+                max=Point(goal_x + 0.05, goal_y + 0.05, goal_z + 0.05),
             )
 
-            # TODO this interface does not currently return collision world object
             self.collision_world = self.collision_mapper.build_collision_world(
                 external_bounding_box, crop_bounding_boxes=[object_bounding_box]
             )
@@ -241,7 +241,10 @@ class PickUpObjectAction(ManipulationAction):
                 # Move to pregrasp
                 rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
 
-                hand_pose = self.get_hand_pose(goal_tf, relative=chosen_pregrasp_pose)
+                hand_pose = self.get_default_grasp_pose(
+                    goal_tf,
+                    relative=chosen_pregrasp_pose
+                )
 
                 # Error checking in case can't find goal pose
                 if hand_pose is None:
@@ -273,7 +276,7 @@ class PickUpObjectAction(ManipulationAction):
             # Specify the force to grasp
             self.tts_say("Grasping object.")
             rospy.sleep(1)
-            self.gripper.apply_force(self._GRASP_FORCE)
+            self.gripper.apply_force(self.DEFAULT_GRASP_FORCE)
             rospy.loginfo("%s: Object grasped." % self._action_name)
 
             return True
@@ -431,5 +434,5 @@ class PickUpObjectAction(ManipulationAction):
 
 if __name__ == "__main__":
     rospy.init_node("pick_up_object_server_node")
-    server = PickUpObjectAction(rospy.get_name())
+    server = PickUpObjectAction("pick_up_object")
     rospy.spin()

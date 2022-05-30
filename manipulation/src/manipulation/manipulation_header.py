@@ -9,6 +9,7 @@ import tf2_ros
 import hsrb_interface
 import hsrb_interface.geometry as geometry
 from std_srvs.srv import Empty
+from geometry_msgs.msg import TransformStamped
 
 from manipulation.srv import GetReconstruction
 
@@ -84,8 +85,8 @@ class ManipulationAction(object):
 
         self.collision_mapper = CollisionMapper(self.robot) if use_collision_map else None
 
-        # TF, defaults to buffering 10 seconds of transforms
-        self._tf_buffer = tf2_ros.Buffer()
+        # TF defaults to buffering 10 seconds of transforms. Choose 60 second buffer.
+        self._tf_buffer = tf2_ros.Buffer(rospy.Duration.from_sec(60.0))
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
 
         # All manipulation actions can publish a "goal" tf
@@ -140,13 +141,21 @@ class ManipulationAction(object):
         """
         Publish a tf to the goal pose, in odom frame
         Args:
-            p:mgoal pose
+            p: goal pose
         """
-        self.goal_pose_br.sendTransform((p.pos.x, p.pos.y, p.pos.z),
-                                        (p.ori.x, p.ori.y, p.ori.z, p.ori.w),
-                                        rospy.Time.now(),
-                                        'goal_pose',
-                                        'odom')
+        t = TransformStamped()
+        t.header.stamp = rospy.Time.now()
+        t.header.frame_id = "odom"
+        t.child_frame_id = "goal_pose"
+        t.transform.translation.x = p.pos.x
+        t.transform.translation.y = p.pos.y
+        t.transform.translation.z = p.pos.z
+        t.transform.rotation.x = p.ori.x
+        t.transform.rotation.y = p.ori.y
+        t.transform.rotation.z = p.ori.z
+        t.transform.rotation.w = p.ori.w
+
+        self.goal_pose_br.sendTransform(t)
 
     def lookup_transform(self, source, dest):
         """
