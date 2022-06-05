@@ -435,5 +435,5 @@ class PickUpObjectAction(ManipulationAction):
 
 if __name__ == "__main__":
     rospy.init_node("pick_up_object_server_node")
-    server = PickUpObjectAction("pick_up_object")
+    server = PickUpObjectAction("pick_up_object", use_collision_map=False, use_grasp_synthesis=False)
     rospy.spin()
