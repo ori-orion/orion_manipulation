@@ -45,7 +45,7 @@ def callback(msg):
         R = np.array([axis_4, -binormal_4, approach_4, [0, 0, 0, 1]])
 
         q = T.quaternion_from_matrix(R)
-
+        print('Grasp pose:',approach_center)
         # NOTE THIS NEEDS THE QUATERNION CONJUGATE
         br.sendTransform((approach_center[0], approach_center[1], approach_center[2]),
                          T.quaternion_conjugate(q),

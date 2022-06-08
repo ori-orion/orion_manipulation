@@ -47,6 +47,8 @@ namespace point_cloud_filtering {
 
     private:
         ros::Publisher object_pub_;
+        ros::Publisher crop_pub;
+        ros::Publisher marker_pub;
         double object_x, object_y, object_z;
     };
 
