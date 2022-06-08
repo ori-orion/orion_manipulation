@@ -18,6 +18,11 @@ from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 from geometry_msgs.msg import Point
 from manipulation.msg import BoundingBox
 
+import numpy as np
+import tf
+import tf.transformations as T
+import math
+
 from orion_actions.msg import *
 from manipulation.manipulation_header import ManipulationAction
 from point_cloud_filtering.srv import SegmentObject
@@ -66,6 +71,11 @@ class PickUpObjectAction(ManipulationAction):
             self.segment_object_service = rospy.ServiceProxy(
                 "/object_segmentation", SegmentObject
             )
+
+            self.grasps = None
+            self.goal_object = None
+            grasp_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
+
 
     def segment_grasp_target_object(self, object_pos_head_frame):
         """
@@ -158,7 +168,7 @@ class PickUpObjectAction(ManipulationAction):
 #         rospy.wait_for_service('/object_segmentation')
         response=None
         try:
-            response = segment_object_service(
+            response = self.segment_object_service(
                 object_pos_head_frame[0],
                 object_pos_head_frame[1],
                 object_pos_head_frame[2],
@@ -201,6 +211,12 @@ class PickUpObjectAction(ManipulationAction):
 
         # Attempt to find transform from hand frame to goal_tf
         (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
+        
+        # For simulation
+        num_tf_fails = 0
+        while goal_tf is None and num_tf_fails <= NUM_TF_FAILS:
+            (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)                
+            num_tf_fails += 1
 
         if trans is None:
             rospy.logerr("Unable to find TF frame")
@@ -250,10 +266,11 @@ class PickUpObjectAction(ManipulationAction):
                 max=Point(goal_x + 1.0, goal_y + 1.0, goal_z + 1.0),
             )
 
-            # TODO this is a hard-coded ~10cm box
+            # TODO this is a hard-coded ~10cm box 
+            box=0.2
             object_bounding_box = BoundingBox(
-                min=Point(goal_x - 0.05, goal_y - 0.05, goal_z - 0.05),
-                max=Point(goal_x + 0.05, goal_y + 0.05, goal_z + 0.05),
+                min=Point(goal_x - box, goal_y - box, goal_z - box - 0.1), #0.1 is z offset for simulation only
+                max=Point(goal_x + box, goal_y + box, goal_z + box - 0.1),
             )
 
             self.collision_world = self.collision_mapper.build_collision_world(
@@ -300,6 +317,9 @@ class PickUpObjectAction(ManipulationAction):
 
         rospy.loginfo("%s: Opening gripper." % (self._action_name))
         self.gripper.command(1.2)
+
+        rospy.loginfo('Is using collision: %s' % (self.use_collision_map))
+        rospy.loginfo('Is using synthesis: %s' % (self.use_grasp_synthesis))
         if self.use_collision_map:
             self.whole_body.collision_world = self.collision_world
         else:
@@ -316,20 +336,29 @@ class PickUpObjectAction(ManipulationAction):
                 print('object_position_head_frame:',object_position_head_frame)
 
                 # Call segmentation (lasts 10s)
-                seg_response = self.segment_object(object_position_head_frame)
+                seg_response = self.segment_grasp_target_object(object_position_head_frame)
                 print('segment response:',seg_response)
                 
                 self.tts.say('I am trying to calculate the best possible grasp position')
                 rospy.sleep(1)                
-                # Get the best grasp - returns the pose-tuple in the head-frame
-                grasp = self.get_grasp()
 
-                rospy.loginfo("%s: Moving to pre-grasp position." % (self._action_name))
-                self.tts_say("I will now move into the grasp position")
-                rospy.sleep(1)
-                self.whole_body.move_end_effector_pose(
-                    grasp, "head_rgbd_sensor_rgb_frame"
-                )
+                pre_grasp_pos = False
+                grasp_trial = 0
+                while not pre_grasp_pos:
+                    try:
+                        rospy.loginfo("Grasping trial %s" % grasp_trial)
+                        # Get the best grasp - returns the pose-tuple in the head-frame
+                        grasp = self.get_grasp(index=grasp_trial)
+                        grasp_trial += 1
+                        rospy.loginfo("%s: Moving to pre-grasp position." % (self._action_name))
+                        self.tts_say("I will now move into the grasp position")
+                        rospy.sleep(1)
+                        self.whole_body.move_end_effector_pose(
+                            grasp, "head_rgbd_sensor_rgb_frame"
+                        )
+                        pre_grasp_pos = True
+                    except:
+                        pass
 
             else:
                 # Move to pregrasp
@@ -380,6 +409,24 @@ class PickUpObjectAction(ManipulationAction):
             self.whole_body.collision_world = None
             self.abandon_action()
             return False
+
+    def get_head_frame_object_pose(self, object_tf):
+        found_trans = False
+        listen = tf.TransformListener()
+        rospy.sleep(3)
+        while not found_trans:
+            try:
+                t = listen.getLatestCommonTime("/head_rgbd_sensor_rgb_frame", object_tf)
+                (trans, rot) = listen.lookupTransform('/head_rgbd_sensor_rgb_frame', object_tf, t)
+                found_trans = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                if self._as.is_preempt_requested():
+                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+                self.whole_body.move_to_go()
+                self._as.set_preempted()
+                continue
+
+        return np.array([trans[0], trans[1], trans[2]])
 
     def suck_object(self, goal_tf):
         """
@@ -474,10 +521,11 @@ class PickUpObjectAction(ManipulationAction):
                 self.omni_base.go_rel(-0.3, 0, 0)
                 self.whole_body.move_to_go()
             return False
-     def grasp_callback(self, msg):
+
+    def grasp_callback(self, msg):
         self.grasps = msg.grasps
         
-    def execute_cb(self, goal_msg):
+    def execute_cb_1(self, goal_msg):
         
         self.tts.say("Finding stable view of object")
         rospy.sleep(5)
@@ -557,7 +605,7 @@ class PickUpObjectAction(ManipulationAction):
             rospy.loginfo('%s: Pruning the collision map.' % self._action_name)
             self.collision_mod(self.collision_msg)
 
-    def get_grasp(self):
+    def get_grasp(self,index=0):
         """
         For grasp pose synthesis.
         """
@@ -567,7 +615,7 @@ class PickUpObjectAction(ManipulationAction):
                 rospy.loginfo("Received %d grasps.", len(self.grasps))
                 break
 
-        grasp = self.grasps[0]  # grasps are sorted in descending order by score
+        grasp = self.grasps[index]  # grasps are sorted in descending order by score
         rospy.loginfo(
             "%s: Selected grasp with score:: %s" % (self._action_name, str(grasp.score))
         )
@@ -614,5 +662,5 @@ class PickUpObjectAction(ManipulationAction):
 
 if __name__ == "__main__":
     rospy.init_node("pick_up_object_server_node")
-    server = PickUpObjectAction("pick_up_object", use_collision_map=False, use_grasp_synthesis=False)
+    server = PickUpObjectAction("pick_up_object", use_collision_map=True, use_grasp_synthesis=True)
     rospy.spin()

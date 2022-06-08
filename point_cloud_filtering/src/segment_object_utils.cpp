@@ -18,7 +18,7 @@ namespace point_cloud_filtering {
         object_pub_ = object_pub;
         object_x = x_in;
         object_y = y_in;
-        object_z = z_in; //to be checked with physical robot
+        object_z = z_in-0.1; //0.1 is z offset for simulation only
         ros::NodeHandle nh;    
         
         marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
