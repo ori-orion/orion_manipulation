@@ -69,7 +69,6 @@ class PickUpObjectAction(ManipulationAction):
             self.grasps = None
             self.grasp_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
 
-
     def segment_grasp_target_object(self, object_pos_head_frame):
         """
         Request the object_segmentation node to publish a segmented point cloud at a
@@ -78,18 +77,13 @@ class PickUpObjectAction(ManipulationAction):
         The grasp pose synthesis node will input this point cloud and publish a list of
         candidate poses.
         """
-        response=None
+        response = False
         try:
             response = self.segment_object_service(
                 object_pos_head_frame[0],
                 object_pos_head_frame[1],
                 object_pos_head_frame[2],
             )
-            # segment_object_service = rospy.ServiceProxy('/object_segmentation', SegmentObject)
-            # response = segment_object_service(object_pos_head_frame[0],
-            #                                   object_pos_head_frame[1],
-            #                                   object_pos_head_frame[2])
-            
         except rospy.ServiceException as e:
             rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
             return False
@@ -172,11 +166,11 @@ class PickUpObjectAction(ManipulationAction):
                 max=Point(goal_x + 1.0, goal_y + 1.0, goal_z + 1.0),
             )
 
-            # TODO this is a hard-coded ~10cm box 
-            box=0.2
+            # TODO this is a hard-coded ~15cm box
+            bound_x = bound_y = bound_z = 0.15
             object_bounding_box = BoundingBox(
-                min=Point(goal_x - box, goal_y - box, goal_z - box - 0.1), #0.1 is z offset for simulation only
-                max=Point(goal_x + box, goal_y + box, goal_z + box - 0.1),
+                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z - 0.1),  # TODO 0.1 is z offset for simulation only
+                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z - 0.1),
             )
 
             self.collision_world = self.collision_mapper.build_collision_world(
@@ -237,15 +231,15 @@ class PickUpObjectAction(ManipulationAction):
                 object_position_head_frame = self.get_head_frame_object_pose(goal_tf)
 
                 # Call segmentation (lasts 10s)
-                seg_response = self.segment_grasp_target_object(object_position_head_frame)
-                print('segment response:',seg_response)
-                
                 self.tts.say('I am trying to calculate the best possible grasp position')
-                rospy.sleep(1)                
+                seg_response = self.segment_grasp_target_object(object_position_head_frame)
+                if not seg_response:
+                    self.abandon_action()
+                    return False
 
-                pre_grasp_pos = False
+                achievable_grasp_pose_found = False
                 grasp_trial = 0
-                while not pre_grasp_pos:
+                while not achievable_grasp_pose_found:
                     try:
                         rospy.loginfo("Grasping trial %s" % grasp_trial)
                         # Get the best grasp - returns the pose-tuple in the head-frame
@@ -257,8 +251,9 @@ class PickUpObjectAction(ManipulationAction):
                         self.whole_body.move_end_effector_pose(
                             grasp, "head_rgbd_sensor_rgb_frame"
                         )
-                        pre_grasp_pos = True
+                        achievable_grasp_pose_found = True
                     except:
+                        # Failed to find valid motion to this grasp pose - continue search
                         pass
 
             else:
