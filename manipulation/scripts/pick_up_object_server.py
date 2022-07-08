@@ -29,8 +29,6 @@ from hsrb_interface import robot as _robot
 
 _robot.enable_interactive()
 
-# How many times can we fail to find the Tf frame before returning?
-NUM_TF_FAILS=30
 
 class PickUpObjectAction(ManipulationAction):
 
@@ -69,8 +67,7 @@ class PickUpObjectAction(ManipulationAction):
             )
 
             self.grasps = None
-            self.goal_object = None
-            grasp_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
+            self.grasp_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
 
 
     def segment_grasp_target_object(self, object_pos_head_frame):
@@ -126,12 +123,6 @@ class PickUpObjectAction(ManipulationAction):
 
         # Attempt to find transform from hand frame to goal_tf
         (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
-
-        # For simulation
-        num_tf_fails = 0
-        while goal_tf is None and num_tf_fails <= NUM_TF_FAILS:
-            (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)                
-            num_tf_fails += 1
 
         if trans is None:
             rospy.logerr("Unable to find TF frame")
@@ -434,88 +425,8 @@ class PickUpObjectAction(ManipulationAction):
 
     def grasp_callback(self, msg):
         self.grasps = msg.grasps
-        
-    def execute_cb_1(self, goal_msg):
-        
-        self.tts.say("Finding stable view of object")
-        rospy.sleep(5)
 
-        _result = PickUpObjectResult()
-        # _result.result = False
-        is_preempted = False
-        # Currently doesn't do anything other than relay to another topic
-        rospy.Subscriber("known_object_pre_filter", CollisionObject, self.collision_callback)
-
-        goal_tf_in = goal_msg.goal_tf
-        goal_tf = None
-
-        num_tf_fails = 0
-        while goal_tf is None and num_tf_fails <= NUM_TF_FAILS:
-            goal_tf = self.get_similar_tf(goal_tf_in)
-                
-
-            if self._as.is_preempt_requested():
-                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                is_preempted = True
-                return
-
-
-            if goal_tf is None:
-                num_tf_fails += 1
-                rospy.loginfo('{0}: Found no similar tf frame. Trying again'.format(self._action_name))
-
-        # Set aborted if we couldn't find a TF frame
-        if num_tf_fails > NUM_TF_FAILS:
-            rospy.logerr("Couldn't find similar tf frame.")
-            self._as.set_aborted()
-            return
-
-        if is_preempted:
-            return
-
-        # Found the goal tf so proceed to pick up
-        rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
-        self.set_goal_object(goal_tf)
-        obj_dist = self.get_object_distance(self.goal_object)
-        rospy.loginfo('{0}: Distance to object is "{1:.2f}"m.'.format(self._action_name, obj_dist))
-        self.tts.say('I can see the object and it is "{:.2f}" metres away.'.format(obj_dist))
-        rospy.sleep(1)
-
-        if self.goal_object == 'postcard':
-            grasp_type = 'suction'
-        else:
-            grasp_type = 'grab'
-            chosen_pregrasp_pose = geometry.pose(z=-0.08, ek=0)
-            chosen_grasp_pose = geometry.pose(z=0.06)
-
-        # ------------------------------------------------------------------------------
-        # Check the object is in sight
-        found_marker = self.check_for_object(self.goal_object)
-
-        if not found_marker:
-            rospy.logerr("Unable to find TF frame...")
-            self._as.set_aborted()
-            return
-
-        # Look at the object - this is to make sure that we get all of the necessary collision map
-        # rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
-        # self.whole_body.gaze_point(ref_frame_id=self.goal_object)
-
-        # Set collision map
-        if self.use_collision_map:
-            self.tts.say("I am now evaluating my environment so that I don't collide with anything.")
-            rospy.sleep(1)
-            rospy.loginfo('%s: Getting Collision Map.' % self._action_name)
-        
-            self.collision_world = self.collision_mapper.get_collision_map()
-            rospy.loginfo('%s: Collision Map generated.' % self._action_name)
-
-            rospy.loginfo('%s: Pruning the collision map.' % self._action_name)
-            self.collision_mod(self.collision_msg)
-
-    def get_grasp(self,index=0):
+    def get_grasp(self, index=0):
         """
         For grasp pose synthesis.
         """
