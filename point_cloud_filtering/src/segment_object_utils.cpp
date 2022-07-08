@@ -13,14 +13,14 @@ typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 
 namespace point_cloud_filtering {
-    
+
     ObjectSegmenter::ObjectSegmenter(const ros::Publisher& object_pub, const double x_in, const double y_in, const double z_in) {
         object_pub_ = object_pub;
         object_x = x_in;
         object_y = y_in;
-        object_z = z_in-0.1; //0.1 is z offset for simulation only
+        object_z = z_in - 0.1; //0.1 is z offset for simulation only
         ros::NodeHandle nh;    
-        
+
         marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
         crop_pub = nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 1, true);
     }
@@ -30,7 +30,6 @@ namespace point_cloud_filtering {
         // Check the incoming point cloud
         PointCloudC::Ptr cloud(new PointCloudC());
         pcl::fromROSMsg(msg, *cloud);
-
         ROS_INFO("Got point cloud with %ld points", cloud->size());
 
         visualization_msgs::Marker marker;
@@ -50,7 +49,7 @@ namespace point_cloud_filtering {
         marker.scale.x = 0.1;
         marker.scale.y = 0.1;
         marker.scale.z = 0.1;
-        marker.color.a = 1.0; // Don't forget to set the alpha!
+        marker.color.a = 1.0;
         marker.color.r = 0.0;
         marker.color.g = 1.0;
         marker.color.b = 0.0;
@@ -65,13 +64,6 @@ namespace point_cloud_filtering {
         CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
 
         ROS_INFO("Cropped cloud has cloud with %ld points", first_cropped_cloud->size());
-        sensor_msgs::PointCloud2 msg_cloud_out;
-        pcl::toROSMsg(*first_cropped_cloud, msg_cloud_out);
-        
-        
-        // ROS_INFO("Publishing cropped_cloud");
-        // crop_pub.publish(msg_cloud_out);
-
 
         //------ Get the table in the point cloud --------
         pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
@@ -93,7 +85,7 @@ namespace point_cloud_filtering {
         PointCloudC::Ptr no_surface_cloud(new PointCloudC());
         RemoveSurface(first_cropped_cloud, no_surface_cloud, inliers);
 
-
+        sensor_msgs::PointCloud2 msg_cloud_out;
         pcl::toROSMsg(*no_surface_cloud, msg_cloud_out);
         ROS_INFO("Publishing no_surface_cloud");
         crop_pub.publish(msg_cloud_out);
@@ -116,8 +108,6 @@ namespace point_cloud_filtering {
         ROS_INFO("min_y= %f ", min_y);
         ROS_INFO("max_y= %f ", max_y);
         //------ Crop the point cloud used to get the handle --------
-        // Eigen::Vector4f min_pt(object_x-0.15,object_y-0.15, object_z-0.15, 1);
-        // Eigen::Vector4f max_pt(object_x+0.15, min_y-0.01, object_z+0.15, 1);
         Eigen::Vector4f min_pt(object_x-crop_radius,object_y-crop_radius, object_z-crop_radius, 1);
         Eigen::Vector4f max_pt(object_x+crop_radius, min_y+0.15, object_z+crop_radius, 1);
         PointCloudC::Ptr object_cloud(new PointCloudC());
@@ -126,15 +116,8 @@ namespace point_cloud_filtering {
         std::cout << min_pt << std::endl;
         ROS_INFO("max_pt=");
         std::cout << max_pt << std::endl;
-        // CropCloud(first_cropped_cloud, object_cloud, min_pt, max_pt);
-        
+
         // Publish the object point cloud
-        // if (not inliers->indices.empty ()) {
-        //     sensor_msgs::PointCloud2 msg_cloud_out;
-        //     pcl::toROSMsg(*object_cloud, msg_cloud_out);
-        //     object_pub_.publish(msg_cloud_out);
-        // }
-        // sensor_msgs::PointCloud2 msg_cloud_out;
         pcl::toROSMsg(*object_cloud, msg_cloud_out);
         object_pub_.publish(msg_cloud_out);
     }

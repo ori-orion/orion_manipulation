@@ -16,7 +16,7 @@ def pick_up_object_client(goal_tf):
 
     # Creates a goal to send to the action server.
     goal_msg = PickUpObjectGoal(goal_tf=goal_tf)
-    
+
     # Sends the goal to the action server.
     client.send_goal(goal_msg)
 
@@ -36,6 +36,6 @@ if __name__ == '__main__':
         print("Failed to provide tf frame as argument to pick up. Defaulting to ar_marker/201")
         goal_tf = 'ar_marker/201'
         # sys.exit(1)
-    print(goal_tf)
+
     result = pick_up_object_client(goal_tf)
     print("Result:" + str(result.result))

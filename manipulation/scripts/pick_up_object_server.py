@@ -9,7 +9,7 @@ Key options:
         False:  Do not avoid obstacles. ONLY FOR SUPERVISED TESTING WITH E-STOP.
 """
 
-
+import numpy as np
 import rospy
 import actionlib
 from actionlib_msgs.msg import GoalStatus
@@ -17,11 +17,7 @@ import hsrb_interface.geometry as geometry
 from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 from geometry_msgs.msg import Point
 from manipulation.msg import BoundingBox
-
-import numpy as np
-import tf
 import tf.transformations as T
-import math
 
 from orion_actions.msg import *
 from manipulation.manipulation_header import ManipulationAction
@@ -85,87 +81,6 @@ class PickUpObjectAction(ManipulationAction):
         The grasp pose synthesis node will input this point cloud and publish a list of
         candidate poses.
         """
-
-# class PickUpObjectAction(object):
-
-#     def __init__(self, name):
-#         self._action_name = 'pick_up_object'
-#         self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.PickUpObjectAction,
-#                                                 execute_cb=self.execute_cb, auto_start=False)
-#         self._as.start()
-#         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
-
-#         self.use_collision_map = False
-
-#         # Preparation for using the robot functions
-#         self.robot = hsrb_interface.Robot()
-#         self.whole_body = self.robot.try_get('whole_body')
-#         self.omni_base = self.robot.try_get('omni_base')
-#         self.collision_world = None
-#         self.gripper = self.robot.try_get('gripper')
-#         self.whole_body.end_effector_frame = 'hand_palm_link'
-#         self.whole_body.looking_hand_constraint = True        
-#         self.tts = self.robot.try_get('default_tts')
-#         self.tts.language = self.tts.ENGLISH
-
-#         if self.use_collision_map:
-#             self.collision_mapper = CollisionMapper(self.robot)
-
-#         self._CONNECTION_TIMEOUT = 15.0 # Define the vacuum timeouts
-#         self._SUCTION_TIMEOUT = rospy.Duration(20.0) # Define the vacuum timeouts
-#         self._HAND_TF = 'hand_palm_link'
-#         self._GRASP_FORCE = 0.8
-#         self.whole_body.planning_timeout = 20.0 # Increase planning timeout. Default is 10s
-#         self.whole_body.tf_timeout = 10.0 # Increase tf timeout. Default is 5s
-
-#         # Set up publisher for the collision map
-#         self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
-#         self.goal_pose_br = tf.TransformBroadcaster()
-
-#         self.grasps = None
-#         self.use_grasp_synthesis = True
-
-#         self.goal_object = None
-#         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
-#         grasp_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
-#         self.geting_grasps=False
-
-#     def grasp_callback(self, msg):
-#         # if self.getting_grasps:
-#         self.grasps = msg.grasps
-
-
-#     def get_grasp(self):
-#         print('self.grasps:',self.grasps)
-#         while not len(self.grasps) > 0:
-#             if len(self.grasps) > 0:
-#                 rospy.loginfo('Received %d grasps.', len(self.grasps))
-#                 break
-
-#         grasp = self.grasps[0] # grasps are sorted in descending order by score
-#         rospy.loginfo('%s: Selected grasp with score:: %s' % (self._action_name, str(grasp.score)))
-
-#         # This gives the approach point correctly
-#         bottom = np.array([grasp.bottom.x, grasp.bottom.y, grasp.bottom.z])
-#         approach = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z ])
-#         binormal = np.array([grasp.binormal.x, grasp.binormal.y, grasp.binormal.z])
-#         hand_outer_diameter = 0.12
-#         hw = 0.5*hand_outer_diameter
-#         finger_width = 0.01
-#         left_bottom = bottom - (hw - 0.5 * finger_width) * binormal
-#         right_bottom = bottom + (hw - 0.5 * finger_width) * binormal
-#         base_center = left_bottom + 0.5 * (right_bottom - left_bottom) - 0.01 * approach
-#         approach_center = base_center - 0.06 * approach
-
-#         approach_4 = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z , approach_center[0]])
-#         binormal_4 = np.array([grasp.binormal.x, grasp.binormal.y, grasp.binormal.z, approach_center[1]])
-#         axis_4 = np.array([grasp.axis.x, grasp.axis.y, grasp.axis.z, approach_center[2]])
-
-# _robot.enable_interactive()
-
-
-#     def segment_object(self, object_pos_head_frame):
-#         rospy.wait_for_service('/object_segmentation')
         response=None
         try:
             response = self.segment_object_service(
@@ -211,7 +126,7 @@ class PickUpObjectAction(ManipulationAction):
 
         # Attempt to find transform from hand frame to goal_tf
         (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
-        
+
         # For simulation
         num_tf_fails = 0
         while goal_tf is None and num_tf_fails <= NUM_TF_FAILS:
@@ -327,13 +242,8 @@ class PickUpObjectAction(ManipulationAction):
 
         try:
             if self.use_grasp_synthesis:
-                print('Starting grasp synthesis')
-
                 # Segment the object point cloud first
                 object_position_head_frame = self.get_head_frame_object_pose(goal_tf)
-
-                # object_position_head_frame = self.get_head_frame_object_pose(self.goal_object)
-                print('object_position_head_frame:',object_position_head_frame)
 
                 # Call segmentation (lasts 10s)
                 seg_response = self.segment_grasp_target_object(object_position_head_frame)
@@ -619,13 +529,6 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo(
             "%s: Selected grasp with score:: %s" % (self._action_name, str(grasp.score))
         )
-
-        # if grasp_type == 'suction':
-        #     self.suck_object()
-        # else:        
-        #     self.tts.say("I will now pick up the object")
-        #     rospy.sleep(1)
-        #     grab_success = self.grab_object(chosen_pregrasp_pose, chosen_grasp_pose)
 
         # This gives the approach point correctly
         bottom = np.array([grasp.bottom.x, grasp.bottom.y, grasp.bottom.z])
