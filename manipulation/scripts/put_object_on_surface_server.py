@@ -15,32 +15,21 @@ from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
 from actionlib_msgs.msg import GoalStatus
+from manipulation.manipulation_header import ManipulationAction
 from orion_actions.msg import *
 
 
-class PutObjectOnSurfaceAction(object):
+class PutObjectOnSurfaceAction(ManipulationAction):
 
-    def __init__(self, name):
-        self._action_name = 'put_object_on_surface'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.PutObjectOnSurfaceAction,
-                                                execute_cb=self.execute_cb, auto_start=False)
-        self._as.start()
-        rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
-
-        # Preparation for using the robot functions
-        self.robot = hsrb_interface.Robot()
-        self.whole_body = self.robot.try_get('whole_body')
-        self.gripper = self.robot.try_get('gripper')
-        self.whole_body.end_effector_frame = 'hand_palm_link'
-        self.whole_body.looking_hand_constraint = True
-        self.tts = self.robot.try_get('default_tts')
-        self.tts.language = self.tts.ENGLISH
-
-        self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
+    def __init__(self, action_name, action_msg_type=orion_actions.msg.PutObjectOnSurfaceAction, use_collision_map=True):
+               
+        super(PutObjectOnSurfaceAction, self).__init__(
+            action_name, action_msg_type, use_collision_map
+        )
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
-    def execute_cb(self, goal_msg):
+    def _execute_cb(self, goal_msg):
         _result = PutObjectOnSurfaceResult()
         _result.result = False
 
@@ -59,7 +48,7 @@ class PutObjectOnSurfaceAction(object):
 
             # Place object of surface
             ## NEED TO CHANGE THE GOAL LOCATION HERE
-            self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(x=0, y=0, z=0.2), 'hand_palm_link')
 
             # Let go of the object
             rospy.sleep(1)
@@ -87,11 +76,7 @@ class PutObjectOnSurfaceAction(object):
             self._as.set_aborted()
 
 
-
-
-
-
 if __name__ == '__main__':
     rospy.init_node('put_object_on_surface_server')
-    server = PutObjectOnSurfaceAction(rospy.get_name())
+    server = PutObjectOnSurfaceAction('put_object_on_surface', use_collision_map=False)
     rospy.spin()

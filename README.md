@@ -97,8 +97,8 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
 
 ## To do (ordered priority list):
 - PutObjectOnSurface.action
-    - [ ] Code review of `put_object_on_surface_server.py` + equivalent client
-    - [ ] Tested in simulation
+    - [x] Code review of `put_object_on_surface_server.py` + equivalent client
+    - [x] Tested in simulation
     - [ ] Tested on real robot
 - PutObjectOnFloor.action
     - [ ] Code review of `put_object_on_floor_server.py` + equivalent client
