@@ -33,6 +33,9 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         _result = PutObjectOnSurfaceResult()
         _result.result = False
 
+        goal_tf = goal_msg.goal_tf
+        rospy.loginfo("%s: Requested to put object on surface %s" % (self._action_name, goal_tf))
+
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
             rospy.loginfo('%s: Preempted' % self._action_name)
@@ -46,9 +49,17 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             self.whole_body.move_to_neutral()
             rospy.sleep(1)
 
+            # Attempt to find transform from hand frame to goal_tf
+            (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
+            if trans is None:
+                rospy.logerr("Unable to find TF frame")
+                self.tts_say("I don't know the surface frame you want to put object down.")
+                self.abandon_action()
+                return
+
             # Place object of surface
-            ## NEED TO CHANGE THE GOAL LOCATION HERE
-            self.whole_body.move_end_effector_pose(geometry.pose(x=0, y=0, z=0.2), 'hand_palm_link')
+            # self.whole_body.move_end_effector_pose(geometry.pose(x=0, y=0, z=0.2), 'hand_palm_link')
+            self.whole_body.move_end_effector_pose(geometry.pose(x=trans.translation.x, y=trans.translation.y, z=trans.translation.z), self.HAND_FRAME)
 
             # Let go of the object
             rospy.sleep(1)
