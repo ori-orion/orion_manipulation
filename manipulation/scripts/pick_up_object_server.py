@@ -228,11 +228,15 @@ class PickUpObjectAction(ManipulationAction):
         try:
             if self.use_grasp_synthesis:
                 # Segment the object point cloud first
-                object_position_head_frame = self.get_head_frame_object_pose(goal_tf)
+                (head_object_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
 
                 # Call segmentation (lasts 10s)
                 self.tts.say('I am trying to calculate the best possible grasp position')
-                seg_response = self.segment_grasp_target_object(object_position_head_frame)
+                seg_response = self.segment_grasp_target_object(
+                    [head_object_transform.translation.x,
+                     head_object_transform.translation.y,
+                     head_object_transform.translation.z])
+
                 if not seg_response:
                     self.abandon_action()
                     return False
@@ -305,24 +309,6 @@ class PickUpObjectAction(ManipulationAction):
             self.whole_body.collision_world = None
             self.abandon_action()
             return False
-
-    def get_head_frame_object_pose(self, object_tf):
-        found_trans = False
-        listen = tf.TransformListener()
-        rospy.sleep(3)
-        while not found_trans:
-            try:
-                t = listen.getLatestCommonTime("/head_rgbd_sensor_rgb_frame", object_tf)
-                (trans, rot) = listen.lookupTransform('/head_rgbd_sensor_rgb_frame', object_tf, t)
-                found_trans = True
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                if self._as.is_preempt_requested():
-                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                continue
-
-        return np.array([trans[0], trans[1], trans[2]])
 
     def suck_object(self, goal_tf):
         """
