@@ -65,6 +65,7 @@ add_service_files(
    DetectBinHandle.srv
    DetectDrawerHandles.srv
    SegmentObject.srv
+   SegmentSurface.srv
    GetSurfaceGoal.srv
 )
 
@@ -141,6 +142,7 @@ include_directories(
 add_library(point_cloud_filtering_handle_segmentation src/handle_segmentation.cpp)
 add_library(point_cloud_filtering_handle_utils src/handle_utils.cpp)
 add_library(point_cloud_filtering_object_segmentation src/segment_object_utils.cpp)
+add_library(point_cloud_filtering_surface_segmentation src/segment_surface_utils.cpp)
 add_library(point_cloud_filtering_bin_handle_segmentation src/bin_handle_segmentation.cpp)
 #add_library(point_cloud_filtering_planes src/handle_grasp_pose.cpp)
 #add_library(point_cloud_filtering_crop src/crop.cpp)
@@ -158,6 +160,7 @@ add_library(point_cloud_filtering_bin_handle_segmentation src/bin_handle_segment
 add_executable(point_cloud_filtering_handle_grasp_pose src/handle_grasp_pose.cpp)
 add_executable(point_cloud_filtering_drawer_handle_pose src/drawer_handle_pose.cpp)
 add_executable(point_cloud_filtering_segment_object  src/segment_object.cpp)
+add_executable(point_cloud_filtering_segment_surface  src/segment_surface.cpp)
 add_executable(point_cloud_filtering_bin_handle_grasp_pose src/bin_handle_grasp_pose.cpp)
 
 ## Rename C++ executable without prefix
@@ -168,6 +171,7 @@ add_executable(point_cloud_filtering_bin_handle_grasp_pose src/bin_handle_grasp_
 set_target_properties(point_cloud_filtering_handle_grasp_pose PROPERTIES OUTPUT_NAME handle_grasp_pose PREFIX "")
 set_target_properties(point_cloud_filtering_drawer_handle_pose PROPERTIES OUTPUT_NAME drawer_handle_pose PREFIX "")
 set_target_properties(point_cloud_filtering_segment_object PROPERTIES OUTPUT_NAME segment_object PREFIX "")
+set_target_properties(point_cloud_filtering_segment_surface PROPERTIES OUTPUT_NAME segment_surface PREFIX "")
 set_target_properties(point_cloud_filtering_bin_handle_grasp_pose PROPERTIES OUTPUT_NAME bin_handle_grasp_pose PREFIX "")
 
 
@@ -178,6 +182,7 @@ add_dependencies(point_cloud_filtering_handle_grasp_pose ${${PROJECT_NAME}_EXPOR
 add_dependencies(point_cloud_filtering_bin_handle_grasp_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(point_cloud_filtering_drawer_handle_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(point_cloud_filtering_segment_object ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(point_cloud_filtering_segment_surface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 #add_dependencies(point_cloud_filtering_crop ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #add_dependencies(point_cloud_filtering_planes ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -190,6 +195,7 @@ target_link_libraries(point_cloud_filtering_bin_handle_segmentation ${catkin_LIB
 target_link_libraries(point_cloud_filtering_handle_segmentation ${catkin_LIBRARIES} point_cloud_filtering_handle_utils)
 target_link_libraries(point_cloud_filtering_handle_utils ${catkin_LIBRARIES})
 target_link_libraries(point_cloud_filtering_object_segmentation ${catkin_LIBRARIES})
+target_link_libraries(point_cloud_filtering_surface_segmentation ${catkin_LIBRARIES})
 
 target_link_libraries(point_cloud_filtering_handle_grasp_pose
         point_cloud_filtering_handle_utils
@@ -205,6 +211,11 @@ target_link_libraries(point_cloud_filtering_drawer_handle_pose
 
 target_link_libraries(point_cloud_filtering_segment_object
         point_cloud_filtering_object_segmentation
+        ${catkin_LIBRARIES}
+        )
+
+target_link_libraries(point_cloud_filtering_segment_surface
+        point_cloud_filtering_surface_segmentation
         ${catkin_LIBRARIES}
         )
 

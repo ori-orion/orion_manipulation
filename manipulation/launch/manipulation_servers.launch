@@ -10,7 +10,13 @@
 		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
 	 </node>
 
+	 <!-- Object segmentation for grasping synthesis -->
 	 <node name="segment_object_node" pkg="point_cloud_filtering" type="segment_object" output="screen"> 
+		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+	 </node>
+
+	 <!-- Object segmentation for grasping synthesis --> -->
+	 <node name="segment_surface_node" pkg="point_cloud_filtering" type="segment_surface" output="screen"> 
 		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
 	 </node>
 

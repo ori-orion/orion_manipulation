@@ -28,7 +28,7 @@ def put_object_on_surface_client(goal_tf):
     return client.get_result()
 
 
-def publish_frame(tf_name, position, ref_frame = "hand_palm_link"):
+def publish_frame(tf_name, position, ref_frame = "head_rgbd_sensor_rgb_frame"):
     new_tf = PoseStamped()
     br = tf.TransformBroadcaster()
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     else:
         print("Failed to provide tf frame as argument to put object down. Setting to default surface goal..")
         goal_tf = "surface_goal_tf"
-        publish_frame(goal_tf,[-0.1,0,0.2])
+        # publish_frame(goal_tf,[-0.15,0.15,0.8])
 
 
     result = put_object_on_surface_client(goal_tf)
