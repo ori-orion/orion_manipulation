@@ -194,7 +194,6 @@ class PickUpObjectAction(ManipulationAction):
             self.tts_say("Failed to pick up the object")
         else:
             self.tts_say("Object grasped successfully.")
-        rospy.sleep(1)
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
@@ -227,98 +226,17 @@ class PickUpObjectAction(ManipulationAction):
             self.whole_body.collision_world = None
 
         try:
+            successfully_positioned = False
             if self.use_grasp_synthesis:
+                successfully_positioned = self.position_end_effector_grasp_pose_synthesis()
 
-                # Clear the previous grasp list
-                self.grasps = None
+            if not successfully_positioned:
+                successfully_positioned = self.position_end_effector_fixed_grasp()
 
-                # Segment the object point cloud first
-                (head_object_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
+            if not successfully_positioned:
+                return False
 
-                # Call segmentation (lasts 10s)
-                self.tts.say('I am trying to calculate the best possible grasp position')
-                seg_response = self.segment_grasp_target_object(
-                    [head_object_transform.translation.x,
-                     head_object_transform.translation.y,
-                     head_object_transform.translation.z])
-
-                if not seg_response:
-                    self.abandon_action()
-                    return False
-
-                # Grasps are sorted in descending order by score
-                # Keep track of maximum time that
-                start_time = rospy.Time.now()
-                while self.grasps is None:
-                    rospy.sleep(0.2)
-                    elapsed_secs = (rospy.Time.now() - start_time).to_sec()
-                    if elapsed_secs > self.GRASP_POSE_GENERATION_TIMEOUT:
-                        break
-
-                if self.grasps is None:
-                    # TODO don't abandon, instead attempt to use fixed grasp
-                    self.tts_say("I cannot pick up this object")
-                    self.abandon_action()
-                    return False
-
-                found_valid_grasp = False
-                for idx, grasp in enumerate(self.grasps):
-                    rospy.loginfo("Grasping trial %s" % idx)
-
-                    grasp_pose = grasp_to_pose(self.grasps[grasp_trial])
-
-                    try:
-                        self.whole_body.move_end_effector_pose(
-                            grasp_pose, "head_rgbd_sensor_rgb_frame"
-                        )
-                        found_valid_grasp = True
-
-                    except:
-                        # Failed to find valid motion to this grasp pose - continue search
-                        pass
-
-                if not found_valid_grasp:
-                    # TODO don't abandon, instead attempt to use fixed grasp
-                    self.tts_say("I cannot pick up this object")
-                    self.abandon_action()
-                    return False
-
-            else:
-                # Move to pregrasp
-                rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
-
-                hand_pose = self.get_default_grasp_pose(
-                    goal_tf,
-                    relative=chosen_pregrasp_pose
-                )
-
-                # Error checking in case can't find goal pose
-                if hand_pose is None:
-                    self.abandon_action()
-                    return False
-
-                self.publish_goal_pose_tf(hand_pose)
-
-                rospy.loginfo("%s: Moving to pre-grasp position." % (self._action_name))
-                self.tts_say("Moving to pre-grasp position.")
-                self.whole_body.move_end_effector_pose(hand_pose, "odom")
-
-                # Turn off collision checking to get close and grasp
-                rospy.loginfo(
-                    "%s: Turning off collision checking to get closer."
-                    % (self._action_name)
-                )
-                self.whole_body.collision_world = None
-                rospy.sleep(1)
-
-                # Move to grasp pose
-                rospy.loginfo("%s: Moving to grasp." % (self._action_name))
-                self.tts_say("Moving to grasp position.")
-                rospy.sleep(1)
-                self.whole_body.move_end_effector_pose(
-                    chosen_grasp_pose, self.whole_body.end_effector_frame
-                )
-
+            # We are allowed to collide with things while closing the gripper obviously
             self.whole_body.collision_world = None
 
             # Specify the force to grasp
@@ -333,6 +251,97 @@ class PickUpObjectAction(ManipulationAction):
             self.whole_body.collision_world = None
             self.abandon_action()
             return False
+
+    def position_end_effector_grasp_pose_synthesis():
+        """
+        Move to a valid grasping position using grasp pose synthesis.
+        """
+        # Clear the previous grasp list
+        self.grasps = None
+
+        # Segment the object point cloud first
+        (head_obj_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
+
+        # Call segmentation (lasts 10s)
+        self.tts.say('I am trying to calculate the best possible grasp position')
+        seg_response = self.segment_grasp_target_object(
+            [head_obj_transform.translation.x,
+             head_obj_transform.translation.y,
+             head_obj_transform.translation.z])
+
+        if not seg_response:
+            # Segmentation internal failure
+            return False
+
+        # Grasps are sorted in descending order by score
+        # Include a timeout
+        start_time = rospy.Time.now()
+        while self.grasps is None:
+            rospy.sleep(0.2)
+            elapsed_secs = (rospy.Time.now() - start_time).to_sec()
+            if elapsed_secs > self.GRASP_POSE_GENERATION_TIMEOUT:
+                break
+
+        if self.grasps is None:
+            # gpg failed to return a list of grasp poses
+            return False
+
+        found_valid_grasp = False
+        for idx, grasp in enumerate(self.grasps):
+            rospy.loginfo("Grasping trial %s" % idx)
+            grasp_pose = grasp_to_pose(self.grasps[grasp_trial])
+            self.publish_goal_pose_tf(grasp_pose)
+
+            try:
+                self.whole_body.move_end_effector_pose(grasp_pose, self.RGBD_CAMERA_FRAME)
+                found_valid_grasp = True
+            except:
+                # Failed to find valid motion to this grasp pose - continue search
+                pass
+        if not found_valid_grasp:
+            return False
+
+        # Robot should now have successfully moved to target generated grasp pose
+        return True
+
+    def position_end_effector_fixed_grasp():
+        """
+        Move to a valid grasping position using a fixed approach from robot to target.
+        """
+
+        # Move to pregrasp
+        rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
+
+        hand_pose = self.get_default_grasp_pose(
+            goal_tf,
+            relative=chosen_pregrasp_pose
+        )
+
+        # Error checking in case can't find goal pose
+        if hand_pose is None:
+            self.abandon_action()
+            return False
+
+        self.publish_goal_pose_tf(hand_pose)
+
+        rospy.loginfo("%s: Moving to pre-grasp position." % (self._action_name))
+        self.tts_say("Moving to pre-grasp position.")
+        self.whole_body.move_end_effector_pose(hand_pose, "odom")
+
+        # Turn off collision checking to get close and grasp
+        rospy.loginfo(
+            "%s: Turning off collision checking to get closer."
+            % (self._action_name)
+        )
+        self.whole_body.collision_world = None
+        rospy.sleep(1)
+
+        # Move to grasp pose
+        rospy.loginfo("%s: Moving to grasp." % (self._action_name))
+        self.tts_say("Moving to grasp position.")
+        self.whole_body.move_end_effector_pose(
+            chosen_grasp_pose, self.whole_body.end_effector_frame
+        )
 
     def suck_object(self, goal_tf):
         """
