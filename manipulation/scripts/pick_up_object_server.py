@@ -131,7 +131,7 @@ class PickUpObjectAction(ManipulationAction):
         self.look_at_object(goal_tf)
 
         if (rospy.Time.now() - lookup_time).to_sec() > self.GOAL_OBJECT_TF_TIMEOUT:
-            rospy.logerr("Most recent published goal TF frame is too old")
+            rospy.logerr("Most recent published goal TF frame is too old ({} seconds old)".format((rospy.Time.now() - lookup_time).to_sec()))
             self.tts_say("I can't see the object you want picked up.")
             self.abandon_action()
             return
