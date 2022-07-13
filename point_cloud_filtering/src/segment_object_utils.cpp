@@ -5,6 +5,9 @@
 #include "segment_object_utils.h"
 #include "geometry_msgs/PointStamped.h"
 #include <eigen_conversions/eigen_msg.h>
+#include "ros/ros.h"
+#include "sensor_msgs/PointCloud2.h"
+#include <visualization_msgs/Marker.h>
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
@@ -15,7 +18,11 @@ namespace point_cloud_filtering {
         object_pub_ = object_pub;
         object_x = x_in;
         object_y = y_in;
-        object_z = z_in;
+        object_z = z_in - 0.1; //0.1 is z offset for simulation only
+        ros::NodeHandle nh;    
+
+        marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
+        crop_pub = nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 1, true);
     }
 
     void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
@@ -25,9 +32,33 @@ namespace point_cloud_filtering {
         pcl::fromROSMsg(msg, *cloud);
         ROS_INFO("Got point cloud with %ld points", cloud->size());
 
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = "head_rgbd_sensor_rgb_frame";
+        marker.header.stamp = ros::Time();
+        marker.ns = "my_namespace";
+        marker.id = 0;
+        marker.type = visualization_msgs::Marker::SPHERE;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.pose.position.x = object_x;
+        marker.pose.position.y = object_y;
+        marker.pose.position.z = object_z;
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+        marker.scale.x = 0.1;
+        marker.scale.y = 0.1;
+        marker.scale.z = 0.1;
+        marker.color.a = 1.0;
+        marker.color.r = 0.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+        marker_pub.publish(marker);
+
         //------ Crop the point cloud roughly 20 cm around the object--------
-        Eigen::Vector4f min_crop_pt(object_x-0.15,object_y-0.15, object_z-0.15, 1);
-        Eigen::Vector4f max_crop_pt(object_x+0.15, object_y+0.15, object_z+0.15, 1);
+        float crop_radius=0.17;
+        Eigen::Vector4f min_crop_pt(object_x-crop_radius,object_y-crop_radius, object_z-crop_radius, 1);
+        Eigen::Vector4f max_crop_pt(object_x+crop_radius, object_y+crop_radius, object_z+crop_radius, 1);
 
         PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
         CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
@@ -54,6 +85,11 @@ namespace point_cloud_filtering {
         PointCloudC::Ptr no_surface_cloud(new PointCloudC());
         RemoveSurface(first_cropped_cloud, no_surface_cloud, inliers);
 
+        sensor_msgs::PointCloud2 msg_cloud_out;
+        pcl::toROSMsg(*no_surface_cloud, msg_cloud_out);
+        ROS_INFO("Publishing no_surface_cloud");
+        crop_pub.publish(msg_cloud_out);
+
         // At this point the object cloud may have anything below the table still in.
         // The y axis points towards the floor so need to crop anything above max y value in the table inliers.
 
@@ -69,20 +105,21 @@ namespace point_cloud_filtering {
             }
 
         }
-
+        ROS_INFO("min_y= %f ", min_y);
+        ROS_INFO("max_y= %f ", max_y);
         //------ Crop the point cloud used to get the handle --------
-        Eigen::Vector4f min_pt(object_x-0.15,object_y-0.15, object_z-0.15, 1);
-        Eigen::Vector4f max_pt(object_x+0.15, min_y-0.01, object_z+0.15, 1);
-
+        Eigen::Vector4f min_pt(object_x-crop_radius,object_y-crop_radius, object_z-crop_radius, 1);
+        Eigen::Vector4f max_pt(object_x+crop_radius, min_y+0.15, object_z+crop_radius, 1);
         PointCloudC::Ptr object_cloud(new PointCloudC());
         CropCloud(no_surface_cloud, object_cloud, min_pt, max_pt);
+        ROS_INFO("min_pt=");
+        std::cout << min_pt << std::endl;
+        ROS_INFO("max_pt=");
+        std::cout << max_pt << std::endl;
 
         // Publish the object point cloud
-        if (not inliers->indices.empty ()) {
-            sensor_msgs::PointCloud2 msg_cloud_out;
-            pcl::toROSMsg(*object_cloud, msg_cloud_out);
-            object_pub_.publish(msg_cloud_out);
-        }
+        pcl::toROSMsg(*object_cloud, msg_cloud_out);
+        object_pub_.publish(msg_cloud_out);
     }
 
     void SegmentTable(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices) {
