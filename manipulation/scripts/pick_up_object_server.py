@@ -35,7 +35,7 @@ class PickUpObjectAction(ManipulationAction):
 
     ACTION_SERVER_CONNECTION_TIMEOUT = 15.0  # Used for e.g. vacuum action server
     GOAL_OBJECT_TF_TIMEOUT = (
-        3.0  # How recently we must have seen an object to pick it up
+        100.0  # How recently we must have seen an object to pick it up
     )
     GRASP_POSE_GENERATION_TIMEOUT = (
         7.0  # How long we give grasp pose generation to generate grasps
@@ -228,10 +228,10 @@ class PickUpObjectAction(ManipulationAction):
         try:
             successfully_positioned = False
             if self.use_grasp_synthesis:
-                successfully_positioned = self.position_end_effector_grasp_pose_synthesis()
+                successfully_positioned = self.position_end_effector_grasp_pose_synthesis(goal_tf)
 
             if not successfully_positioned:
-                successfully_positioned = self.position_end_effector_fixed_grasp()
+                successfully_positioned = self.position_end_effector_fixed_grasp(goal_tf)
 
             if not successfully_positioned:
                 return False
@@ -252,7 +252,7 @@ class PickUpObjectAction(ManipulationAction):
             self.abandon_action()
             return False
 
-    def position_end_effector_grasp_pose_synthesis():
+    def position_end_effector_grasp_pose_synthesis(self,goal_tf):
         """
         Move to a valid grasping position using grasp pose synthesis.
         """
@@ -289,7 +289,7 @@ class PickUpObjectAction(ManipulationAction):
         found_valid_grasp = False
         for idx, grasp in enumerate(self.grasps):
             rospy.loginfo("Grasping trial %s" % idx)
-            grasp_pose = grasp_to_pose(self.grasps[grasp_trial])
+            grasp_pose = self.grasp_to_pose(self.grasps[idx])
             self.publish_goal_pose_tf(grasp_pose)
 
             try:
@@ -304,7 +304,7 @@ class PickUpObjectAction(ManipulationAction):
         # Robot should now have successfully moved to target generated grasp pose
         return True
 
-    def position_end_effector_fixed_grasp():
+    def position_end_effector_fixed_grasp(self,goal_tf):
         """
         Move to a valid grasping position using a fixed approach from robot to target.
         """
