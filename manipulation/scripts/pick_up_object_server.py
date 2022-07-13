@@ -17,6 +17,7 @@ import hsrb_interface.geometry as geometry
 from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 from geometry_msgs.msg import Point
 from manipulation.msg import BoundingBox
+import tf
 import tf.transformations as T
 
 from orion_actions.msg import *
@@ -35,6 +36,9 @@ class PickUpObjectAction(ManipulationAction):
     ACTION_SERVER_CONNECTION_TIMEOUT = 15.0  # Used for e.g. vacuum action server
     GOAL_OBJECT_TF_TIMEOUT = (
         3.0  # How recently we must have seen an object to pick it up
+    )
+    GRASP_POSE_GENERATION_TIMEOUT = (
+        7.0  # How long we give grasp pose generation to generate grasps
     )
 
     SUCTION_TIMEOUT = rospy.Duration(20.0)  # Vacuum action timeout
@@ -77,18 +81,16 @@ class PickUpObjectAction(ManipulationAction):
         The grasp pose synthesis node will input this point cloud and publish a list of
         candidate poses.
         """
-        response = False
         try:
-            response = self.segment_object_service(
+            self.segment_object_service(
                 object_pos_head_frame[0],
                 object_pos_head_frame[1],
                 object_pos_head_frame[2],
             )
+            return True
         except rospy.ServiceException as e:
             rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
             return False
-
-        return response.result
 
     def get_default_grasp_pose(self, goal_tf, relative=geometry.pose()):
         """
@@ -200,7 +202,6 @@ class PickUpObjectAction(ManipulationAction):
             return
 
         # Now return to moving position
-        # TODO consider making this return to a saved previous position
         self.finish_position()
 
         if grab_success:
@@ -227,6 +228,10 @@ class PickUpObjectAction(ManipulationAction):
 
         try:
             if self.use_grasp_synthesis:
+
+                # Clear the previous grasp list
+                self.grasps = None
+
                 # Segment the object point cloud first
                 (head_object_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
 
@@ -241,24 +246,42 @@ class PickUpObjectAction(ManipulationAction):
                     self.abandon_action()
                     return False
 
-                achievable_grasp_pose_found = False
-                grasp_trial = 0
-                while not achievable_grasp_pose_found:
+                # Grasps are sorted in descending order by score
+                # Keep track of maximum time that
+                start_time = rospy.Time.now()
+                while self.grasps is None:
+                    rospy.sleep(0.2)
+                    elapsed_secs = (rospy.Time.now() - start_time).to_sec()
+                    if elapsed_secs > self.GRASP_POSE_GENERATION_TIMEOUT:
+                        break
+
+                if self.grasps is None:
+                    # TODO don't abandon, instead attempt to use fixed grasp
+                    self.tts_say("I cannot pick up this object")
+                    self.abandon_action()
+                    return False
+
+                found_valid_grasp = False
+                for idx, grasp in enumerate(self.grasps):
+                    rospy.loginfo("Grasping trial %s" % idx)
+
+                    grasp_pose = grasp_to_pose(self.grasps[grasp_trial])
+
                     try:
-                        rospy.loginfo("Grasping trial %s" % grasp_trial)
-                        # Get the best grasp - returns the pose-tuple in the head-frame
-                        grasp = self.get_grasp(index=grasp_trial)
-                        grasp_trial += 1
-                        rospy.loginfo("%s: Moving to pre-grasp position." % (self._action_name))
-                        self.tts_say("I will now move into the grasp position")
-                        rospy.sleep(1)
                         self.whole_body.move_end_effector_pose(
-                            grasp, "head_rgbd_sensor_rgb_frame"
+                            grasp_pose, "head_rgbd_sensor_rgb_frame"
                         )
-                        achievable_grasp_pose_found = True
+                        found_valid_grasp = True
+
                     except:
                         # Failed to find valid motion to this grasp pose - continue search
                         pass
+
+                if not found_valid_grasp:
+                    # TODO don't abandon, instead attempt to use fixed grasp
+                    self.tts_say("I cannot pick up this object")
+                    self.abandon_action()
+                    return False
 
             else:
                 # Move to pregrasp
@@ -280,25 +303,26 @@ class PickUpObjectAction(ManipulationAction):
                 self.tts_say("Moving to pre-grasp position.")
                 self.whole_body.move_end_effector_pose(hand_pose, "odom")
 
-            # Turn off collision checking to get close and grasp
-            rospy.loginfo(
-                "%s: Turning off collision checking to get closer."
-                % (self._action_name)
-            )
-            self.whole_body.collision_world = None
-            rospy.sleep(1)
+                # Turn off collision checking to get close and grasp
+                rospy.loginfo(
+                    "%s: Turning off collision checking to get closer."
+                    % (self._action_name)
+                )
+                self.whole_body.collision_world = None
+                rospy.sleep(1)
 
-            # Move to grasp pose
-            rospy.loginfo("%s: Moving to grasp position." % (self._action_name))
-            self.tts_say("Moving to grasp position.")
-            rospy.sleep(1)
-            self.whole_body.move_end_effector_pose(
-                chosen_grasp_pose, self.whole_body.end_effector_frame
-            )
+                # Move to grasp pose
+                rospy.loginfo("%s: Moving to grasp." % (self._action_name))
+                self.tts_say("Moving to grasp position.")
+                rospy.sleep(1)
+                self.whole_body.move_end_effector_pose(
+                    chosen_grasp_pose, self.whole_body.end_effector_frame
+                )
+
+            self.whole_body.collision_world = None
 
             # Specify the force to grasp
             self.tts_say("Grasping object.")
-            rospy.sleep(1)
             self.gripper.apply_force(self.DEFAULT_GRASP_FORCE)
             rospy.loginfo("%s: Object grasped." % self._action_name)
 
@@ -407,19 +431,12 @@ class PickUpObjectAction(ManipulationAction):
     def grasp_callback(self, msg):
         self.grasps = msg.grasps
 
-    def get_grasp(self, index=0):
+    def grasp_to_pose(self, grasp):
         """
-        For grasp pose synthesis.
+        Convert a grasp pose synthesis-generated grasp into a pose for the actuator.
         """
-
-        while not len(self.grasps) > 0:
-            if len(self.grasps) > 0:
-                rospy.loginfo("Received %d grasps.", len(self.grasps))
-                break
-
-        grasp = self.grasps[index]  # grasps are sorted in descending order by score
         rospy.loginfo(
-            "%s: Selected grasp with score:: %s" % (self._action_name, str(grasp.score))
+            "%s: Evaluating grasp with score:: %s" % (self._action_name, str(grasp.score))
         )
 
         # This gives the approach point correctly
