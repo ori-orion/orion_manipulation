@@ -253,7 +253,7 @@ class PickUpObjectAction(ManipulationAction):
             self.abandon_action()
             return False
 
-    def position_end_effector_grasp_pose_synthesis(self, goal_tf):
+    def position_end_effector_grasp_pose_synthesis(self, goal_tf, chosen_grasp_pose):
         """
         Move to a valid grasping position using grasp pose synthesis.
         """
