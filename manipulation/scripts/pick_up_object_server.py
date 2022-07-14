@@ -171,8 +171,8 @@ class PickUpObjectAction(ManipulationAction):
             # TODO this is a hard-coded ~15cm box
             bound_x = bound_y = bound_z = 0.15
             object_bounding_box = BoundingBox(
-                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z),  # TODO 0.1 is z offset for simulation only
-                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z),
+                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z - 0.1),  # TODO 0.1 is z offset for simulation only
+                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z - 0.1),
             )
 
             self.collision_world = self.collision_mapper.build_collision_world(
