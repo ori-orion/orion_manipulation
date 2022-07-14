@@ -171,8 +171,8 @@ class PickUpObjectAction(ManipulationAction):
             # TODO this is a hard-coded ~15cm box
             bound_x = bound_y = bound_z = 0.15
             object_bounding_box = BoundingBox(
-                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z - 0.1),  # TODO 0.1 is z offset for simulation only
-                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z - 0.1),
+                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z),  # TODO 0.1 is z offset for simulation only
+                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z),
             )
 
             self.collision_world = self.collision_mapper.build_collision_world(
@@ -458,7 +458,7 @@ class PickUpObjectAction(ManipulationAction):
         left_bottom = bottom - (hw - 0.5 * finger_width) * binormal
         right_bottom = bottom + (hw - 0.5 * finger_width) * binormal
         base_center = left_bottom + 0.5 * (right_bottom - left_bottom) - 0.01 * approach
-        approach_center = base_center - 0.06 * approach
+        approach_center = base_center * approach
 
         approach_4 = np.array(
             [grasp.approach.x, grasp.approach.y, grasp.approach.z, approach_center[0]]
