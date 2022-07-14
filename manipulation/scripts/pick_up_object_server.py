@@ -229,10 +229,10 @@ class PickUpObjectAction(ManipulationAction):
         try:
             successfully_positioned = False
             if self.use_grasp_synthesis:
-                successfully_positioned = self.position_end_effector_grasp_pose_synthesis(goal_tf)
+                successfully_positioned = self.position_end_effector_grasp_pose_synthesis(goal_tf, chosen_grasp_pose)
 
             if not successfully_positioned:
-                successfully_positioned = self.position_end_effector_fixed_grasp(goal_tf)
+                successfully_positioned = self.position_end_effector_fixed_grasp(goal_tf, chosen_pregrasp_pose, chosen_grasp_pose)
 
             if not successfully_positioned:
                 return False
@@ -302,10 +302,17 @@ class PickUpObjectAction(ManipulationAction):
         if not found_valid_grasp:
             return False
 
-        # Robot should now have successfully moved to target generated grasp pose
+        # Robot should now have successfully moved to target generated grasp pose,
+        # taking offset into account
+        # Move to grasp pose
+        rospy.loginfo("%s: Moving to grasp." % (self._action_name))
+        self.tts_say("Moving to grasp position.")
+        self.whole_body.move_end_effector_pose(
+            chosen_grasp_pose, self.whole_body.end_effector_frame
+        )
         return True
 
-    def position_end_effector_fixed_grasp(self, goal_tf):
+    def position_end_effector_fixed_grasp(self, goal_tf, chosen_pregrasp_pose, chosen_grasp_pose):
         """
         Move to a valid grasping position using a fixed approach from robot to target.
         """
