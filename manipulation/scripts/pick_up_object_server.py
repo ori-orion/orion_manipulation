@@ -69,6 +69,7 @@ class PickUpObjectAction(ManipulationAction):
             self.segment_object_service = rospy.ServiceProxy(
                 "/object_segmentation", SegmentObject
             )
+            rospy.loginfo("%s: Got object_segmentation service" % self._action_name)
 
             self.grasps = None
             self.grasp_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
@@ -458,7 +459,7 @@ class PickUpObjectAction(ManipulationAction):
         left_bottom = bottom - (hw - 0.5 * finger_width) * binormal
         right_bottom = bottom + (hw - 0.5 * finger_width) * binormal
         base_center = left_bottom + 0.5 * (right_bottom - left_bottom) - 0.01 * approach
-        approach_center = base_center * approach
+        approach_center = base_center - 0.06 * approach
 
         approach_4 = np.array(
             [grasp.approach.x, grasp.approach.y, grasp.approach.z, approach_center[0]]
