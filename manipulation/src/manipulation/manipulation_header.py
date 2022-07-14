@@ -335,7 +335,7 @@ class CollisionMapper:
 
         # STL path to save to
         timestamp_str = str(rospy.get_time()).replace(".", "-")
-        stl_path = "/tmp/collision_mesh_" + timestamp_str + ".stl"
+        stl_path = "/etc/opt/tmc/robot/stl/collision_mesh_" + timestamp_str + ".stl"
 
         crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
 
