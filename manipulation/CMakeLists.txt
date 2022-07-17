@@ -9,6 +9,7 @@ project(manipulation)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rviz_visual_tools
+  eigen_conversions
   genmsg
   actionlib
   roscpp
@@ -132,7 +133,7 @@ generate_messages(
 
 
 catkin_package(
-  CATKIN_DEPENDS roscpp rospy std_msgs actionlib_msgs rviz_visual_tools
+  CATKIN_DEPENDS roscpp rospy std_msgs actionlib_msgs rviz_visual_tools eigen_conversions
 )
 
 
