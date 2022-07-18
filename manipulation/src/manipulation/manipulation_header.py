@@ -51,7 +51,7 @@ class ManipulationAction(object):
     # How far up can ARM LIGHT JOINT go without the hand blocking the RGBD camera?
     MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION = 0.25  # metres
 
-    def __init__(self, action_name, action_msg_type, use_collision_map=True, tts_narrate=True):
+    def __init__(self, action_name, action_msg_type, use_collision_map=True, tts_narrate=True, prevent_motion=False):
         """
         Base class for manipulation actions.
         Args:
@@ -335,7 +335,7 @@ class CollisionMapper:
 
         # STL path to save to
         timestamp_str = str(rospy.get_time()).replace(".", "-")
-        stl_path = "/etc/opt/tmc/robot/stl/collision_mesh_" + timestamp_str + ".stl"
+        stl_path = "/tmp/collision_mesh_" + timestamp_str + ".stl"
 
         crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
 
