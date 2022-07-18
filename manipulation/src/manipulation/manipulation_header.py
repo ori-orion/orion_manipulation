@@ -20,8 +20,8 @@ _robot.enable_interactive()
 class ManipulationAction(object):
 
     # Robot default parameters
-    DEFAULT_BODY_PLANNING_TIMEOUT = 20.0  # Robot planning timeout - default is 10s
-    DEFAULT_BODY_TF_TIMEOUT = 10.0  # Robot TF timeout - default is 5s
+    DEFAULT_BODY_PLANNING_TIMEOUT = 4.0  # Robot planning timeout - default is 10s
+    DEFAULT_BODY_TF_TIMEOUT = 5.0  # Robot TF timeout - default is 5s
 
     # Frame name constants
     HAND_FRAME = "hand_palm_link"
