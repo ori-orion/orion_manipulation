@@ -13,6 +13,7 @@ from std_srvs.srv import Empty
 from geometry_msgs.msg import TransformStamped
 
 from manipulation.srv import GetReconstruction
+from manipulation.wrist_force_sensor import WristForceSensorCapture
 
 from hsrb_interface import robot as _robot
 _robot.enable_interactive()
@@ -94,7 +95,11 @@ class ManipulationAction(object):
         self.whole_body.planning_timeout = self.DEFAULT_BODY_PLANNING_TIMEOUT
         self.whole_body.tf_timeout = self.DEFAULT_BODY_TF_TIMEOUT
 
+        # ORIon components
         self.collision_mapper = CollisionMapper(self.robot) if use_collision_map else None
+        rospy.loginfo("%s: Waiting for wrist force sensor." % self._action_name)
+        self.wrist_force = WristForceSensorCapture()
+        rospy.loginfo("%s: Connected to wrist force sensor." % self._action_name)
 
         # TF defaults to buffering 10 seconds of transforms. Choose 60 second buffer.
         self._tf_buffer = tf2_ros.Buffer(rospy.Duration.from_sec(60.0))
