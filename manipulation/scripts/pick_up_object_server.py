@@ -52,10 +52,12 @@ class PickUpObjectAction(ManipulationAction):
         action_msg_type=orion_actions.msg.PickUpObjectAction,
         use_collision_map=True,
         use_grasp_synthesis=True,
+        tts_narrate=True,
+        prevent_motion=False
     ):
 
         super(PickUpObjectAction, self).__init__(
-            action_name, action_msg_type, use_collision_map
+            action_name, action_msg_type, use_collision_map, tts_narrate, prevent_motion,
         )
 
         self.use_grasp_synthesis = use_grasp_synthesis
@@ -123,7 +125,7 @@ class PickUpObjectAction(ManipulationAction):
 
         if trans is None:
             rospy.logerr("Unable to find TF frame")
-            self.tts_say("I don't know the object you want picked up.")
+            self.tts_say("I don't know the object you want picked up.", duration=2.0)
             self.abandon_action()
             return
 
@@ -133,7 +135,7 @@ class PickUpObjectAction(ManipulationAction):
 
         if (rospy.Time.now() - lookup_time).to_sec() > self.GOAL_OBJECT_TF_TIMEOUT:
             rospy.logerr("Most recent published goal TF frame is too old ({} seconds old)".format((rospy.Time.now() - lookup_time).to_sec()))
-            self.tts_say("I can't see the object you want picked up.")
+            self.tts_say("I can't see the object you want picked up.", duration=2.0)
             self.abandon_action()
             return
 
@@ -145,8 +147,7 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo(
             "%s: Distance to object is %s m from hand." % (self._action_name, obj_dist)
         )
-        self.tts_say('The object is "{:.2f}" metres away.'.format(obj_dist))
-        rospy.sleep(1)
+        self.tts_say('The object is "{:.2f}" metres away.'.format(obj_dist), duration=2.0)
 
         if self._as.is_preempt_requested():
             self.preempt_action()
@@ -154,9 +155,7 @@ class PickUpObjectAction(ManipulationAction):
 
         # Evaluate collision environment
         if self.use_collision_map:
-            self.tts_say(
-                "I am now evaluating my environment so I don't collide with anything."
-            )
+            self.tts_say("Evaluating a collision-free path.", duration=2.0)
             rospy.loginfo("%s: Getting Collision Map." % self._action_name)
 
             (trans, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
@@ -172,8 +171,8 @@ class PickUpObjectAction(ManipulationAction):
             # TODO this is a hard-coded ~15cm box
             bound_x = bound_y = bound_z = 0.15
             object_bounding_box = BoundingBox(
-                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z - 0.1),  # TODO 0.1 is z offset for simulation only
-                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z - 0.1),
+                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z),
+                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z),
             )
 
             self.collision_world = self.collision_mapper.build_collision_world(
@@ -187,29 +186,26 @@ class PickUpObjectAction(ManipulationAction):
             self.preempt_action()
             return
 
-        self.tts_say("I will now pick up the object")
-        rospy.sleep(1)
-        grab_success = self.grab_object(goal_tf, self.PREGRASP_POSE, self.GRASP_POSE)
-
-        if not grab_success:
-            self.tts_say("Failed to pick up the object")
-        else:
-            self.tts_say("Object grasped successfully.")
+        grasp_success = self.grab_object(goal_tf, self.PREGRASP_POSE, self.GRASP_POSE)
 
         # Give opportunity to preempt
         if self._as.is_preempt_requested():
             self.preempt_action()
             return
 
-        # Now return to moving position
-        self.finish_position()
+        if grasp_success:
+            self.tts_say("Object grasped successfully.")
+            # Now return to moving position
+            self.finish_position()
+        else:
+            self.tts_say("Failed to pick up the object")
 
-        if grab_success:
-            rospy.loginfo("%s: Succeeded" % self._action_name)
+        if grasp_success:
+            rospy.loginfo("%s: Grasping succeeded" % self._action_name)
             _result.result = True
             self._as.set_succeeded(_result)
         else:
-            rospy.loginfo("%s: Failed" % self._action_name)
+            rospy.loginfo("%s: Grasping failed" % self._action_name)
             _result.result = False
             self._as.set_aborted()
 
@@ -239,6 +235,7 @@ class PickUpObjectAction(ManipulationAction):
 
             # We are allowed to collide with things while closing the gripper obviously
             self.whole_body.collision_world = None
+            rospy.sleep(0.25)
 
             # Specify the force to grasp
             self.tts_say("Grasping object.")
@@ -274,6 +271,7 @@ class PickUpObjectAction(ManipulationAction):
             # Segmentation internal failure
             return False
 
+        rospy.loginfo("%s: Waiting for grasps." % (self._action_name))
         # Grasps are sorted in descending order by score
         # Include a timeout
         start_time = rospy.Time.now()
@@ -283,8 +281,11 @@ class PickUpObjectAction(ManipulationAction):
             if elapsed_secs > self.GRASP_POSE_GENERATION_TIMEOUT:
                 break
 
+        rospy.loginfo("%s: Got grasps list of length %i." % (self._action_name, len(self.grasps)))
+
         if self.grasps is None:
             # gpg failed to return a list of grasp poses
+            rospy.loginfo("%s: GPG failed to produce grasp poses." % (self._action_name))
             return False
 
         found_valid_grasp = False
@@ -304,12 +305,22 @@ class PickUpObjectAction(ManipulationAction):
 
         # Robot should now have successfully moved to target generated grasp pose,
         # taking offset into account
+
+        # Turn off collision checking to get close and grasp
+        rospy.loginfo(
+            "%s: Turning off collision checking to get closer."
+            % (self._action_name)
+        )
+        self.whole_body.collision_world = None
+        rospy.sleep(1)
+
         # Move to grasp pose
         rospy.loginfo("%s: Moving to grasp." % (self._action_name))
-        self.tts_say("Moving to grasp position.")
+        self.tts_say("Moving to grasp.")
         self.whole_body.move_end_effector_pose(
             chosen_grasp_pose, self.whole_body.end_effector_frame
         )
+        rospy.loginfo("%s: Finished moving to grasp position." % (self._action_name))
         return True
 
     def position_end_effector_fixed_grasp(self, goal_tf, chosen_pregrasp_pose, chosen_grasp_pose):
@@ -333,7 +344,7 @@ class PickUpObjectAction(ManipulationAction):
         self.publish_goal_pose_tf(hand_pose)
 
         rospy.loginfo("%s: Moving to pre-grasp position." % (self._action_name))
-        self.tts_say("Moving to pre-grasp position.")
+        self.tts_say("Moving to pre-grasp.")
         self.whole_body.move_end_effector_pose(hand_pose, "odom")
 
         # Turn off collision checking to get close and grasp
@@ -346,10 +357,11 @@ class PickUpObjectAction(ManipulationAction):
 
         # Move to grasp pose
         rospy.loginfo("%s: Moving to grasp." % (self._action_name))
-        self.tts_say("Moving to grasp position.")
+        self.tts_say("Moving to grasp.")
         self.whole_body.move_end_effector_pose(
             chosen_grasp_pose, self.whole_body.end_effector_frame
         )
+        return True
 
     def suck_object(self, goal_tf):
         """

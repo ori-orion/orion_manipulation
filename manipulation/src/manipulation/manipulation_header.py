@@ -60,7 +60,7 @@ class ManipulationAction(object):
             use_collision_map: Whether to use dynamic collision mapping to avoid obstacles
             tts_narrate: Whether to narrate what the robot is doing out loud with
                 text-to-speech
-
+            prevent_motion: forbid carrying out arm or base motion.
         """
 
         self._action_name = action_name
@@ -71,6 +71,16 @@ class ManipulationAction(object):
         self.robot = hsrb_interface.Robot()
         self.whole_body = self.robot.try_get('whole_body')
         self.omni_base = self.robot.try_get('omni_base')
+
+        # Override some motion functions if necessary
+        self.prevent_motion = prevent_motion
+        if self.prevent_motion:
+            rospy.loginfo("%s: Overriding base/arm motion functions." % self._action_name)
+            self.whole_body.move_end_effector_pose = self.do_nothing_function()
+            self.whole_body.move_to_go = self.do_nothing_function()
+            self.whole_body.move_to_neutral = self.do_nothing_function()
+            self.omni_base.go_rel = self.do_nothing_function()
+
         self.collision_world = None
         self.gripper = self.robot.try_get('gripper')
         self.whole_body.end_effector_frame = self.HAND_FRAME
@@ -96,6 +106,15 @@ class ManipulationAction(object):
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
         rospy.loginfo("%s: Action server started." % self._action_name)
+
+    def do_nothing_function(self, *args, **kwargs):
+        """
+        Used to override HSRB interface functions.
+        """
+        # TODO log function traceback[-1]
+        report_str = "Function args = " + str(args) + " " + str(kwargs)
+        rospy.loginfo("%s: Redirected %s" % (self._action_name, report_str))
+        return True
 
     def execute_cb(self, goal_msg):
         """
@@ -185,7 +204,7 @@ class ManipulationAction(object):
         """
         return math.sqrt(math.pow(t.translation.x, 2) + math.pow(t.translation.y, 2) + math.pow(t.translation.z, 2))
 
-    def tts_say(self, string_to_say):
+    def tts_say(self, string_to_say, duration=None):
         """
         Say something via text-to-speech, if text-to-speech narration is enabled.
         Args:
@@ -193,6 +212,8 @@ class ManipulationAction(object):
         """
         if self.tts_narrate:
             self.tts.say(string_to_say)
+            if duration != 0:
+                rospy.sleep(duration)
 
     # Common kinematic functionality
 
