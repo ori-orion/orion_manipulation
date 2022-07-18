@@ -1,3 +1,8 @@
+//
+// Original author: Mark Finean
+// Maintainer: Matthew Budd
+//
+
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 

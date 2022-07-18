@@ -1,9 +1,13 @@
+//
+// Original author: Mark Finean
+// Maintainer: Matthew Budd
+//
+
 #include "pcl/PointIndices.h"
 #include "pcl/point_cloud.h"
 #include "pcl/point_types.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
-
 
 namespace point_cloud_filtering {
 
@@ -19,12 +23,12 @@ void SegmentSurface(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                     pcl::PointIndices::Ptr indices);
 
 void SegmentHandle(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                           pcl::PointIndices::Ptr surface_indices,
-                           std::vector<pcl::PointIndices>* handle_indices);
+                   pcl::PointIndices::Ptr surface_indices,
+                   std::vector<pcl::PointIndices>* handle_indices);
 
 class HandleCropper {
  public:
-    HandleCropper(const ros::Publisher& pub);
+  HandleCropper(const ros::Publisher& pub);
   void Callback(const sensor_msgs::PointCloud2& msg);
 
  private:

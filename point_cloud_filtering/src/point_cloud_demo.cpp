@@ -1,3 +1,8 @@
+//
+// Original author: Mark Finean
+// Maintainer: Matthew Budd
+//
+
 #include "point_cloud_filtering/crop.h"
 #include "point_cloud_filtering/planes.h"
 #include "ros/ros.h"
@@ -12,8 +17,7 @@ int main(int argc, char** argv) {
       nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 1, true);
 
   // To publish cropped door and handle
-  ros::Publisher door_pub =
-      nh.advertise<sensor_msgs::PointCloud2>("door_cloud", 1, true);
+  ros::Publisher door_pub = nh.advertise<sensor_msgs::PointCloud2>("door_cloud", 1, true);
 
   // To publish cropped door and handle
   ros::Publisher handle_pub =
@@ -26,8 +30,8 @@ int main(int argc, char** argv) {
 
   // Crop for the door
   point_cloud_filtering::PlaneCropper door_cropper(door_pub);
-  ros::Subscriber sub_door =
-      nh.subscribe("cloud_in", 1, &point_cloud_filtering::PlaneCropper::Callback, &door_cropper);
+  ros::Subscriber sub_door = nh.subscribe(
+      "cloud_in", 1, &point_cloud_filtering::PlaneCropper::Callback, &door_cropper);
 
   ros::spin();
   return 0;
