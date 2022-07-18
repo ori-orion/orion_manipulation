@@ -53,11 +53,15 @@ class PickUpObjectAction(ManipulationAction):
         use_collision_map=True,
         use_grasp_synthesis=True,
         tts_narrate=True,
-        prevent_motion=False
+        prevent_motion=False,
     ):
 
         super(PickUpObjectAction, self).__init__(
-            action_name, action_msg_type, use_collision_map, tts_narrate, prevent_motion,
+            action_name,
+            action_msg_type,
+            use_collision_map,
+            tts_narrate,
+            prevent_motion,
         )
 
         self.use_grasp_synthesis = use_grasp_synthesis
@@ -74,7 +78,9 @@ class PickUpObjectAction(ManipulationAction):
             rospy.loginfo("%s: Got object_segmentation service" % self._action_name)
 
             self.grasps = None
-            self.grasp_sub = rospy.Subscriber('/detect_grasps/clustered_grasps', GraspConfigList, self.grasp_callback)
+            self.grasp_sub = rospy.Subscriber(
+                "/detect_grasps/clustered_grasps", GraspConfigList, self.grasp_callback
+            )
 
     def segment_grasp_target_object(self, object_pos_head_frame):
         """
@@ -134,7 +140,11 @@ class PickUpObjectAction(ManipulationAction):
         self.look_at_object(goal_tf)
 
         if (rospy.Time.now() - lookup_time).to_sec() > self.GOAL_OBJECT_TF_TIMEOUT:
-            rospy.logerr("Most recent published goal TF frame is too old ({} seconds old)".format((rospy.Time.now() - lookup_time).to_sec()))
+            rospy.logerr(
+                "Most recent published goal TF frame is too old ({} seconds old)".format(
+                    (rospy.Time.now() - lookup_time).to_sec()
+                )
+            )
             self.tts_say("I can't see the object you want picked up.", duration=2.0)
             self.abandon_action()
             return
@@ -147,7 +157,9 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo(
             "%s: Distance to object is %s m from hand." % (self._action_name, obj_dist)
         )
-        self.tts_say('The object is "{:.2f}" metres away.'.format(obj_dist), duration=2.0)
+        self.tts_say(
+            'The object is "{:.2f}" metres away.'.format(obj_dist), duration=2.0
+        )
 
         if self._as.is_preempt_requested():
             self.preempt_action()
@@ -215,8 +227,8 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo("%s: Opening gripper." % (self._action_name))
         self.gripper.command(1.2)
 
-        rospy.loginfo('Is using collision: %s' % (self.use_collision_map))
-        rospy.loginfo('Is using synthesis: %s' % (self.use_grasp_synthesis))
+        rospy.loginfo("Is using collision: %s" % (self.use_collision_map))
+        rospy.loginfo("Is using synthesis: %s" % (self.use_grasp_synthesis))
         if self.use_collision_map:
             self.whole_body.collision_world = self.collision_world
         else:
@@ -225,10 +237,16 @@ class PickUpObjectAction(ManipulationAction):
         try:
             successfully_positioned = False
             if self.use_grasp_synthesis:
-                successfully_positioned = self.position_end_effector_grasp_pose_synthesis(goal_tf, chosen_grasp_pose)
+                successfully_positioned = (
+                    self.position_end_effector_grasp_pose_synthesis(
+                        goal_tf, chosen_grasp_pose
+                    )
+                )
 
             if not successfully_positioned:
-                successfully_positioned = self.position_end_effector_fixed_grasp(goal_tf, chosen_pregrasp_pose, chosen_grasp_pose)
+                successfully_positioned = self.position_end_effector_fixed_grasp(
+                    goal_tf, chosen_pregrasp_pose, chosen_grasp_pose
+                )
 
             if not successfully_positioned:
                 return False
@@ -261,11 +279,14 @@ class PickUpObjectAction(ManipulationAction):
         (head_obj_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
 
         # Call segmentation (lasts 10s)
-        self.tts.say('I am trying to calculate the best possible grasp position')
+        self.tts.say("I am trying to calculate the best possible grasp position")
         seg_response = self.segment_grasp_target_object(
-            [head_obj_transform.translation.x,
-             head_obj_transform.translation.y,
-             head_obj_transform.translation.z])
+            [
+                head_obj_transform.translation.x,
+                head_obj_transform.translation.y,
+                head_obj_transform.translation.z,
+            ]
+        )
 
         if not seg_response:
             # Segmentation internal failure
@@ -281,11 +302,15 @@ class PickUpObjectAction(ManipulationAction):
             if elapsed_secs > self.GRASP_POSE_GENERATION_TIMEOUT:
                 break
 
-        rospy.loginfo("%s: Got grasps list of length %i." % (self._action_name, len(self.grasps)))
+        rospy.loginfo(
+            "%s: Got grasps list of length %i." % (self._action_name, len(self.grasps))
+        )
 
         if self.grasps is None:
             # gpg failed to return a list of grasp poses
-            rospy.loginfo("%s: GPG failed to produce grasp poses." % (self._action_name))
+            rospy.loginfo(
+                "%s: GPG failed to produce grasp poses." % (self._action_name)
+            )
             return False
 
         found_valid_grasp = False
@@ -295,7 +320,9 @@ class PickUpObjectAction(ManipulationAction):
             self.publish_goal_pose_tf(grasp_pose)
 
             try:
-                self.whole_body.move_end_effector_pose(grasp_pose, self.RGBD_CAMERA_FRAME)
+                self.whole_body.move_end_effector_pose(
+                    grasp_pose, self.RGBD_CAMERA_FRAME
+                )
                 found_valid_grasp = True
             except:
                 # Failed to find valid motion to this grasp pose - continue search
@@ -308,8 +335,7 @@ class PickUpObjectAction(ManipulationAction):
 
         # Turn off collision checking to get close and grasp
         rospy.loginfo(
-            "%s: Turning off collision checking to get closer."
-            % (self._action_name)
+            "%s: Turning off collision checking to get closer." % (self._action_name)
         )
         self.whole_body.collision_world = None
         rospy.sleep(1)
@@ -323,7 +349,9 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo("%s: Finished moving to grasp position." % (self._action_name))
         return True
 
-    def position_end_effector_fixed_grasp(self, goal_tf, chosen_pregrasp_pose, chosen_grasp_pose):
+    def position_end_effector_fixed_grasp(
+        self, goal_tf, chosen_pregrasp_pose, chosen_grasp_pose
+    ):
         """
         Move to a valid grasping position using a fixed approach from robot to target.
         """
@@ -331,10 +359,7 @@ class PickUpObjectAction(ManipulationAction):
         # Move to pregrasp
         rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
 
-        hand_pose = self.get_default_grasp_pose(
-            goal_tf,
-            relative=chosen_pregrasp_pose
-        )
+        hand_pose = self.get_default_grasp_pose(goal_tf, relative=chosen_pregrasp_pose)
 
         # Error checking in case can't find goal pose
         if hand_pose is None:
@@ -349,8 +374,7 @@ class PickUpObjectAction(ManipulationAction):
 
         # Turn off collision checking to get close and grasp
         rospy.loginfo(
-            "%s: Turning off collision checking to get closer."
-            % (self._action_name)
+            "%s: Turning off collision checking to get closer." % (self._action_name)
         )
         self.whole_body.collision_world = None
         rospy.sleep(1)
@@ -465,7 +489,8 @@ class PickUpObjectAction(ManipulationAction):
         Convert a grasp pose synthesis-generated grasp into a pose for the actuator.
         """
         rospy.loginfo(
-            "%s: Evaluating grasp with score:: %s" % (self._action_name, str(grasp.score))
+            "%s: Evaluating grasp with score:: %s"
+            % (self._action_name, str(grasp.score))
         )
 
         # This gives the approach point correctly
@@ -503,5 +528,7 @@ class PickUpObjectAction(ManipulationAction):
 
 if __name__ == "__main__":
     rospy.init_node("pick_up_object_server_node")
-    server = PickUpObjectAction("pick_up_object", use_collision_map=True, use_grasp_synthesis=True)
+    server = PickUpObjectAction(
+        "pick_up_object", use_collision_map=True, use_grasp_synthesis=True
+    )
     rospy.spin()
