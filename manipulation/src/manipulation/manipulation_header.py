@@ -2,6 +2,7 @@
 """ Common manipulation action server functionality.
 """
 
+import os.path
 import rospy
 import actionlib
 import math
@@ -299,7 +300,10 @@ class CollisionMapper:
     asynchronous by nodes to the robot's collision map.
     """
 
-    def __init__(self, robot):
+    ROBOT_STL_STORAGE_DIR = "/etc/opt/tmc/robot/stl"
+    BACKUP_STL_STORAGE_DIR = "/tmp"
+
+    def __init__(self, robot, stl_storage_dir=None):
         self.robot = robot
         self.global_collision_world = self.robot.try_get("global_collision_world")
 
@@ -316,6 +320,14 @@ class CollisionMapper:
         self.reconstruction_service = rospy.ServiceProxy(
             "/GetReconstruction", GetReconstruction
         )
+
+        if stl_storage_dir is not None:
+            self.stl_storage_dir = stl_storage_dir
+        else:
+            if os.path.isdir(self.ROBOT_STL_STORAGE_DIR):
+                self.stl_storage_dir = self.ROBOT_STL_STORAGE_DIR
+            else:
+                self.stl_storage_dir = self.BACKUP_STL_STORAGE_DIR
 
     def reset_collision_map(self):
         """
@@ -355,8 +367,8 @@ class CollisionMapper:
         """
 
         # STL path to save to
-        timestamp_str = str(rospy.get_time()).replace(".", "-")
-        stl_path = "/tmp/collision_mesh_" + timestamp_str + ".stl"
+        filename = "collision_mesh_" + str(rospy.get_time()).replace(".", "-") + ".stl"
+        stl_path = os.path.join(self.stl_storage_dir, filename)
 
         crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
 
