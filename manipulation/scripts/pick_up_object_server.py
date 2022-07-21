@@ -82,41 +82,6 @@ class PickUpObjectAction(ManipulationAction):
                 "/detect_grasps/clustered_grasps", GraspConfigList, self.grasp_callback
             )
 
-    def segment_grasp_target_object(self, object_pos_head_frame):
-        """
-        Request the object_segmentation node to publish a segmented point cloud at a
-        specified location in the head RGBD frame, containing the object we wish to
-        generate grasp poses for.
-        The grasp pose synthesis node will input this point cloud and publish a list of
-        candidate poses.
-        """
-        try:
-            self.segment_object_service(
-                object_pos_head_frame[0],
-                object_pos_head_frame[1],
-                object_pos_head_frame[2],
-            )
-            return True
-        except rospy.ServiceException as e:
-            rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
-            return False
-
-    def get_default_grasp_pose(self, goal_tf, relative=geometry.pose()):
-        """
-        Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
-        goal tf, all in frame "odom".
-        Args:
-            goal_tf: goal tf
-            relative: relative hsrb_interface.geometry pose to goal tf to get hand pose
-        """
-
-        (trans, lookup_time) = self.lookup_transform(self.ODOM_FRAME, goal_tf)
-
-        odom_to_ref = geometry.transform_to_tuples(trans)
-        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
-
-        return odom_to_hand
-
     def _execute_cb(self, goal_msg):
         """
         Action server callback for PickUpObjectAction
@@ -481,6 +446,22 @@ class PickUpObjectAction(ManipulationAction):
                 self.whole_body.move_to_go()
             return False
 
+    def get_default_grasp_pose(self, goal_tf, relative=geometry.pose()):
+        """
+        Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
+        goal tf, all in frame "odom".
+        Args:
+            goal_tf: goal tf
+            relative: relative hsrb_interface.geometry pose to goal tf to get hand pose
+        """
+
+        (trans, lookup_time) = self.lookup_transform(self.ODOM_FRAME, goal_tf)
+
+        odom_to_ref = geometry.transform_to_tuples(trans)
+        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
+
+        return odom_to_hand
+
     def grasp_callback(self, msg):
         self.grasps = msg.grasps
 
@@ -524,6 +505,25 @@ class PickUpObjectAction(ManipulationAction):
             ),
             geometry.Quaternion(q[0], q[1], q[2], q[3]),
         )
+
+    def segment_grasp_target_object(self, object_pos_head_frame):
+        """
+        Request the object_segmentation node to publish a segmented point cloud at a
+        specified location in the head RGBD frame, containing the object we wish to
+        generate grasp poses for.
+        The grasp pose synthesis node will input this point cloud and publish a list of
+        candidate poses.
+        """
+        try:
+            self.segment_object_service(
+                object_pos_head_frame[0],
+                object_pos_head_frame[1],
+                object_pos_head_frame[2],
+            )
+            return True
+        except rospy.ServiceException as e:
+            rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
+            return False
 
 
 if __name__ == "__main__":
