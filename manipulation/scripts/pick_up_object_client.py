@@ -24,7 +24,7 @@ def pick_up_object_client(goal_tf):
     # Waits for the server to finish performing the action.
     client.wait_for_result()
 
-    # Prints out the result of executing the action
+    # Return the result of executing the action
     return client.get_result()
 
 
