@@ -79,10 +79,10 @@ class ManipulationAction(object):
         self.prevent_motion = prevent_motion
         if self.prevent_motion:
             rospy.loginfo("%s: Overriding base/arm motion functions." % self._action_name)
-            self.whole_body.move_end_effector_pose = partial(self.override(), "self.whole_body.move_end_effector_pose")
-            self.whole_body.move_to_go = partial(self.override(), "self.whole_body.move_to_go")
-            self.whole_body.move_to_neutral = partial(self.override(), "self.whole_body.move_to_neutral")
-            self.omni_base.go_rel = partial(self.override(), "self.omni_base.go_rel")
+            self.whole_body.move_end_effector_pose = partial(self.override, "self.whole_body.move_end_effector_pose")
+            self.whole_body.move_to_go = partial(self.override, "self.whole_body.move_to_go")
+            self.whole_body.move_to_neutral = partial(self.override, "self.whole_body.move_to_neutral")
+            self.omni_base.go_rel = partial(self.override, "self.omni_base.go_rel")
 
         self.collision_world = None
         self.gripper = self.robot.try_get('gripper')
@@ -223,7 +223,7 @@ class ManipulationAction(object):
         """
         if self.tts_narrate:
             self.tts.say(string_to_say)
-            if duration != 0:
+            if duration is not None:
                 rospy.sleep(duration)
 
     # Common kinematic functionality

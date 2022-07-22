@@ -33,6 +33,8 @@ class OctomapToReconstruction {
     reconstruction_service = nh->advertiseService(
         "GetReconstruction", &OctomapToReconstruction::service_callback, this);
     get_octomap_client = nh->serviceClient<octomap_msgs::GetOctomap>("octomap_binary");
+
+    visual_tools->trigger();
   }
 
   static inline octomap::point3d pointMsgToOctomap(const geometry_msgs::Point& ptMsg) {

@@ -19,6 +19,7 @@ from geometry_msgs.msg import Point
 from manipulation.msg import BoundingBox
 import tf
 import tf.transformations as T
+import traceback
 
 from orion_actions.msg import *
 from manipulation.manipulation_header import ManipulationAction
@@ -81,6 +82,7 @@ class PickUpObjectAction(ManipulationAction):
             self.grasp_sub = rospy.Subscriber(
                 "/detect_grasps/clustered_grasps", GraspConfigList, self.grasp_callback
             )
+            rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
     def _execute_cb(self, goal_msg):
         """
@@ -192,8 +194,8 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo("%s: Opening gripper." % (self._action_name))
         self.gripper.command(1.2)
 
-        rospy.loginfo("Is using collision: %s" % (self.use_collision_map))
-        rospy.loginfo("Is using synthesis: %s" % (self.use_grasp_synthesis))
+        rospy.loginfo("Is using collision mapping: %s" % (self.use_collision_map))
+        rospy.loginfo("Is using grasp synthesis: %s" % (self.use_grasp_synthesis))
         if self.use_collision_map:
             self.whole_body.collision_world = self.collision_world
         else:
@@ -228,7 +230,8 @@ class PickUpObjectAction(ManipulationAction):
             return True
 
         except Exception as e:
-            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
+            rospy.logerr("%s: Encountered exception %s." % (self._action_name, str(e)))
+            rospy.logerr(traceback.format_exc())
             self.whole_body.collision_world = None
             self.abandon_action()
             return False
@@ -422,7 +425,8 @@ class PickUpObjectAction(ManipulationAction):
             self.whole_body.move_to_go()
             return True
         except Exception as e:
-            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
+            rospy.logerr("%s: Encountered exception %s." % (self._action_name, str(e)))
+            rospy.logerr(traceback.format_exc())
             self.whole_body.collision_world = None
             try:
                 rospy.loginfo(

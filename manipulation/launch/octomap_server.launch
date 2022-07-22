@@ -12,6 +12,6 @@
 
         </node>
 
-         <node name="octomap_to_manipulation" pkg="manipulation" type="octomap_to_reconstruction" output="screen"> </node>
+         <node name="octomap_to_reconstruction" pkg="manipulation" type="octomap_to_reconstruction" output="screen"> </node>
 </launch>
 
