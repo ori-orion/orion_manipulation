@@ -2,7 +2,6 @@
 """ Common manipulation action server functionality.
 """
 
-import os.path
 from functools import partial
 import rospy
 import actionlib
@@ -10,11 +9,10 @@ import math
 import tf2_ros
 import hsrb_interface
 import hsrb_interface.geometry as geometry
-from std_srvs.srv import Empty
-from geometry_msgs.msg import TransformStamped
-
-from manipulation.srv import GetReconstruction
+from geometry_msgs.msg import TransformStamped, Point
+from manipulation.msg import BoundingBox
 from manipulation.wrist_force_sensor import WristForceSensorCapture
+from manipulation.collision_mapping import CollisionMapper
 
 from hsrb_interface import robot as _robot
 _robot.enable_interactive()
@@ -167,6 +165,15 @@ class ManipulationAction(object):
         self.whole_body.move_to_go()
         self._as.set_preempted()
 
+    def handle_possible_preemption(self):
+        """
+        Placed to enable preemption.
+        """
+        if self._as.is_preempt_requested():
+            self.preempt_action()
+            return True
+        return False
+
     def publish_goal_pose_tf(self, p):
         """
         Publish a tf to the goal pose, in odom frame
@@ -253,7 +260,7 @@ class ManipulationAction(object):
                 geometry.pose(x=self.ARM_SWING_DIST), 10.0, ref_frame_id=self.BASE_FRAME
             )
 
-    def look_at_object(self, object_tf, rotate_to_face=True):
+    def look_at_object(self, object_tf, rotate_to_face=False):
         """
         Get a "best-view" look at the object at the specified tf.
         Args:
@@ -302,110 +309,36 @@ class ManipulationAction(object):
         else:
             self.move_arm_down(arm_lift_joint_height=arm_joint_height)
 
+    # Common collision world functionality
 
-class CollisionMapper:
-    """
-    This class is an interface to collision mapping on the robot.
-    This is not intended to be used asynchronously, but avoids being broken by
-    asynchronous by nodes to the robot's collision map.
-    """
+    def get_goal_cropped_collision_map(self, goal_tf, crop_dist_3d=0.1):
+        """
+        Get a 2m*2m*2m collision map centred on goal_tf, with the area around goal_tf
+        cropped out to a distance of crop_dist_3d.
+        """
+        rospy.loginfo("%s: Getting Collision Map." % self._action_name)
 
-    ROBOT_STL_STORAGE_DIR = "/etc/opt/tmc/robot/stl"
-    BACKUP_STL_STORAGE_DIR = "/tmp"
+        (trans, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
+        goal_x = trans.translation.x
+        goal_y = trans.translation.y
+        goal_z = trans.translation.z
 
-    def __init__(self, robot, stl_storage_dir=None):
-        self.robot = robot
-        self.global_collision_world = self.robot.try_get("global_collision_world")
-
-        rospy.loginfo(
-            "%s: Waiting for octomap reset service..." % self.__class__.__name__
-        )
-        rospy.wait_for_service("/octomap_server/reset")
-        self.reset_service = rospy.ServiceProxy("/octomap_server/reset", Empty)
-
-        rospy.loginfo(
-            "%s: Waiting for reconstruction service..." % self.__class__.__name__
-        )
-        rospy.wait_for_service("/GetReconstruction")
-        self.reconstruction_service = rospy.ServiceProxy(
-            "/GetReconstruction", GetReconstruction
+        external_bounding_box = BoundingBox(
+            min=Point(goal_x - 1.0, goal_y - 1.0, goal_z - 1.0),
+            max=Point(goal_x + 1.0, goal_y + 1.0, goal_z + 1.0),
         )
 
-        if stl_storage_dir is not None:
-            self.stl_storage_dir = stl_storage_dir
-        else:
-            if os.path.isdir(self.ROBOT_STL_STORAGE_DIR):
-                self.stl_storage_dir = self.ROBOT_STL_STORAGE_DIR
-            else:
-                self.stl_storage_dir = self.BACKUP_STL_STORAGE_DIR
+        # NOTE this is a hard-coded axis-aligned goal bounding box
+        bound_x = bound_y = bound_z = crop_dist_3d
+        object_bounding_box = BoundingBox(
+            min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z),
+            max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z),
+        )
 
-    def reset_collision_map(self):
-        """
-        Clears all objects from the HSR's collision map and the octomap server node's map.
-        """
-        try:
-            self.reset_service()
-        except rospy.ServiceException as e:
-            print(f"Service call failed: {e}")
+        collision_world = self.collision_mapper.build_collision_world(
+            external_bounding_box, crop_bounding_boxes=[object_bounding_box]
+        )
 
-        # Clear everything in global collision map
-        self.global_collision_world.remove_all()
+        rospy.loginfo("%s: Collision Map generated." % self._action_name)
 
-    def get_converted_octomap(self, external_bb, crop_bbs, stl_path):
-        """
-        Requests the octomap_to_reconstruction node to build an STL mesh from the octomap
-        produced by octomap_server.
-        Args:
-            external_bb: external BoundingBox that bounds the STL mesh to be created
-            crop_bbs: list of BoundingBox to crop out of the map (e.g. covering an object)
-            stl_path: path to save the STL mesh file to
-        Returns: success flag returned from octomap_to_reconstruction node
-        """
-        try:
-            resp = self.reconstruction_service(external_bb, crop_bbs, stl_path)
-            return resp.flag
-
-        except rospy.ServiceException as e:
-            print(f"Service call failed: {e}")
-
-    def build_collision_world(self, external_bounding_box, crop_bounding_boxes=None):
-        """
-        Add the robot's 3D occupancy map of a specified area to the HSR collision world.
-        Args:
-            external_bb: external BoundingBox that bounds the STL mesh to be created
-            crop_bbs: list of BoundingBox to crop out of the map (e.g. covering an object)
-        """
-
-        # STL path to save to
-        filename = "collision_mesh_" + str(rospy.get_time()).replace(".", "-") + ".stl"
-        stl_path = os.path.join(self.stl_storage_dir, filename)
-
-        crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
-
-        # Reset reconstruction
-        self.reset_collision_map()
-
-        # Wait for map to populate
-        # TODO confirm that Octomap server is actually building the map during this sleep
-        rospy.sleep(3)
-
-        # Get and return collision map generated over last 3s
-        flag = self.get_converted_octomap(external_bounding_box, crop_bbs, stl_path)
-
-        # Add the collision map (from octomap) to the global collision world
-        if flag:
-            self.add_map_to_global_collision_world(stl_path)
-        else:
-            rospy.logwarn(
-                "%s: Octomap reconstruction node returned an empty collision mesh."
-                % (self.__class__.__name__)
-            )
-
-        return self.global_collision_world
-
-    def add_map_to_global_collision_world(self, stl_path):
-        """
-        Add an STL mesh to the HSR's global collision world.
-        """
-        self.global_collision_world.add_mesh(stl_path, frame_id="map", timeout=0.0)
-        return
+        return collision_world
