@@ -3,6 +3,7 @@
 """
 
 import os.path
+from functools import partial
 import rospy
 import actionlib
 import math
@@ -78,10 +79,10 @@ class ManipulationAction(object):
         self.prevent_motion = prevent_motion
         if self.prevent_motion:
             rospy.loginfo("%s: Overriding base/arm motion functions." % self._action_name)
-            self.whole_body.move_end_effector_pose = self.do_nothing_function()
-            self.whole_body.move_to_go = self.do_nothing_function()
-            self.whole_body.move_to_neutral = self.do_nothing_function()
-            self.omni_base.go_rel = self.do_nothing_function()
+            self.whole_body.move_end_effector_pose = partial(self.override(), "self.whole_body.move_end_effector_pose")
+            self.whole_body.move_to_go = partial(self.override(), "self.whole_body.move_to_go")
+            self.whole_body.move_to_neutral = partial(self.override(), "self.whole_body.move_to_neutral")
+            self.omni_base.go_rel = partial(self.override(), "self.omni_base.go_rel")
 
         self.collision_world = None
         self.gripper = self.robot.try_get('gripper')
@@ -113,13 +114,17 @@ class ManipulationAction(object):
         self._as.start()
         rospy.loginfo("%s: Action server started." % self._action_name)
 
-    def do_nothing_function(self, *args, **kwargs):
+    def override(self, name, *args, **kwargs):
         """
         Used to override HSRB interface functions.
         """
-        # TODO log function traceback[-1]
-        report_str = "Function args = " + str(args) + " " + str(kwargs)
-        rospy.loginfo("%s: Redirected %s" % (self._action_name, report_str))
+        argstr = [str(a) for a in args]
+        if len(kwargs) == 0:
+            func = (name + "(" + ", ".join(argstr) + ")")
+        else:
+            kwarg_strs = ["{}={}".format(k, v) for k, v in kwargs.items()]
+            func = (name + "(" + ", ".join(argstr) + ", " + ", ".join(kwarg_strs) + ")")
+        rospy.loginfo("%s: Redirected %s" % (self._action_name, func))
         return True
 
     def execute_cb(self, goal_msg):
