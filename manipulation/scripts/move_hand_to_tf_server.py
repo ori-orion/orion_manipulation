@@ -3,10 +3,7 @@
 Not used now.
 """
 
-import numpy as np
 import rospy
-import actionlib
-import hsrb_interface
 import hsrb_interface.geometry as geometry
 
 import orion_actions.msg as msg
@@ -48,7 +45,7 @@ class MoveHandToTfAction(ManipulationAction):
 
     def _execute_cb(self, goal_msg):
         """
-        Action server callback for PickUpObjectAction
+        Action server callback for MoveHandToTfAction
         """
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to move hand to tf %s" % (self._action_name, goal_tf))
