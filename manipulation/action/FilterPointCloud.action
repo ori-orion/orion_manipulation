@@ -1,8 +1,0 @@
-# Define the goal
-string object_tf 
----
-# Define the result
-bool goal_complete
----
-# Define a feedback message
-

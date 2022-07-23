@@ -28,14 +28,8 @@ find_package(catkin REQUIRED COMPONENTS
 #add_action_files(DIRECTORY
 #		action
 #		FILES
-#		MoveHandToTf.action
-#		GrabHorizontalDoorHandleAction.action
-#		OpenDrawer.action
-#		OpenFridge.action
-#		PickUpObject.action
-#		GiveObjectToOperator.action
-#		#OpenDoor.action
-#		FilterPointCloud.action)
+#   action1.action
+#		)
 
 catkin_python_setup()
 

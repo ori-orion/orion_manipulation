@@ -1,8 +1,0 @@
-# Define the goal
-string goal_tf 
----
-# Define the result
-uint32 goal_complete
----
-# Define a feedback message
-geometry_msgs/Transform current_endeff_tf
