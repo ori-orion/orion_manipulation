@@ -9,8 +9,9 @@ import actionlib
 import hsrb_interface
 import hsrb_interface.geometry as geometry
 
-from tmc_manipulation_msgs.msg import CollisionObject
 import orion_actions.msg as msg
+from manipulation.collision_mapping import CollisionWorld
+from manipulation.manipulation_header import ManipulationAction
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
@@ -18,148 +19,88 @@ from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
 
-class MoveHandToTfAction(object):
+class MoveHandToTfAction(ManipulationAction):
     # create messages that are used to publish feedback/result
     _feedback = msg.MoveHandToTfActionFeedback()
     _result = msg.MoveHandToTfActionResult()
 
-    def __init__(self, name):
-        self._action_name = name
-        self._as = actionlib.SimpleActionServer(
-            self._action_name,
-            msg.MoveHandToTfAction,
-            execute_cb=self.execute_cb,
-            auto_start=False,
+    # Whether to finally return to the map position the manipulation action was called at
+    RETURN_TO_START_AFTER_ACTION = False
+
+    def __init__(
+        self,
+        action_name,
+        action_msg_type=msg.MoveHandToTfAction,
+        use_collision_map=True,
+        tts_narrate=True,
+        prevent_motion=False,
+    ):
+
+        super(MoveHandToTfAction, self).__init__(
+            action_name,
+            action_msg_type,
+            use_collision_map,
+            tts_narrate,
+            prevent_motion,
         )
-        self._as.start()
 
-        # Put bounds about the tf frrmame of object to remove from map
-        self.exclusion_bounds = np.array([0.07, 0.07, 0.07])
+        rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
-        # Preparation for using the robot functions
-        self.robot = hsrb_interface.Robot()
-        self.whole_body = self.robot.try_get("whole_body")
-        self.omni_base = self.robot.try_get("omni_base")
-        self.collision_world = self.robot.try_get("global_collision_world")
-        self.gripper = self.robot.try_get("gripper")
-
-        self._HAND_TF = "hand_palm_link"
-        self._GRASP_FORCE = 0.2
-
-        # Set the grasp poses
-        self.pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
-        self.grasp_pose = geometry.pose(z=0.02)
-
-    def callback(msg):
-        # Get the message
-        message = msg
-
-        # Find which boxes to removes
-        inds_to_remove = []
-        for i in range(len(message.poses)):
-            pose = message.poses[i]
-            if (
-                pose.position.x <= upper_bounds[0]
-                and pose.position.x >= lower_bounds[0]
-                and pose.position.y <= upper_bounds[1]
-                and pose.position.y >= lower_bounds[1]
-                and pose.position.z <= upper_bounds[2]
-                and pose.position.z >= lower_bounds[2]
-            ):
-                inds_to_remove.append(i)
-
-        # Remove the boxes
-        for index in sorted(inds_to_remove, reverse=True):
-            del message.poses[index], message.shapes[index]
-
-        # Publish the filtered message
-        pub.publish(message)
-        print("Message published")
-
-    def execute_cb(self, goal_msg):
-        success = True
+    def _execute_cb(self, goal_msg):
+        """
+        Action server callback for PickUpObjectAction
+        """
         goal_tf = goal_msg.goal_tf
+        rospy.loginfo("%s: Requested to move hand to tf %s" % (self._action_name, goal_tf))
 
-        # publish info to the console for the user
-        rospy.loginfo(
-            "%s: Executing, moving hand to %s." % (self._action_name, goal_tf)
-        )
+        # Attempt to find transform from hand frame to goal_tf
+        (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
 
-        global pub, lower_bounds, upper_bounds
+        if trans is None:
+            rospy.logerr("Unable to find TF frame")
+            self.tts_say("I don't know that transform.", duration=2.0)
+            self.abandon_action()
+            return
 
-        rospy.loginfo("%s: Moving into position." % (self._action_name))
-        self.omni_base.go_abs(1.3370214380590735, 0.40718077536695114, 1.57)
+        # Look at the object - make sure that we get all of the necessary collision map
+        rospy.loginfo("%s: Moving head to look at the target." % self._action_name)
+        self.look_at_object(goal_tf)
 
-        # ---------------------------------- Now begin the actual actions --------------------
-        self.whole_body.move_to_go()
+        if self.handle_possible_preemption():
+            return
 
-        # Open gripper
-        rospy.loginfo("%s: Opening gripper." % (self._action_name))
-        self.gripper.command(1.2)
+        # Evaluate collision environment
+        if self.use_collision_map:
+            self.tts_say("Evaluating a collision-free path.", duration=1.0)
+            collision_world = self.get_goal_cropped_collision_map(goal_tf)
+        else:
+            collision_world = CollisionWorld.empty(self.whole_body)
 
-        # Follow the gripper
-        self.whole_body.looking_hand_constraint = True
+        if self.handle_possible_preemption():
+            return
 
-        # Set collision map
-        rospy.loginfo("%s: Getting Collision Map." % (self._action_name))
-        get_collision_map(self.robot)
-        rospy.loginfo("%s: Collision Map generated." % (self._action_name))
+        move_success = False
+        try:
+            with collision_world:
+                self.whole_body.move_end_effector_pose(geometry.pose(), goal_tf)
+            move_success = True
 
-        # Get the object pose to subtract from collision map
-        rospy.loginfo("%s: Getting object pose." % (self._action_name))
-        goal_object_pose = get_object_pose(goal_tf)
-        upper_bounds = goal_object_pose + self.exclusion_bounds
-        lower_bounds = goal_object_pose - self.exclusion_bounds
+        except Exception as e:
+            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
 
-        rospy.loginfo("%s: Bounds have been set" % self._action_name)
-        print("Bounds have been set")
-
-        # Remove object from map and publish to correct topic
-        rospy.loginfo("%s: Modifying collision map." % (self._action_name))
-        pub = rospy.Publisher("known_object", CollisionObject, queue_size=1)
-        rospy.Subscriber("known_object_pre_filter", CollisionObject, self.callback)
-        rospy.sleep(2)
-
-        rospy.loginfo("%s: Finding object." % (self._action_name))
-        # Set up listener to find the bottle
-        check_for_object(goal_tf)
-
-        rospy.loginfo("%s: Executing grasp procedure." % (self._action_name))
-        # Turn on collision checking
-        self.whole_body.collision_world = self.collision_world
-
-        print("Moving to object...")
-        self.whole_body.move_end_effector_pose(self.pregrasp_pose, goal_tf)
-
-        # Turn off collision checking to get close and grasp
-        self.whole_body.collision_world = None
-        self.whole_body.move_end_effector_pose(self.grasp_pose, "hand_palm_link")
-
-        # Specify the force to grasp
-        self.gripper.apply_force(self._GRASP_FORCE)
-        rospy.sleep(2.0)
-        rospy.loginfo("%s: Object grasped." % self._action_name)
-        print("Object grasped.")
-
-        # Turn collision checking back on
-        self.whole_body.collision_world = self.collision_world
-        rospy.sleep(0.5)
-
-        # Now return to moving position
-        rospy.loginfo("%s: Try to move to go." % self._action_name)
-        print("Try to move to go.")
-        self.whole_body.move_to_go()
-
-        print("Finished")
-
-        if success:
-            # self._result.sequence = self._feedback.sequence
-            rospy.loginfo("%s: Succeeded" % self._action_name)
-            # self._as.set_succeeded(self._result)
-            self._as.set_succeeded(1)
+        if move_success:
+            rospy.loginfo("%s: Move succeeded" % self._action_name)
+            self._result.result = True
+            self._as.set_succeeded(self._result)
+        else:
+            rospy.loginfo("%s: Move failed" % self._action_name)
+            self._result.result = False
+            self._as.set_aborted()
 
 
 if __name__ == "__main__":
     rospy.init_node("move_hand_to_tf_server_node")
-    server = MoveHandToTfAction(rospy.get_name())
+    server = MoveHandToTfAction(
+        "move_hand_to_tf", use_collision_map=True
+    )
     rospy.spin()
