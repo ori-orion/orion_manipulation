@@ -3,26 +3,23 @@
 Currently in development
 """
 
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
-
-import hsrb_interface
 import rospy
 import actionlib
+import hsrb_interface
 import hsrb_interface.geometry as geometry
+
+import orion_actions.msg as msg
+
+# Enable robot interface
 from hsrb_interface import robot as _robot
-
 _robot.enable_interactive()
-
-from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
 
 
 class PutObjectOnSurfaceAction(object):
 
     def __init__(self, name):
         self._action_name = 'put_object_on_surface'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.PutObjectOnSurfaceAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.PutObjectOnSurfaceAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
@@ -41,7 +38,7 @@ class PutObjectOnSurfaceAction(object):
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def execute_cb(self, goal_msg):
-        _result = PutObjectOnSurfaceResult()
+        _result = msg.PutObjectOnSurfaceResult()
         _result.result = False
 
         # Give opportunity to preempt
@@ -58,7 +55,7 @@ class PutObjectOnSurfaceAction(object):
             rospy.sleep(1)
 
             # Place object of surface
-            ## NEED TO CHANGE THE GOAL LOCATION HERE
+            # NEED TO CHANGE THE GOAL LOCATION HERE
             self.whole_body.move_end_effector_pose(geometry.pose(x=-0.6, y=0, z=0.2), 'hand_palm_link')
 
             # Let go of the object
@@ -85,10 +82,6 @@ class PutObjectOnSurfaceAction(object):
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
             self.whole_body.move_to_go()
             self._as.set_aborted()
-
-
-
-
 
 
 if __name__ == '__main__':

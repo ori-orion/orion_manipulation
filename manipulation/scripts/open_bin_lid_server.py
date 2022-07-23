@@ -1,35 +1,29 @@
 #! /usr/bin/env python3
 """ Action server for opening the bin lid.
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
-import hsrb_interface
+import numpy as np
 import rospy
 import actionlib
-import numpy as np
 import tf
-import hsrb_interface.geometry as geometry
 import tf.transformations as T
 import math
+import hsrb_interface
+import hsrb_interface.geometry as geometry
 
-# from manipulation.manipulation_header import CollisionMapper
-from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
+import orion_actions.msg as msg
+from manipulation.collision_mapping import CollisionMapper
 
-
+# Enable robot interface
 from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
-# For grasp synthesis
-from point_cloud_filtering.srv import DetectBinHandle
-from gpd.msg import GraspConfigList
 
-class PickUpObjectAction(object):
+class OpenBinLidAction(object):
 
     def __init__(self, name):
         self._action_name = 'open_bin_lid'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.OpenBinLidAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.OpenBinLidAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
@@ -47,12 +41,12 @@ class PickUpObjectAction(object):
 
         self.collision_mapper = CollisionMapper(self.robot)
 
-        self._CONNECTION_TIMEOUT = 15.0 # Define the vacuum timeouts
+        self._CONNECTION_TIMEOUT = 15.0  # Define the vacuum timeouts
         self._HAND_TF = 'hand_palm_link'
         self._GRASP_FORCE = 2.0
 
-        self.whole_body.planning_timeout = 20.0 # Increase planning timeout. Default is 10s
-        self.whole_body.tf_timeout = 10.0 # Increase tf timeout. Default is 5s
+        self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
+        self.whole_body.tf_timeout = 10.0  # Increase tf timeout. Default is 5s
 
         # Set up publisher for the collision map
         # self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
@@ -75,22 +69,22 @@ class PickUpObjectAction(object):
                 rospy.loginfo('Received %d grasps.', len(self.grasps))
                 break
 
-        grasp = self.grasps[0] # grasps are sorted in descending order by score
+        grasp = self.grasps[0]  # grasps are sorted in descending order by score
         rospy.loginfo('%s: Selected grasp with score:: %s' % (self._action_name, str(grasp.score)))
 
         # This gives the approach point correctly
         bottom = np.array([grasp.bottom.x, grasp.bottom.y, grasp.bottom.z])
-        approach = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z ])
+        approach = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z])
         binormal = np.array([grasp.binormal.x, grasp.binormal.y, grasp.binormal.z])
         hand_outer_diameter = 0.12
-        hw = 0.5*hand_outer_diameter
+        hw = 0.5 * hand_outer_diameter
         finger_width = 0.01
         left_bottom = bottom - (hw - 0.5 * finger_width) * binormal
         right_bottom = bottom + (hw - 0.5 * finger_width) * binormal
         base_center = left_bottom + 0.5 * (right_bottom - left_bottom) - 0.01 * approach
         approach_center = base_center - 0.06 * approach
 
-        approach_4 = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z , approach_center[0]])
+        approach_4 = np.array([grasp.approach.x, grasp.approach.y, grasp.approach.z, approach_center[0]])
         binormal_4 = np.array([grasp.binormal.x, grasp.binormal.y, grasp.binormal.z, approach_center[1]])
         axis_4 = np.array([grasp.axis.x, grasp.axis.y, grasp.axis.z, approach_center[2]])
 
@@ -99,15 +93,14 @@ class PickUpObjectAction(object):
 
         return geometry.Pose(geometry.Vector3(approach_center[0], approach_center[1], approach_center[2]), geometry.Quaternion(q[0], q[1], q[2], q[3]))
 
-
     def get_bin_handle_poses(self):
         rospy.wait_for_service('/bin_handle_detection')
         try:
-            detect_handle_service = rospy.ServiceProxy('/bin_handle_detection', DetectDrawerHandles)
+            detect_handle_service = rospy.ServiceProxy('/bin_handle_detection', msg.DetectDrawerHandles)
             response = detect_handle_service(True)
             # response should contain and array of x,y,z coords
         except rospy.ServiceException as e:
-            print ("Service call failed: %s" % e)
+            print("Service call failed: %s" % e)
 
         return response
 
@@ -198,7 +191,7 @@ class PickUpObjectAction(object):
             inds_to_remove = []
             for i in range(len(message.poses)):
                 pose = message.poses[i]
-                pose_arr = np.array([pose.position.x,pose.position.y,pose.position.z])
+                pose_arr = np.array([pose.position.x, pose.position.y, pose.position.z])
 
                 # remove excess environment
                 if not(np.all(pose_arr <= upper_bound) and np.all(pose_arr >= lower_bound)):
@@ -219,7 +212,6 @@ class PickUpObjectAction(object):
 
     def collision_callback(self, msg):
         self.collision_msg = msg
-
 
     def grab_handle(self, chosen_pregrasp_pose, chosen_grasp_pose):
         self.whole_body.end_effector_frame = 'hand_palm_link'
@@ -265,7 +257,6 @@ class PickUpObjectAction(object):
 
         return True
 
-
     def finish_position(self):
         self.whole_body.collision_world = self.collision_world
         self.whole_body.move_to_neutral()
@@ -273,17 +264,17 @@ class PickUpObjectAction(object):
         return True
 
     def execute_cb(self, goal_msg):
-        _result = OpenBinLidResult()
+        _result = msg.OpenBinLidResult()
 
         # Currently doesn't do anything other than relay to another topic
-        rospy.Subscriber("known_object_pre_filter", CollisionObject, self.collision_callback)
+        rospy.Subscriber("known_object_pre_filter", msg.CollisionObject, self.collision_callback)
 
         goal_tf = 'bin_handle'
 
         # Found the goal tf so proceed to pick up
         self.set_goal_object(goal_tf)
 
-        chosen_pregrasp_pose = geometry.pose(z=-0.08, ek=-math.pi/2)
+        chosen_pregrasp_pose = geometry.pose(z=-0.08, ek=-math.pi / 2)
         chosen_grasp_pose = geometry.pose(z=0.08)
 
         # Set collision map
@@ -296,12 +287,11 @@ class PickUpObjectAction(object):
         rospy.loginfo('%s: Pruning the collision map.' % self._action_name)
         self.collision_mod(self.collision_msg)
 
-
         self.tts.say("I will now pick up the object")
         rospy.sleep(1)
         grab_success = self.grab_handle(chosen_pregrasp_pose, chosen_grasp_pose)
 
-        if grab_success == False:
+        if not grab_success:
             self.whole_body.move_to_go()
             return
 

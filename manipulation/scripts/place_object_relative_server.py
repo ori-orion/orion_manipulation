@@ -3,25 +3,25 @@
 Currently in development.
 """
 
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
-
-import hsrb_interface
 import rospy
 import actionlib
+import hsrb_interface
 import hsrb_interface.geometry as geometry
 
-from manipulation.manipulation_header import CollisionMapper
-from actionlib_msgs.msg import GoalStatus
+import orion_actions.msg as msg
+from manipulation.collision_mapping import CollisionMapper
 from tmc_manipulation_msgs.msg import CollisionObject
-from orion_actions.msg import *
+
+# Enable robot interface
+from hsrb_interface import robot as _robot
+_robot.enable_interactive()
 
 
 class PlaceObjectRelativeAction(object):
 
     def __init__(self, name):
         self._action_name = 'place_object_relative'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.PlaceObjectRelativeAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.PlaceObjectRelativeAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
@@ -36,7 +36,7 @@ class PlaceObjectRelativeAction(object):
 
         self.collision_mapper = CollisionMapper(self.robot)
 
-        self.whole_body.planning_timeout = 20.0 # Increase planning timeout. Default is 10s
+        self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
 
         # Set up publisher for the collision map
         self.pub = rospy.Publisher('known_object', CollisionObject, queue_size=1)
@@ -70,7 +70,7 @@ class PlaceObjectRelativeAction(object):
         # goal_msg.y, goal_msg.z
         rel_pose = geometry.pose(z=goal_msg.x)
 
-        _result = PlaceObjectRelativeResult()
+        _result = msg.PlaceObjectRelativeResult()
         _result.result = False
 
         # Currently doesn't do anything other than relay to another topic

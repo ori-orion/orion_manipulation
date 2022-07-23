@@ -2,28 +2,29 @@
 """ Development action server for moving hand to a given tf frame.
 Not used now.
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
-# import roslib; roslib.load_manifest('manipulation')
-import hsrb_interface
-import hsrb_interface.geometry as geometry
 import numpy as np
 import rospy
 import actionlib
+import hsrb_interface
+import hsrb_interface.geometry as geometry
 
-from manipulation.manipulation_header import *
 from tmc_manipulation_msgs.msg import CollisionObject
-from manipulation.msg import *
+import orion_actions.msg as msg
+
+# Enable robot interface
+from hsrb_interface import robot as _robot
+_robot.enable_interactive()
+
 
 class MoveHandToTfAction(object):
     # create messages that are used to publish feedback/result
-    _feedback = MoveHandToTfActionFeedback()
-    _result = MoveHandToTfActionResult()
+    _feedback = msg.MoveHandToTfActionFeedback()
+    _result = msg.MoveHandToTfActionResult()
 
     def __init__(self, name):
         self._action_name = name
-        self._as = actionlib.SimpleActionServer(self._action_name, manipulation.msg.MoveHandToTfAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.MoveHandToTfAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
@@ -43,7 +44,6 @@ class MoveHandToTfAction(object):
         # Set the grasp poses
         self.pregrasp_pose = geometry.pose(z=-0.05, ek=-1.57)
         self.grasp_pose = geometry.pose(z=0.02)
-
 
     def callback(msg):
         # Get the message
@@ -66,13 +66,12 @@ class MoveHandToTfAction(object):
         pub.publish(message)
         print("Message published")
 
-
     def execute_cb(self, goal_msg):
         success = True
         goal_tf = goal_msg.goal_tf
 
         # publish info to the console for the user
-        rospy.loginfo('%s: Executing, moving hand to %s.' % ( self._action_name, goal_tf))
+        rospy.loginfo('%s: Executing, moving hand to %s.' % (self._action_name, goal_tf))
 
         global pub, lower_bounds, upper_bounds
 

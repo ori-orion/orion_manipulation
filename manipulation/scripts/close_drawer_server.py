@@ -3,31 +3,25 @@
 This assumes that the handle is already grasped and uses a hard-coded forward
 motion to close the drawer. Includes speech commentary
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
-import time
-import hsrb_interface
-import hsrb_interface.geometry as geometry
-import numpy as np
+
 import rospy
 import actionlib
+import hsrb_interface
+import hsrb_interface.geometry as geometry
 
-import math
+import orion_actions.msg as msg
+
+# Enable robot interface
 from hsrb_interface import robot as _robot
-
 _robot.enable_interactive()
-
-from manipulation.manipulation_header import *
-from orion_actions.msg import *
 
 
 class CloseDrawerAction(object):
 
-
     def __init__(self, name):
         self._action_name = 'close_drawer'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.CloseDrawerAction,execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.CloseDrawerAction, execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Preparation for using the robot functions
@@ -44,7 +38,6 @@ class CloseDrawerAction(object):
         self.whole_body.planning_timeout = 20.0
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % (self._action_name))
-
 
     def execute_cb(self, goal_msg):
         rospy.loginfo('%s: Executing callback. Closing the drawer.' % (self._action_name))
@@ -66,7 +59,7 @@ class CloseDrawerAction(object):
         self.tts.say("Completed drawer closing.")
         rospy.sleep(1)
 
-        result = CloseDrawerResult()
+        result = msg.CloseDrawerResult()
         result.result = True
         self._as.set_succeeded(result)
 

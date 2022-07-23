@@ -2,26 +2,24 @@
 """ Action server for receiving objects.
 Hard-coded motion to put hand out in front, pause and grasp an object.
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
-import hsrb_interface
 import rospy
 import actionlib
+import hsrb_interface
 import hsrb_interface.geometry as geometry
-from hsrb_interface import robot as _robot
 
+import orion_actions.msg as msg
+
+# Enable robot interface
+from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
-from actionlib_msgs.msg import GoalStatus
-
-from orion_actions.msg import *
 
 class ReceiveObjectFromOperatorAction(object):
 
     def __init__(self, name):
         self._action_name = 'receive_object_from_operator'
-        self._as = actionlib.SimpleActionServer(self._action_name, orion_actions.msg.ReceiveObjectFromOperatorAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.ReceiveObjectFromOperatorAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
@@ -41,10 +39,9 @@ class ReceiveObjectFromOperatorAction(object):
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % (self._action_name))
 
-
     def execute_cb(self, goal_msg):
 
-        _result = ReceiveObjectFromOperatorResult()
+        _result = msg.ReceiveObjectFromOperatorResult()
 
         try:
             rospy.loginfo('%s: Opening gripper.' % (self._action_name))
@@ -76,11 +73,10 @@ class ReceiveObjectFromOperatorAction(object):
             self.whole_body.move_to_neutral()
 
             # Return to "go" pose
-            #rospy.loginfo('%s: Moving bin higher to avoid the laser.' % (self._action_name))
-            #self.tts.say("Moving bin higher to avoid the laser.")
-            #rospy.sleep(1)
-            #self.whole_body.move_end_effector_pose(geometry.pose(x=0.5),'hand_palm_link')
-
+            # rospy.loginfo('%s: Moving bin higher to avoid the laser.' % (self._action_name))
+            # self.tts.say("Moving bin higher to avoid the laser.")
+            # rospy.sleep(1)
+            # self.whole_body.move_end_effector_pose(geometry.pose(x=0.5),'hand_palm_link')
 
             _result.result = True
             self._as.set_succeeded(_result)

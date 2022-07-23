@@ -12,22 +12,21 @@ Key options:
 import numpy as np
 import rospy
 import actionlib
-from actionlib_msgs.msg import GoalStatus
-import hsrb_interface.geometry as geometry
-from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 import tf
 import tf.transformations as T
 import traceback
+import hsrb_interface.geometry as geometry
 
-from orion_actions.msg import *
+import orion_actions.msg as msg
+from actionlib_msgs.msg import GoalStatus
 from manipulation.manipulation_header import ManipulationAction
 from manipulation.collision_mapping import CollisionWorld
 from point_cloud_filtering.srv import SegmentObject
 from gpd.msg import GraspConfigList
+from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
-
 _robot.enable_interactive()
 
 
@@ -49,7 +48,7 @@ class PickUpObjectAction(ManipulationAction):
     def __init__(
         self,
         action_name,
-        action_msg_type=orion_actions.msg.PickUpObjectAction,
+        action_msg_type=msg.PickUpObjectAction,
         use_collision_map=True,
         use_grasp_synthesis=True,
         tts_narrate=True,
@@ -87,7 +86,7 @@ class PickUpObjectAction(ManipulationAction):
         """
         Action server callback for PickUpObjectAction
         """
-        _result = PickUpObjectResult()
+        _result = msg.PickUpObjectResult()
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))

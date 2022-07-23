@@ -7,10 +7,9 @@ import rospy
 import actionlib
 import hsrb_interface.geometry as geometry
 
+import orion_actions.msg as msg
 from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
 from manipulation.manipulation_header import ManipulationAction
-# from orion_actions.msg import GiveObjectToOperatorAction, GiveObjectToOperatorGoal, GiveObjectToOperatorResult
 from orion_hri.msg import (
     WaitForConfirmationAction,
     WaitForConfirmationGoal,
@@ -19,7 +18,6 @@ from orion_hri.msg import (
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
-
 _robot.enable_interactive()
 
 
@@ -27,7 +25,7 @@ class GiveObjectToOperatorAction(ManipulationAction):
     def __init__(
         self,
         action_name,
-        action_msg_type=orion_actions.msg.GiveObjectToOperatorAction,
+        action_msg_type=msg.GiveObjectToOperatorAction,
         use_collision_map=False,
     ):
 
@@ -84,7 +82,7 @@ class GiveObjectToOperatorAction(ManipulationAction):
 
     def _execute_cb(self, goal_msg):
 
-        _result = GiveObjectToOperatorResult()
+        _result = msg.GiveObjectToOperatorResult()
 
         # Implemented a speech client but currently has no effect because it pass if fails
         # Just using this to test

@@ -1,25 +1,24 @@
 #! /usr/bin/env python3
 
-import hsrb_interface
 import rospy
 import actionlib
 import tf
-import tf.transformations as T
 import math
+import hsrb_interface
 import hsrb_interface.geometry as geometry
+
+import orion_actions.msg as msg
+
+# Enable robot interface
 from hsrb_interface import robot as _robot
-
 _robot.enable_interactive()
-
-from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
 
 
 class PourIntoAction(object):
 
     def __init__(self, name):
         self._action_name = 'pour_into'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.PourIntoAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.PourIntoAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
@@ -38,19 +37,20 @@ class PourIntoAction(object):
         # Constants for pouring operation
         self._POUR_SPEED = 0.2
         self._DEFAULT_POUR_HEIGHT = 0.05
-        self.pour_pose = geometry.pose(y=-0.20, z=-0.05, ek=-1.57);
+        self.pour_pose = geometry.pose(y=-0.20, z=-0.05, ek=-1.57)
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def execute_cb(self, goal_msg):
         # Messages for feedback / results
-        _result = PourIntoResult()
+        _result = msg.PourIntoResult()
         _result.result = False
 
         is_preempted = False
 
         # Get the tf of the object to be poured into, from the message
         goal_tf_in = goal_msg.goal_tf_frame
+        goal_tf = None
 
         while goal_tf is None:
             goal_tf = self.get_similar_tf(goal_tf_in)
@@ -106,7 +106,6 @@ class PourIntoAction(object):
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
             self.whole_body.move_to_go()
             self._as.set_aborted()
-
 
     def get_similar_tf(self, tf_frame):
         listen = tf.TransformListener()

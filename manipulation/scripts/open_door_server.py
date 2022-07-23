@@ -3,36 +3,26 @@
 Uses the /handle_detection service to do segmentation and find a centroid location for the handle to grasp.
 Robust to left and right hinged doors. Currently works on pull down horizontal handles and executes a pull open motion.
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
-import time
-import hsrb_interface
-import hsrb_interface.geometry as geometry
-import numpy as np
 import rospy
 import actionlib
-import json
-import rospkg
-import tf
-import tf2_ros
-import geometry_msgs.msg
 import math
-from hsrb_interface import robot as _robot
+import hsrb_interface
+import hsrb_interface.geometry as geometry
 
-_robot.enable_interactive()
-
-from manipulation.manipulation_header import *
+import orion_actions.msg as msg
 from point_cloud_filtering.srv import DetectHandle
-from orion_actions.msg import *
+
+# Enable robot interface
+from hsrb_interface import robot as _robot
+_robot.enable_interactive()
 
 
 class OpenDoorAction(object):
 
-
     def __init__(self, name):
         self._action_name = 'open_door'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.OpenDoorAction,execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.OpenDoorAction, execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Preparation for using the robot functions
@@ -57,9 +47,9 @@ class OpenDoorAction(object):
         try:
             detect_handle_service = rospy.ServiceProxy('/handle_detection', DetectHandle)
             response = detect_handle_service(True)
-            print (response)
+            print(response)
         except rospy.ServiceException as e:
-            print( "Service call failed: %s" % e)
+            print("Service call failed: %s" % e)
 
         return response
 
@@ -79,7 +69,7 @@ class OpenDoorAction(object):
         self.tts.say("I'm now looking for the door handle")
         handle_pose = self.get_handle_pose()
 
-        if handle_pose.handle_detected == False:
+        if not handle_pose.handle_detected:
             rospy.loginfo('%s: Could not find door handle. Handle detection timed out.' % self._action_name)
             self._as.set_aborted()
 
@@ -93,16 +83,15 @@ class OpenDoorAction(object):
         self.tts.say("Door handle found. Moving to grasp.")
         rospy.sleep(1)
 
-        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y,  z=handle_pose.z-0.08), 'head_rgbd_sensor_rgb_frame')
+        self.whole_body.move_end_effector_pose(geometry.pose(x=handle_pose.x, y=handle_pose.y, z=handle_pose.z - 0.08), 'head_rgbd_sensor_rgb_frame')
 
         # Determine if door hinge is on left or right
         if handle_pose.x > 0:
-            hinge_sign = 1 # hinge on left
+            hinge_sign = 1  # hinge on left
             self.whole_body.move_end_effector_pose(geometry.pose(x=-0.06), 'hand_palm_link')
         else:
-            hinge_sign = -1 # hinge on right
+            hinge_sign = -1  # hinge on right
             self.whole_body.move_end_effector_pose(geometry.pose(x=0.06), 'hand_palm_link')
-
 
         try:
             self.whole_body.move_end_effector_pose(geometry.pose(z=0.05), 'hand_palm_link')
@@ -147,18 +136,18 @@ class OpenDoorAction(object):
         self.whole_body.move_to_go()
         self.whole_body.move_to_neutral()
         self.whole_body.linear_weight = 100
-        self.omni_base.go_rel(0, -hinge_sign*0.15, 0)
+        self.omni_base.go_rel(0, -hinge_sign * 0.15, 0)
         self.whole_body.move_to_joint_positions({'arm_lift_joint': 0.5})
         self.whole_body.move_end_effector_pose(geometry.pose(z=0.3), 'hand_palm_link')
         self.omni_base.go_rel(0.15, 0, 0)
-        self.omni_base.go_rel(0, 0, hinge_sign * math.pi/2)
+        self.omni_base.go_rel(0, 0, hinge_sign * math.pi / 2)
         self.whole_body.move_to_go()
         rospy.loginfo('%s: Succeeded door opening. Now returning results.' % self._action_name)
         self.tts.say("Door opening complete.")
         # self.tts.say("Yeah boy.")
         rospy.sleep(1)
 
-        result = OpenDoorResult()
+        result = msg.OpenDoorResult()
         result.result = True
         self.whole_body.planning_timeout = 20.0
         self._as.set_succeeded(result)

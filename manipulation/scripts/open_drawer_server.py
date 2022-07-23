@@ -4,33 +4,27 @@ Uses the /drawer_handle_detection service to do segmentation and find a centroid
 If multiple drawer handles are detected, one is randomly chosen. Performs hard-coded pull back motion with
 speech commentary
 """
-import time
-import hsrb_interface
-import hsrb_interface.geometry as geometry
-import numpy as np
+
 import rospy
 import actionlib
-
 import tf
-import tf.transformations as T
 import math
+import hsrb_interface
+import hsrb_interface.geometry as geometry
 
+import orion_actions.msg as msg
+from point_cloud_filtering.srv import DetectDrawerHandles
+
+# Enable robot interface
 from hsrb_interface import robot as _robot
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
-
 _robot.enable_interactive()
 
-from manipulation.manipulation_header import *
-from orion_actions.msg import *
-from point_cloud_filtering.srv import DetectDrawerHandles
 
 class OpenDrawerAction(object):
 
-
     def __init__(self, name):
         self._action_name = 'open_drawer'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.OpenDrawerAction,execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.OpenDrawerAction, execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
         # Preparation for using the robot functions
@@ -48,7 +42,6 @@ class OpenDrawerAction(object):
 
         rospy.loginfo('%s: Initialised. Ready for clients.' % (self._action_name))
 
-
     def get_handle_poses(self):
         rospy.wait_for_service('/drawer_handle_detection')
         try:
@@ -56,7 +49,7 @@ class OpenDrawerAction(object):
             response = detect_handle_service(True)
             # response should contain and array of x,y,z coords
         except rospy.ServiceException as e:
-            print ("Service call failed: %s" % e)
+            print("Service call failed: %s" % e)
 
         return response
 
@@ -78,11 +71,11 @@ class OpenDrawerAction(object):
 
         # This gives the position of the handle
         goal_pose = geometry.pose(x=pose_msg.position.x,
-                      y=pose_msg.position.y,
-                      z=pose_msg.position.z,
-                      ei=math.pi/2,
-                      ej=0,
-                      ek=math.pi/2)
+                                  y=pose_msg.position.y,
+                                  z=pose_msg.position.z,
+                                  ei=math.pi / 2,
+                                  ej=0,
+                                  ek=math.pi / 2)
 
         # return goal_pose
         offset_pose = geometry.pose(z=offset)
@@ -96,7 +89,6 @@ class OpenDrawerAction(object):
 
         rospy.loginfo('%s: Opening gripper.' % (self._action_name))
         self.gripper.command(1.2)
-
 
         # Try and find handles
         handle_poses = self.get_handle_poses()
@@ -159,7 +151,7 @@ class OpenDrawerAction(object):
             rospy.sleep(1)
             self._as.set_aborted()
 
-        result = OpenDrawerResult()
+        result = msg.OpenDrawerResult()
         result.result = True
         self._as.set_succeeded(result)
 

@@ -3,34 +3,29 @@
 Takes a tf frame string as input to follow. Maintains 50cm distance away from object and follows
 until pre-empted
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
+import numpy as np
 import rospy
 import actionlib
-import numpy as np
 import tf
 import math
-
 import hsrb_interface
 import hsrb_interface.geometry as geometry
 
+import orion_actions.msg as msg
 from std_srvs.srv import Empty, EmptyRequest
-# from move_base_msgs.msg import *
-from move_base_msgs.msg import MoveBaseAction
-from move_base_msgs.msg import MoveBaseGoal
-from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
 from geometry_msgs.msg import PoseStamped
 
+# Enable robot interface
 from hsrb_interface import robot as _robot
 _robot.enable_interactive()
+
 
 class FollowAction(object):
 
     def __init__(self, name):
         self._action_name = 'follow'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.FollowAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.FollowAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
@@ -46,7 +41,6 @@ class FollowAction(object):
 
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
-
 
     def get_object_pose(self, object_tf):
         found_trans = False
@@ -89,7 +83,7 @@ class FollowAction(object):
                 return object_tf
 
     def execute_cb(self, goal_msg):
-        _result = FollowResult()
+        _result = msg.FollowResult()
         _result.succeeded = False
 
         goal_tf = None
@@ -161,7 +155,6 @@ class FollowAction(object):
                                                                               str(distance),
                                                                               str(theta)))
 
-
             # Stop head moving
             stop_client = rospy.ServiceProxy('/viewpoint_controller/stop', Empty)
             stop_client.call(EmptyRequest())
@@ -174,7 +167,7 @@ class FollowAction(object):
                 self.omni_base.execute(base_goal)
                 rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
             else:
-                ratio = 1 - (0.5/distance)
+                ratio = 1 - (0.5 / distance)
                 rospy.loginfo('%s: Sending base goals.' % self._action_name)
                 # self.omni_base.go_rel(ratio * person_coords[0], ratio * person_coords[1], theta)
                 base_pose = geometry.pose(ratio * person_coords[0], ratio * person_coords[1], 0.0, 0.0, 0.0, theta)

@@ -2,29 +2,27 @@
 """ Action server for pointing objects.
 Takes a tf frame string and the robot will turn and point towards the object. Includes speech commentary
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
-import hsrb_interface
+import numpy as np
 import rospy
 import actionlib
-import numpy as np
 import tf
-import hsrb_interface.geometry as geometry
 import math
+import hsrb_interface
+import hsrb_interface.geometry as geometry
 
+import orion_actions.msg as msg
+
+# Enable robot interface
 from hsrb_interface import robot as _robot
 _robot.enable_interactive()
-
-from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
 
 
 class PointToObjectAction(object):
 
     def __init__(self, name):
         self._action_name = 'point_to_object'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.PointToObjectAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.PointToObjectAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
@@ -38,9 +36,9 @@ class PointToObjectAction(object):
         self.tts = self.robot.try_get('default_tts')
         self.tts.language = self.tts.ENGLISH
 
-        self._CONNECTION_TIMEOUT = 15.0 # Define the vacuum timeouts
+        self._CONNECTION_TIMEOUT = 15.0  # Define the vacuum timeouts
         self._HAND_TF = 'hand_palm_link'
-        self.whole_body.planning_timeout = 20.0 # Increase planning timeout. Default is 10s
+        self.whole_body.planning_timeout = 20.0  # Increase planning timeout. Default is 10s
 
         # Set up publisher for the collision map
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
@@ -91,7 +89,7 @@ class PointToObjectAction(object):
         return np.array([trans[0], trans[1], trans[2]])
 
     def execute_cb(self, goal_msg):
-        _result = PointToObjectResult()
+        _result = msg.PointToObjectResult()
         _result.result = False
 
         self.tts.say("I will close the gripper to make clear where I point.")
@@ -136,15 +134,15 @@ class PointToObjectAction(object):
         object_rel_to_hand = self.get_object_rel_to_hand(goal_tf)
         distance = math.sqrt(math.pow(object_rel_to_hand[0], 2) + math.pow(object_rel_to_hand[1], 2) + math.pow(object_rel_to_hand[2], 2))
         if distance > 0.3:
-            req_ratio = 0.3/distance
+            req_ratio = 0.3 / distance
         else:
             req_ratio = 0.5
 
         rospy.loginfo('%s: Pointing to object.' % self._action_name)
         self.whole_body.linear_weight = 100
-        self.whole_body.move_end_effector_pose(geometry.pose(x=req_ratio*object_rel_to_hand[0],
-                                                             y=req_ratio*object_rel_to_hand[1],
-                                                             z=req_ratio*object_rel_to_hand[2]),
+        self.whole_body.move_end_effector_pose(geometry.pose(x=req_ratio * object_rel_to_hand[0],
+                                                             y=req_ratio * object_rel_to_hand[1],
+                                                             z=req_ratio * object_rel_to_hand[2]),
                                                'hand_palm_link')
 
         self.tts.say("It is over there.")
@@ -163,7 +161,6 @@ class PointToObjectAction(object):
         rospy.loginfo('%s: Succeeded' % self._action_name)
         _result.result = True
         self._as.set_succeeded(_result)
-
 
 
 if __name__ == '__main__':

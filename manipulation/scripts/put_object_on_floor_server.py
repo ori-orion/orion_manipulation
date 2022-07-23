@@ -2,23 +2,20 @@
 """ Action server for putting objects on the floor.
 Hard coded motion to maintain horizontal grasp and place hand close to the floor and open the gripper.
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
-import hsrb_interface
 import rospy
 import actionlib
-import hsrb_interface.geometry as geometry
-from hsrb_interface import robot as _robot
-
 import math
-import numpy as np
+import hsrb_interface
+import hsrb_interface.geometry as geometry
 
+import orion_actions.msg as msg
+from geometry_msgs.msg import WrenchStamped
+
+# Enable robot interface
+from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
-from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
-from geometry_msgs.msg import WrenchStamped
 
 def compute_difference(pre_data_list, post_data_list):
     if len(pre_data_list) != len(post_data_list):
@@ -29,6 +26,7 @@ def compute_difference(pre_data_list, post_data_list):
                        for (a, b) in zip(pre_data_list, post_data_list)])
 
     return math.sqrt(square_sums)
+
 
 class ForceSensorCapture(object):
     """Subscribe and hold force sensor data - Copyright (C) 2016 Toyota Motor Corporation"""
@@ -63,7 +61,7 @@ class PutObjectOnFloorAction(object):
 
     def __init__(self, name):
         self._action_name = 'put_object_on_floor'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.PutObjectOnFloorAction,
+        self._as = actionlib.SimpleActionServer(self._action_name, msg.PutObjectOnFloorAction,
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
         rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
@@ -82,7 +80,7 @@ class PutObjectOnFloorAction(object):
         rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
 
     def execute_cb(self, goal_msg):
-        _result = PutObjectOnFloorResult()
+        _result = msg.PutObjectOnFloorResult()
         _result.result = False
 
         # Give opportunity to preempt
@@ -150,10 +148,6 @@ class PutObjectOnFloorAction(object):
             rospy.loginfo('%s: Returning to go pose.' % (self._action_name))
             self.whole_body.move_to_go()
             self._as.set_aborted()
-
-
-
-
 
 
 if __name__ == '__main__':
