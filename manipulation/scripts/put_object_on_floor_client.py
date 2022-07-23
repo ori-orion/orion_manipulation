@@ -8,7 +8,9 @@ import orion_actions.msg as msg
 
 
 def put_object_on_floor_client():
-    client = actionlib.SimpleActionClient('put_object_on_floor', msg.PutObjectOnFloorAction)
+    client = actionlib.SimpleActionClient(
+        "put_object_on_floor", msg.PutObjectOnFloorAction
+    )
 
     print("Waiting for server")
     client.wait_for_server()
@@ -27,8 +29,8 @@ def put_object_on_floor_client():
     return client.get_result()
 
 
-if __name__ == '__main__':
-    rospy.init_node('put_object_on_floor_client')
+if __name__ == "__main__":
+    rospy.init_node("put_object_on_floor_client")
 
     result = put_object_on_floor_client()
     print("Result:" + str(result.result))

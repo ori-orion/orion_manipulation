@@ -14,6 +14,7 @@ from sensor_msgs.msg import Image
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
+
 _robot.enable_interactive()
 
 

@@ -27,6 +27,7 @@ from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
+
 _robot.enable_interactive()
 
 
@@ -141,7 +142,9 @@ class PickUpObjectAction(ManipulationAction):
         if self.handle_possible_preemption():
             return
 
-        grasp_success = self.grab_object(goal_tf, collision_world, self.PREGRASP_POSE, self.GRASP_POSE)
+        grasp_success = self.grab_object(
+            goal_tf, collision_world, self.PREGRASP_POSE, self.GRASP_POSE
+        )
 
         if self.handle_possible_preemption():
             return
@@ -162,7 +165,9 @@ class PickUpObjectAction(ManipulationAction):
             _result.result = False
             self._as.set_aborted()
 
-    def grab_object(self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose):
+    def grab_object(
+        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose
+    ):
         self.whole_body.end_effector_frame = self.HAND_FRAME
 
         rospy.loginfo("%s: Opening gripper." % (self._action_name))
@@ -202,7 +207,9 @@ class PickUpObjectAction(ManipulationAction):
             self.abandon_action()
             return False
 
-    def position_end_effector_grasp_pose_synthesis(self, goal_tf, collision_world, chosen_grasp_pose):
+    def position_end_effector_grasp_pose_synthesis(
+        self, goal_tf, collision_world, chosen_grasp_pose
+    ):
         """
         Move to a valid grasping position using grasp pose synthesis.
         """
@@ -358,7 +365,9 @@ class PickUpObjectAction(ManipulationAction):
             return
 
         with collision_world:
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0.05, ei=3.14), goal_tf)
+            self.whole_body.move_end_effector_pose(
+                geometry.pose(z=0.05, ei=3.14), goal_tf
+            )
 
         # Get close and grasp without collision checking
         self.whole_body.move_end_effector_pose(geometry.pose(z=0.045), goal_tf)
@@ -382,7 +391,9 @@ class PickUpObjectAction(ManipulationAction):
 
         # Unsuccessful - try without collision avoidance
         try:
-            rospy.loginfo("%s: Retrying without collision detection." % self._action_name)
+            rospy.loginfo(
+                "%s: Retrying without collision detection." % self._action_name
+            )
             self.omni_base.go_rel(-0.3, 0, 0)
             self.whole_body.move_to_go()
             return True

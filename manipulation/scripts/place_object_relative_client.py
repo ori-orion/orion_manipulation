@@ -9,7 +9,9 @@ import orion_actions.msg as msg
 
 
 def place_object_relative_client(goal_tf, x, y, z):
-    client = actionlib.SimpleActionClient("place_object_relative", msg.PlaceObjectRelativeAction)
+    client = actionlib.SimpleActionClient(
+        "place_object_relative", msg.PlaceObjectRelativeAction
+    )
 
     print("Waiting for server")
     client.wait_for_server()

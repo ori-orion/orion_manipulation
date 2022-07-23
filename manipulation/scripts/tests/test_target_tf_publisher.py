@@ -16,9 +16,10 @@ import tf2_ros
 
 min_acceptable_score = 0.50
 # When performing non-maximum suppression, the intersection-over-union threshold defines
-# the proportion of intersection a bounding box must cover before it is determined to be 
-# part of the same object. 
+# the proportion of intersection a bounding box must cover before it is determined to be
+# part of the same object.
 iou_threshold = 0.80
+
 
 class BboxPublisher(object):
     def __init__(self, image_topic, depth_topic, bbox_name="target", bbox_colour="red"):
@@ -26,19 +27,26 @@ class BboxPublisher(object):
         self.bbox_colour = bbox_colour
 
         # Subscribers
-        self.image_sub = message_filters.Subscriber(image_topic, Image, queue_size=1)     # TODO - see if changing from 100 will help for sim image backlog
+        self.image_sub = message_filters.Subscriber(
+            image_topic, Image, queue_size=1
+        )  # TODO - see if changing from 100 will help for sim image backlog
         self.depth_sub = message_filters.Subscriber(depth_topic, Image)
 
         # synchronise subscribers
-        self.subscribers = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub], 1, 1.0)
+        self.subscribers = message_filters.ApproximateTimeSynchronizer(
+            [self.image_sub, self.depth_sub], 1, 1.0
+        )
 
         # Publishers
-        self.image_pub = rospy.Publisher('/vision/bbox_image', Image, queue_size=10)
-        self.detections_pub = rospy.Publisher('/vision/bbox_detections', DetectionArray, queue_size=10)
+        self.image_pub = rospy.Publisher("/vision/bbox_image", Image, queue_size=10)
+        self.detections_pub = rospy.Publisher(
+            "/vision/bbox_detections", DetectionArray, queue_size=10
+        )
 
         # Image calibrator
         camera_info = rospy.wait_for_message(
-            "/hsrb/head_rgbd_sensor/depth_registered/camera_info", CameraInfo)
+            "/hsrb/head_rgbd_sensor/depth_registered/camera_info", CameraInfo
+        )
         self._invK = np.linalg.inv(np.array(camera_info.K).reshape(3, 3))
 
         # Define bridge open cv -> RosImage
@@ -51,48 +59,48 @@ class BboxPublisher(object):
         self._br = tf2_ros.TransformBroadcaster()
 
     def getMeanDepth_gaussian(self, depth):
-        """Ok so we want to mean over the depth image using a gaussian centred at the 
+        """Ok so we want to mean over the depth image using a gaussian centred at the
         mid point
         Gausian is defined as e^{-(x/\sigma)^2}
 
-        Now, e^{-(x/sigma)^2}|_{x=1.5, sigma=1}=0.105 which is small enough. I'll therefore set the width of 
-        the depth image to be 3 standard deviations. (Remember, there're going to be two distributions 
+        Now, e^{-(x/sigma)^2}|_{x=1.5, sigma=1}=0.105 which is small enough. I'll therefore set the width of
+        the depth image to be 3 standard deviations. (Remember, there're going to be two distributions
         multiplied together here! so that makes the corners 0.011 times as strong as the centre of the image.)
 
-        I'm then going to do (2D_gaussian \cdot image) / sum(2D_gaussian) 
+        I'm then going to do (2D_gaussian \cdot image) / sum(2D_gaussian)
             (accounting for valid and invalid depth pixels on the way.)
 
         This should give a fairly good approximation for the depth.
         """
 
-        def shiftedGaussian(x:float, shift:float, s_dev:float) -> float:
-            return math.exp(-pow((x-shift)/s_dev, 2));
+        def shiftedGaussian(x: float, shift: float, s_dev: float) -> float:
+            return math.exp(-pow((x - shift) / s_dev, 2))
 
-        width:float = depth.shape[0];
-        height:float = depth.shape[1];
-        x_s_dev:float = width / 3;
-        y_s_dev:float = height / 3;
-        x_shift:float = width/2;
-        y_shift:float = height/2;
+        width: float = depth.shape[0]
+        height: float = depth.shape[1]
+        x_s_dev: float = width / 3
+        y_s_dev: float = height / 3
+        x_shift: float = width / 2
+        y_shift: float = height / 2
 
         # We need some record of the total amount of gaussian over the image so that we can work out
-        # what to divide by. 
-        gaussian_sum:float = 0;
-        depth_sum:float = 0;
+        # what to divide by.
+        gaussian_sum: float = 0
+        depth_sum: float = 0
 
         for x in range(width):
-            x_gaussian = shiftedGaussian(x, x_shift, x_s_dev);
+            x_gaussian = shiftedGaussian(x, x_shift, x_s_dev)
             for y in range(height):
-                if (depth[x,y] != 0):
-                    point_multiplier:float = x_gaussian * shiftedGaussian(y, y_shift, y_s_dev);
-                    gaussian_sum += point_multiplier;
-                    depth_sum += depth[x,y] * point_multiplier;
-                pass;
-            pass;
+                if depth[x, y] != 0:
+                    point_multiplier: float = x_gaussian * shiftedGaussian(
+                        y, y_shift, y_s_dev
+                    )
+                    gaussian_sum += point_multiplier
+                    depth_sum += depth[x, y] * point_multiplier
+                pass
+            pass
 
-
-        return depth_sum / gaussian_sum;
-        
+        return depth_sum / gaussian_sum
 
     def callback(self, ros_image, depth_data):
         if not self.first_call:
@@ -101,13 +109,16 @@ class BboxPublisher(object):
 
         self.first_call = False
 
-        print("\n\n----------------------------------------------------------------------")
+        print(
+            "\n\n----------------------------------------------------------------------"
+        )
         print("Left click and drag to define bounding box")
 
         # get images from cv bridge
         image = self.bridge.imgmsg_to_cv2(ros_image, "bgr8")
-        depth = np.array(self.bridge.imgmsg_to_cv2(depth_data, 'passthrough'),
-                         dtype=np.float32)
+        depth = np.array(
+            self.bridge.imgmsg_to_cv2(depth_data, "passthrough"), dtype=np.float32
+        )
 
         show_img = image.copy()
 
@@ -126,7 +137,7 @@ class BboxPublisher(object):
                             pt1=(start_x, start_y),
                             pt2=(x, y),
                             color=(0, 255, 255),
-                            thickness=2
+                            thickness=2,
                         )
 
                         cv2.imshow("image", show_img)
@@ -161,7 +172,9 @@ class BboxPublisher(object):
         labels = [1]
         scores = [1.0]
 
-        print("Publishing bounding box " + self.bbox_name + " at " + str(list(boxes[0])))
+        print(
+            "Publishing bounding box " + self.bbox_name + " at " + str(list(boxes[0]))
+        )
 
         detections = []
         boxes_nms = []
@@ -179,13 +192,13 @@ class BboxPublisher(object):
             score = scores[i]
 
             # Dimensions of bounding box
-            center_x = (box[0]+box[2])/2
-            width = box[2]-box[0]
-            center_y = (box[1]+box[3])/2
-            height = box[3]-box[1]
+            center_x = (box[0] + box[2]) / 2
+            width = box[2] - box[0]
+            center_y = (box[1] + box[3]) / 2
+            height = box[3] - box[1]
 
             # Get depth
-            trim_depth = depth[int(box[0]):int(box[2]), int(box[1]):int(box[2])]
+            trim_depth = depth[int(box[0]) : int(box[2]), int(box[1]) : int(box[2])]
             valid = trim_depth[np.nonzero(trim_depth)]
 
             # Discard any bounding boxes with zero trim_depth size
@@ -196,24 +209,24 @@ class BboxPublisher(object):
             if valid.size != 0:
                 z = np.min(valid) * 1e-3
                 # z = self.getMeanDepth_gaussian(trim_depth) * 1e-3;
-                
+
                 top_left_3d = np.array([int(box[0]), int(box[1]), 0])
-                top_left_camera = np.dot(self._invK, top_left_3d)*z
+                top_left_camera = np.dot(self._invK, top_left_3d) * z
                 bottom_right_3d = np.array([int(box[2]), int(box[3]), 0])
-                bottom_right_camera = np.dot(self._invK, bottom_right_3d)*z
+                bottom_right_camera = np.dot(self._invK, bottom_right_3d) * z
                 corner_to_corner = top_left_camera - bottom_right_camera
                 x_size = abs(corner_to_corner[0])
                 y_size = abs(corner_to_corner[1])
-                z_size = (x_size + y_size)/2.0
+                z_size = (x_size + y_size) / 2.0
                 size = Point(x_size, y_size, z_size)
             else:
                 size = Point(0.0, 0.0, 0.0)
-                print('\n')
-                print('\n')
+                print("\n")
+                print("\n")
                 print("Trim depth size: {}".format(trim_depth.size))
-                print('\tno valid depth for object size', end="")
-                print('\n')
-                print('\n')
+                print("\tno valid depth for object size", end="")
+                print("\n")
+                print("\n")
 
                 continue
 
@@ -228,8 +241,18 @@ class BboxPublisher(object):
             print("\n", label_str, end="")
 
             # create detection instance
-            detection = Detection(score_lbl, center_x, center_y, width, height,
-                                  size, self.bbox_colour, obj[0], obj[1], obj[2])
+            detection = Detection(
+                score_lbl,
+                center_x,
+                center_y,
+                width,
+                height,
+                size,
+                self.bbox_colour,
+                obj[0],
+                obj[1],
+                obj[2],
+            )
 
             detections.append(detection)
 
@@ -241,7 +264,15 @@ class BboxPublisher(object):
         top_left = (boxes[0][0], boxes[0][1])
         bottom_right = (boxes[0][2], boxes[0][3])
         cv2.rectangle(image, top_left, bottom_right, (255, 0, 0), 3)
-        cv2.putText(image, self.bbox_name + ': ' + str(1.0), top_left, cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 1)
+        cv2.putText(
+            image,
+            self.bbox_name + ": " + str(1.0),
+            top_left,
+            cv2.FONT_HERSHEY_COMPLEX,
+            0.5,
+            (0, 255, 0),
+            1,
+        )
 
         image_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
 
@@ -264,8 +295,8 @@ class BboxPublisher(object):
         self._br.sendTransform([t])
 
 
-if __name__ == '__main__':
-    rospy.init_node('bbox_publisher')
+if __name__ == "__main__":
+    rospy.init_node("bbox_publisher")
     img_topic = "/hsrb/head_rgbd_sensor/rgb/image_rect_color"
     depth_topic = "/hsrb/head_rgbd_sensor/depth_registered/image_rect_raw"
     bbox_name = "target"

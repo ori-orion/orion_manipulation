@@ -9,6 +9,7 @@ from std_srvs.srv import Empty
 from manipulation.srv import GetReconstruction
 
 from hsrb_interface import robot as _robot
+
 _robot.enable_interactive()
 
 
@@ -50,7 +51,7 @@ class CollisionMapper:
     def __init__(self, robot, stl_storage_dir=None):
         self.robot = robot
         self.global_collision_world = self.robot.try_get("global_collision_world")
-        self.whole_body = self.robot.try_get('whole_body')
+        self.whole_body = self.robot.try_get("whole_body")
 
         rospy.loginfo(
             "%s: Waiting for octomap reset service..." % self.__class__.__name__

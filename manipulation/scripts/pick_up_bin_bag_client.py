@@ -8,7 +8,7 @@ import orion_actions.msg as msg
 
 
 def pick_up_bin_bag_client():
-    client = actionlib.SimpleActionClient('pick_up_bin_bag', msg.PickUpBinBagAction)
+    client = actionlib.SimpleActionClient("pick_up_bin_bag", msg.PickUpBinBagAction)
 
     print("Waiting for server")
     client.wait_for_server()
@@ -27,8 +27,8 @@ def pick_up_bin_bag_client():
     return client.get_result()
 
 
-if __name__ == '__main__':
-    rospy.init_node('pick_up_bin_bag_client')
+if __name__ == "__main__":
+    rospy.init_node("pick_up_bin_bag_client")
 
     result = pick_up_bin_bag_client()
     print("Result:" + str(result.result))

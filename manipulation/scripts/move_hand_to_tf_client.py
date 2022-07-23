@@ -9,7 +9,7 @@ import orion_actions.msg as msg
 
 
 def move_hand_to_tf_client(goal_tf):
-    client = actionlib.SimpleActionClient('move_hand_to_tf', msg.MoveHandToTfAction)
+    client = actionlib.SimpleActionClient("move_hand_to_tf", msg.MoveHandToTfAction)
 
     print("Waiting for server")
     client.wait_for_server()
@@ -28,7 +28,7 @@ def move_hand_to_tf_client(goal_tf):
     return client.get_result()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     rospy.init_node("move_hand_to_tf_client")
 
     if len(sys.argv) == 2:

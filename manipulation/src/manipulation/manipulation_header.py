@@ -15,6 +15,7 @@ from manipulation.wrist_force_sensor import WristForceSensorCapture
 from manipulation.collision_mapping import CollisionMapper
 
 from hsrb_interface import robot as _robot
+
 _robot.enable_interactive()
 
 
@@ -52,7 +53,14 @@ class ManipulationAction(object):
     # How far up can ARM LIGHT JOINT go without the hand blocking the RGBD camera?
     MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION = 0.25  # metres
 
-    def __init__(self, action_name, action_msg_type, use_collision_map=True, tts_narrate=True, prevent_motion=False):
+    def __init__(
+        self,
+        action_name,
+        action_msg_type,
+        use_collision_map=True,
+        tts_narrate=True,
+        prevent_motion=False,
+    ):
         """
         Base class for manipulation actions.
         Args:
@@ -70,32 +78,42 @@ class ManipulationAction(object):
 
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
-        self.whole_body = self.robot.try_get('whole_body')
-        self.omni_base = self.robot.try_get('omni_base')
+        self.whole_body = self.robot.try_get("whole_body")
+        self.omni_base = self.robot.try_get("omni_base")
 
         # Override some motion functions if necessary
         self.prevent_motion = prevent_motion
         if self.prevent_motion:
-            rospy.loginfo("%s: Overriding base/arm motion functions." % self._action_name)
-            self.whole_body.move_end_effector_pose = partial(self.override, "self.whole_body.move_end_effector_pose")
-            self.whole_body.move_to_go = partial(self.override, "self.whole_body.move_to_go")
-            self.whole_body.move_to_neutral = partial(self.override, "self.whole_body.move_to_neutral")
+            rospy.loginfo(
+                "%s: Overriding base/arm motion functions." % self._action_name
+            )
+            self.whole_body.move_end_effector_pose = partial(
+                self.override, "self.whole_body.move_end_effector_pose"
+            )
+            self.whole_body.move_to_go = partial(
+                self.override, "self.whole_body.move_to_go"
+            )
+            self.whole_body.move_to_neutral = partial(
+                self.override, "self.whole_body.move_to_neutral"
+            )
             self.omni_base.go_rel = partial(self.override, "self.omni_base.go_rel")
 
         self.collision_world = None
-        self.gripper = self.robot.try_get('gripper')
+        self.gripper = self.robot.try_get("gripper")
         self.whole_body.end_effector_frame = self.HAND_FRAME
         self.whole_body.looking_hand_constraint = True
         self.tts_narrate = tts_narrate
         if self.tts_narrate:
-            self.tts = self.robot.try_get('default_tts')
+            self.tts = self.robot.try_get("default_tts")
             self.tts.language = self.tts.ENGLISH
 
         self.whole_body.planning_timeout = self.DEFAULT_BODY_PLANNING_TIMEOUT
         self.whole_body.tf_timeout = self.DEFAULT_BODY_TF_TIMEOUT
 
         # ORIon components
-        self.collision_mapper = CollisionMapper(self.robot) if use_collision_map else None
+        self.collision_mapper = (
+            CollisionMapper(self.robot) if use_collision_map else None
+        )
         rospy.loginfo("%s: Waiting for wrist force sensor." % self._action_name)
         self.wrist_force = WristForceSensorCapture()
         rospy.loginfo("%s: Connected to wrist force sensor." % self._action_name)
@@ -107,8 +125,12 @@ class ManipulationAction(object):
         # All manipulation actions can publish a "goal" tf
         self.goal_pose_br = tf2_ros.TransformBroadcaster()
 
-        self._as = actionlib.SimpleActionServer(self._action_name, self._action_msg_type,
-                                                execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(
+            self._action_name,
+            self._action_msg_type,
+            execute_cb=self.execute_cb,
+            auto_start=False,
+        )
         self._as.start()
         rospy.loginfo("%s: Action server started." % self._action_name)
 
@@ -118,10 +140,10 @@ class ManipulationAction(object):
         """
         argstr = [str(a) for a in args]
         if len(kwargs) == 0:
-            func = (name + "(" + ", ".join(argstr) + ")")
+            func = name + "(" + ", ".join(argstr) + ")"
         else:
             kwarg_strs = ["{}={}".format(k, v) for k, v in kwargs.items()]
-            func = (name + "(" + ", ".join(argstr) + ", " + ", ".join(kwarg_strs) + ")")
+            func = name + "(" + ", ".join(argstr) + ", " + ", ".join(kwarg_strs) + ")"
         rospy.loginfo("%s: Redirected %s" % (self._action_name, func))
         return True
 
@@ -132,19 +154,23 @@ class ManipulationAction(object):
         rospy.loginfo("%s: Received goal: %s" % (self._action_name, goal_msg))
 
         action_start_pose = self.omni_base.pose
-        rospy.loginfo("%s: Stored action start pose: %s"
-                      % (self._action_name, action_start_pose))
+        rospy.loginfo(
+            "%s: Stored action start pose: %s" % (self._action_name, action_start_pose)
+        )
 
         retval = self._execute_cb(goal_msg)
 
         if self.RETURN_TO_START_AFTER_ACTION:
-            rospy.loginfo("%s: Returning to start pose: %s"
-                          % (self._action_name, action_start_pose))
+            rospy.loginfo(
+                "%s: Returning to start pose: %s"
+                % (self._action_name, action_start_pose)
+            )
             self.omni_base.go_abs(
                 x=action_start_pose[0],
                 y=action_start_pose[1],
                 yaw=action_start_pose[2],
-                timeout=10.0)
+                timeout=10.0,
+            )
 
         return retval
 
@@ -152,7 +178,7 @@ class ManipulationAction(object):
         """
         Abandon manipulation action: move robot to go position and abort action server.
         """
-        rospy.loginfo('%s: Aborted. Moving to go and exiting.' % self._action_name)
+        rospy.loginfo("%s: Aborted. Moving to go and exiting." % self._action_name)
         self.whole_body.move_to_go()
         self._as.set_aborted()
 
@@ -160,7 +186,7 @@ class ManipulationAction(object):
         """
         Preempt manipulation action: move robot to go position and preempt action server.
         """
-        rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+        rospy.loginfo("%s: Preempted. Moving to go and exiting." % self._action_name)
         self.tts_say("I was preempted. Moving to go.")
         self.whole_body.move_to_go()
         self._as.set_preempted()
@@ -220,7 +246,11 @@ class ManipulationAction(object):
         Args:
             t: transform
         """
-        return math.sqrt(math.pow(t.translation.x, 2) + math.pow(t.translation.y, 2) + math.pow(t.translation.z, 2))
+        return math.sqrt(
+            math.pow(t.translation.x, 2)
+            + math.pow(t.translation.y, 2)
+            + math.pow(t.translation.z, 2)
+        )
 
     def tts_say(self, string_to_say, duration=None):
         """
@@ -241,7 +271,9 @@ class ManipulationAction(object):
         """
         if back_away:
             self.omni_base.go_pose(
-                geometry.pose(x=-self.ARM_SWING_DIST), 10.0, ref_frame_id=self.BASE_FRAME
+                geometry.pose(x=-self.ARM_SWING_DIST),
+                10.0,
+                ref_frame_id=self.BASE_FRAME,
             )
 
         if arm_lift_joint_height < self.MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION:
@@ -251,8 +283,10 @@ class ManipulationAction(object):
             return
 
         self.whole_body.move_to_joint_positions(
-            {'arm_lift_joint': arm_lift_joint_height,
-             'arm_flex_joint': self.MIN_ANGLE_ARM_FLEX_HEIGHT}
+            {
+                "arm_lift_joint": arm_lift_joint_height,
+                "arm_flex_joint": self.MIN_ANGLE_ARM_FLEX_HEIGHT,
+            }
         )
 
         if back_away:
@@ -280,7 +314,9 @@ class ManipulationAction(object):
         object_height = trans.translation.z
         self.move_camera_to_height(object_height + self.LOOK_ANGLE_OFFSET)
 
-        self.whole_body.gaze_point(point=geometry.Vector3(0, 0, 0), ref_frame_id=object_tf)
+        self.whole_body.gaze_point(
+            point=geometry.Vector3(0, 0, 0), ref_frame_id=object_tf
+        )
 
         return True
 
@@ -304,7 +340,7 @@ class ManipulationAction(object):
 
         if arm_joint_height < self.MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION:
             self.whole_body.move_to_joint_positions(
-                {'arm_lift_joint': arm_joint_height}
+                {"arm_lift_joint": arm_joint_height}
             )
         else:
             self.move_arm_down(arm_lift_joint_height=arm_joint_height)

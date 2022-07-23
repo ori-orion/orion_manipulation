@@ -18,6 +18,7 @@ from orion_hri.msg import (
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
+
 _robot.enable_interactive()
 
 

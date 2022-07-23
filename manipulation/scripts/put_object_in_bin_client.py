@@ -8,7 +8,7 @@ import orion_actions.msg as msg
 
 
 def put_object_in_bin_client():
-    client = actionlib.SimpleActionClient('put_object_in_bin', msg.PutObjectInBinAction)
+    client = actionlib.SimpleActionClient("put_object_in_bin", msg.PutObjectInBinAction)
 
     print("Waiting for server")
     client.wait_for_server()
@@ -27,8 +27,8 @@ def put_object_in_bin_client():
     return client.get_result()
 
 
-if __name__ == '__main__':
-    rospy.init_node('put_object_in_bin_client')
+if __name__ == "__main__":
+    rospy.init_node("put_object_in_bin_client")
 
     result = put_object_in_bin_client()
     print("Result:" + str(result.result))

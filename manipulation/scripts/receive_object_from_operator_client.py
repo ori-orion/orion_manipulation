@@ -8,7 +8,9 @@ import orion_actions.msg as msg
 
 
 def receive_object_from_operator_client():
-    client = actionlib.SimpleActionClient('receive_object_from_operator', msg.ReceiveObjectFromOperatorAction)
+    client = actionlib.SimpleActionClient(
+        "receive_object_from_operator", msg.ReceiveObjectFromOperatorAction
+    )
 
     print("Waiting for server")
     client.wait_for_server()
@@ -27,8 +29,8 @@ def receive_object_from_operator_client():
     return client.get_result()
 
 
-if __name__ == '__main__':
-    rospy.init_node('receive_object_from_operator_client')
+if __name__ == "__main__":
+    rospy.init_node("receive_object_from_operator_client")
 
     result = receive_object_from_operator_client()
     print("Result:" + str(result.result))
