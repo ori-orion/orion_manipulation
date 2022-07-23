@@ -1,34 +1,41 @@
 #! /usr/bin/env python3
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
+""" Client for close_drawer action.
+"""
 
 import rospy
+import sys
 import actionlib
+import orion_actions.msg as msg
 
 
-from orion_actions.msg import *
-
-
-def close_drawer_client():
-    # Creates the SimpleActionClient, passing the type of the action
-    client = actionlib.SimpleActionClient('close_drawer', CloseDrawerAction)
+def close_drawer_client(goal_tf):
+    client = actionlib.SimpleActionClient("close_drawer", msg.loseDrawerAction)
 
     print("Waiting for server")
     client.wait_for_server()
     print("Finished waiting for server")
 
-    goal_msg = CloseDrawerGoal()
+    # Creates a goal to send to the action server.
+    goal_msg = msg.CloseDrawerGoal(goal_tf=goal_tf)
+
+    # Sends the goal to the action server.
     client.send_goal(goal_msg)
+
+    # Waits for the server to finish performing the action.
     client.wait_for_result()
 
+    # Return the result of executing the action
     return client.get_result()
 
 
-if __name__ == '__main__':
-    try:
-        rospy.init_node('close_drawer_client')
-        result = open_door_client()
-        print("Result:" + str(result.result))
-    except rospy.ROSInterruptException:
-        print("Problem.")
+if __name__ == "__main__":
+    rospy.init_node("close_drawer_client")
 
+    if len(sys.argv) == 2:
+        goal_tf = sys.argv[1]
+    else:
+        print("Failed to provide tf frame as argument - defaulting to ar_marker/201")
+        goal_tf = "ar_marker/201"
+
+    result = close_drawer_client(goal_tf)
+    print("Result:" + str(result.result))

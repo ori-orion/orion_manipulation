@@ -4,7 +4,7 @@
 
 import rospy
 import actionlib
-from orion_actions.msg import *
+from orion_actions.msg import GiveObjectToOperatorAction, GiveObjectToOperatorGoal
 
 
 def give_object_to_operator_client():
