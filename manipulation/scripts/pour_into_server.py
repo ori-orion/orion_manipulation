@@ -27,7 +27,7 @@ class PourIntoAction(ManipulationAction):
     def __init__(
         self,
         action_name,
-        action_msg_type=msg.MoveHandToTfAction,
+        action_msg_type=msg.PourIntoAction,
         use_collision_map=True,
         tts_narrate=True,
         prevent_motion=False,
@@ -45,7 +45,7 @@ class PourIntoAction(ManipulationAction):
 
     def _execute_cb(self, goal_msg):
         """
-        Action server callback for MoveHandToTfAction
+        Action server callback for PourIntoAction
         """
         _result = msg.PourIntoResult()
 
@@ -120,5 +120,5 @@ class PourIntoAction(ManipulationAction):
 
 if __name__ == "__main__":
     rospy.init_node("pour_into_server_node")
-    server = PourIntoAction("pour_into", use_collision_map=False)
+    server = PourIntoAction("pour_into")
     rospy.spin()

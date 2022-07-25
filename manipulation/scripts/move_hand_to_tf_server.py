@@ -95,5 +95,5 @@ class MoveHandToTfAction(ManipulationAction):
 
 if __name__ == "__main__":
     rospy.init_node("move_hand_to_tf_server_node")
-    server = MoveHandToTfAction("move_hand_to_tf", use_collision_map=True)
+    server = MoveHandToTfAction("move_hand_to_tf")
     rospy.spin()

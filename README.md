@@ -112,6 +112,10 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
     - [x] `pour_into_server.py` updated to new inheritance structure
     - [x] Tested in simulation
     - [ ] Tested on real robot
+- PointToObject.action
+    - [x] `point_to_object.py` updated to new inheritance structure
+    - [x] Tested in simulation
+    - [ ] Tested on real robot
 - PutObjectOnSurface.action
     - [ ] `put_object_on_surface_server.py` updated to new inheritance structure
     - [ ] Tested in simulation
