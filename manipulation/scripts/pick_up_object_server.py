@@ -221,7 +221,7 @@ class PickUpObjectAction(ManipulationAction):
 
         rospy.loginfo("%s: Calling segmentation." % (self._action_name))
         # Call segmentation (lasts 10s)
-        self.tts.say("I am trying to calculate the best possible grasp position")
+        self.tts_say("I am trying to calculate the best possible grasp position")
         seg_response = self.segment_grasp_target_object(
             [
                 head_obj_transform.translation.x,

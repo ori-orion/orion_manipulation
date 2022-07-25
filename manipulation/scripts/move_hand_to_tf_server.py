@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
-""" Development action server for moving hand to a given tf frame.
-Not used now.
+""" Action server for moving end effector to a given tf frame.
 """
 
 import rospy
@@ -44,7 +43,7 @@ class MoveHandToTfAction(ManipulationAction):
         """
         Action server callback for MoveHandToTfAction
         """
-        _result = msg.MoveHandToTfActionResult()
+        _result = msg.MoveHandToTfResult()
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to move hand to tf %s" % (self._action_name, goal_tf))
@@ -96,7 +95,5 @@ class MoveHandToTfAction(ManipulationAction):
 
 if __name__ == "__main__":
     rospy.init_node("move_hand_to_tf_server_node")
-    server = MoveHandToTfAction(
-        "move_hand_to_tf", use_collision_map=True
-    )
+    server = MoveHandToTfAction("move_hand_to_tf", use_collision_map=True)
     rospy.spin()

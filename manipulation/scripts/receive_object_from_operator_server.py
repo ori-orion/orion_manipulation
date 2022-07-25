@@ -58,7 +58,7 @@ class ReceiveObjectFromOperatorAction(ManipulationAction):
             self.whole_body.move_to_neutral()
 
             rospy.loginfo("%s: Stretching out arm." % (self._action_name))
-            self.tts.say("Moving into position to receive object.")
+            self.tts_say("Moving into position to receive object.", duration=1.0)
             self.whole_body.linear_weight = 100
             self.whole_body.move_end_effector_pose(
                 geometry.pose(x=0.2, z=0.2), "hand_palm_link"
@@ -66,15 +66,14 @@ class ReceiveObjectFromOperatorAction(ManipulationAction):
 
             rospy.sleep(1)
             rospy.loginfo("%s: Waiting for object." % (self._action_name))
-            self.tts.say("Please place in the object in my gripper and I will take it.")
+            self.tts_say("Please place in the object in my gripper and I will take it.")
             rospy.sleep(8)
 
             rospy.loginfo("%s: Closing gripper." % (self._action_name))
             self.gripper.apply_force(self.DEFAULT_GRASP_FORCE)
             rospy.loginfo("%s: Object grasped." % self._action_name)
 
-            self.tts.say("Thank you.")
-            rospy.sleep(1)
+            self.tts_say("Thank you.", duration=1.0)
 
             _result.result = True
             self._as.set_succeeded(_result)
@@ -89,7 +88,7 @@ class ReceiveObjectFromOperatorAction(ManipulationAction):
 
     def finish_position(self):
         rospy.loginfo("%s: Returning to go pose." % (self._action_name))
-        self.tts.say("Returning to go position.")
+        self.tts_say("Returning to go position.")
         self.whole_body.move_to_go()
 
     def get_speech_confirmation(self):

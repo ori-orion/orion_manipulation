@@ -51,8 +51,7 @@ class GiveObjectToOperatorAction(ManipulationAction):
             )
             self.whole_body.move_to_neutral()
             rospy.sleep(0.5)
-            self.tts.say("I will now pass you the object.")
-            rospy.sleep(1)
+            self.tts_say("I will now pass you the object.", duration=1.0)
 
             rospy.loginfo("%s: Stretching out arm." % (self._action_name))
             self.whole_body.linear_weight = 100
@@ -64,10 +63,10 @@ class GiveObjectToOperatorAction(ManipulationAction):
             rospy.loginfo(
                 "%s: Waiting for operator to take object." % (self._action_name)
             )
-            self.tts.say(
+            self.tts_say(
                 "Please make sure you are holding the object and I will let go."
             )
-            rospy.sleep(5)
+            rospy.sleep(6)
 
             rospy.loginfo("%s: Opening gripper." % (self._action_name))
             self.gripper.command(1.2)
@@ -88,6 +87,7 @@ class GiveObjectToOperatorAction(ManipulationAction):
         self.finish_position()
 
     def finish_position(self):
+        rospy.loginfo("%s: Returning to go pose." % (self._action_name))
         self.whole_body.move_to_go()
 
     def get_speech_confirmation(self):
