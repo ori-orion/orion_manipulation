@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.0.2)
 project(manipulation)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -8,6 +8,8 @@ project(manipulation)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  rviz_visual_tools
+  eigen_conversions
   genmsg
   actionlib
   roscpp
@@ -26,21 +28,15 @@ find_package(catkin REQUIRED COMPONENTS
 #add_action_files(DIRECTORY
 #		action
 #		FILES
-#		MoveHandToTf.action
-#		GrabHorizontalDoorHandleAction.action
-#		OpenDrawer.action
-#		OpenFridge.action
-#		PickUpObject.action
-#		GiveObjectToOperator.action
-#		#OpenDoor.action
-#		FilterPointCloud.action)
+#   action1.action
+#		)
 
 catkin_python_setup()
 
 
 # System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(Eigen3 REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -131,7 +127,7 @@ generate_messages(
 
 
 catkin_package(
-  CATKIN_DEPENDS roscpp rospy std_msgs actionlib_msgs
+  CATKIN_DEPENDS roscpp rospy std_msgs actionlib_msgs rviz_visual_tools eigen_conversions
 )
 
 
@@ -151,6 +147,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  SYSTEM ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library

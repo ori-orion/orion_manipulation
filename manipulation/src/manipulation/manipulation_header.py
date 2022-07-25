@@ -2,26 +2,28 @@
 """ Common manipulation action server functionality.
 """
 
+from functools import partial
 import rospy
 import actionlib
 import math
 import tf2_ros
 import hsrb_interface
 import hsrb_interface.geometry as geometry
-from std_srvs.srv import Empty
-from geometry_msgs.msg import TransformStamped
-
-from manipulation.srv import GetReconstruction
+from geometry_msgs.msg import TransformStamped, Point
+from manipulation.msg import BoundingBox
+from manipulation.wrist_force_sensor import WristForceSensorCapture
+from manipulation.collision_mapping import CollisionMapper
 
 from hsrb_interface import robot as _robot
+
 _robot.enable_interactive()
 
 
 class ManipulationAction(object):
 
     # Robot default parameters
-    DEFAULT_BODY_PLANNING_TIMEOUT = 20.0  # Robot planning timeout - default is 10s
-    DEFAULT_BODY_TF_TIMEOUT = 10.0  # Robot TF timeout - default is 5s
+    DEFAULT_BODY_PLANNING_TIMEOUT = 4.0  # Robot planning timeout - default is 10s
+    DEFAULT_BODY_TF_TIMEOUT = 5.0  # Robot TF timeout - default is 5s
 
     # Frame name constants
     HAND_FRAME = "hand_palm_link"
@@ -51,7 +53,14 @@ class ManipulationAction(object):
     # How far up can ARM LIGHT JOINT go without the hand blocking the RGBD camera?
     MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION = 0.25  # metres
 
-    def __init__(self, action_name, action_msg_type, use_collision_map=True, tts_narrate=True):
+    def __init__(
+        self,
+        action_name,
+        action_msg_type,
+        use_collision_map=True,
+        tts_narrate=True,
+        prevent_motion=False,
+    ):
         """
         Base class for manipulation actions.
         Args:
@@ -60,7 +69,7 @@ class ManipulationAction(object):
             use_collision_map: Whether to use dynamic collision mapping to avoid obstacles
             tts_narrate: Whether to narrate what the robot is doing out loud with
                 text-to-speech
-
+            prevent_motion: forbid carrying out arm or base motion.
         """
 
         self._action_name = action_name
@@ -69,21 +78,45 @@ class ManipulationAction(object):
 
         # Preparation for using the robot functions
         self.robot = hsrb_interface.Robot()
-        self.whole_body = self.robot.try_get('whole_body')
-        self.omni_base = self.robot.try_get('omni_base')
+        self.whole_body = self.robot.try_get("whole_body")
+        self.omni_base = self.robot.try_get("omni_base")
+
+        # Override some motion functions if necessary
+        self.prevent_motion = prevent_motion
+        if self.prevent_motion:
+            rospy.loginfo(
+                "%s: Overriding base/arm motion functions." % self._action_name
+            )
+            self.whole_body.move_end_effector_pose = partial(
+                self.override, "self.whole_body.move_end_effector_pose"
+            )
+            self.whole_body.move_to_go = partial(
+                self.override, "self.whole_body.move_to_go"
+            )
+            self.whole_body.move_to_neutral = partial(
+                self.override, "self.whole_body.move_to_neutral"
+            )
+            self.omni_base.go_rel = partial(self.override, "self.omni_base.go_rel")
+
         self.collision_world = None
-        self.gripper = self.robot.try_get('gripper')
+        self.gripper = self.robot.try_get("gripper")
         self.whole_body.end_effector_frame = self.HAND_FRAME
         self.whole_body.looking_hand_constraint = True
         self.tts_narrate = tts_narrate
         if self.tts_narrate:
-            self.tts = self.robot.try_get('default_tts')
+            self.tts = self.robot.try_get("default_tts")
             self.tts.language = self.tts.ENGLISH
 
         self.whole_body.planning_timeout = self.DEFAULT_BODY_PLANNING_TIMEOUT
         self.whole_body.tf_timeout = self.DEFAULT_BODY_TF_TIMEOUT
 
-        self.collision_mapper = CollisionMapper(self.robot) if use_collision_map else None
+        # ORIon components
+        self.collision_mapper = (
+            CollisionMapper(self.robot) if use_collision_map else None
+        )
+        rospy.loginfo("%s: Waiting for wrist force sensor." % self._action_name)
+        self.wrist_force = WristForceSensorCapture()
+        rospy.loginfo("%s: Connected to wrist force sensor." % self._action_name)
 
         # TF defaults to buffering 10 seconds of transforms. Choose 60 second buffer.
         self._tf_buffer = tf2_ros.Buffer(rospy.Duration.from_sec(60.0))
@@ -92,10 +125,27 @@ class ManipulationAction(object):
         # All manipulation actions can publish a "goal" tf
         self.goal_pose_br = tf2_ros.TransformBroadcaster()
 
-        self._as = actionlib.SimpleActionServer(self._action_name, self._action_msg_type,
-                                                execute_cb=self.execute_cb, auto_start=False)
+        self._as = actionlib.SimpleActionServer(
+            self._action_name,
+            self._action_msg_type,
+            execute_cb=self.execute_cb,
+            auto_start=False,
+        )
         self._as.start()
         rospy.loginfo("%s: Action server started." % self._action_name)
+
+    def override(self, name, *args, **kwargs):
+        """
+        Used to override HSRB interface functions.
+        """
+        argstr = [str(a) for a in args]
+        if len(kwargs) == 0:
+            func = name + "(" + ", ".join(argstr) + ")"
+        else:
+            kwarg_strs = ["{}={}".format(k, v) for k, v in kwargs.items()]
+            func = name + "(" + ", ".join(argstr) + ", " + ", ".join(kwarg_strs) + ")"
+        rospy.loginfo("%s: Redirected %s" % (self._action_name, func))
+        return True
 
     def execute_cb(self, goal_msg):
         """
@@ -104,19 +154,23 @@ class ManipulationAction(object):
         rospy.loginfo("%s: Received goal: %s" % (self._action_name, goal_msg))
 
         action_start_pose = self.omni_base.pose
-        rospy.loginfo("%s: Stored action start pose: %s"
-                      % (self._action_name, action_start_pose))
+        rospy.loginfo(
+            "%s: Stored action start pose: %s" % (self._action_name, action_start_pose)
+        )
 
         retval = self._execute_cb(goal_msg)
 
         if self.RETURN_TO_START_AFTER_ACTION:
-            rospy.loginfo("%s: Returning to start pose: %s"
-                          % (self._action_name, action_start_pose))
+            rospy.loginfo(
+                "%s: Returning to start pose: %s"
+                % (self._action_name, action_start_pose)
+            )
             self.omni_base.go_abs(
                 x=action_start_pose[0],
                 y=action_start_pose[1],
                 yaw=action_start_pose[2],
-                timeout=10.0)
+                timeout=10.0,
+            )
 
         return retval
 
@@ -124,7 +178,7 @@ class ManipulationAction(object):
         """
         Abandon manipulation action: move robot to go position and abort action server.
         """
-        rospy.loginfo('%s: Aborted. Moving to go and exiting.' % self._action_name)
+        rospy.loginfo("%s: Aborted. Moving to go and exiting." % self._action_name)
         self.whole_body.move_to_go()
         self._as.set_aborted()
 
@@ -132,10 +186,19 @@ class ManipulationAction(object):
         """
         Preempt manipulation action: move robot to go position and preempt action server.
         """
-        rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
+        rospy.loginfo("%s: Preempted. Moving to go and exiting." % self._action_name)
         self.tts_say("I was preempted. Moving to go.")
         self.whole_body.move_to_go()
         self._as.set_preempted()
+
+    def handle_possible_preemption(self):
+        """
+        Placed to enable preemption.
+        """
+        if self._as.is_preempt_requested():
+            self.preempt_action()
+            return True
+        return False
 
     def publish_goal_pose_tf(self, p):
         """
@@ -183,9 +246,13 @@ class ManipulationAction(object):
         Args:
             t: transform
         """
-        return math.sqrt(math.pow(t.translation.x, 2) + math.pow(t.translation.y, 2) + math.pow(t.translation.z, 2))
+        return math.sqrt(
+            math.pow(t.translation.x, 2)
+            + math.pow(t.translation.y, 2)
+            + math.pow(t.translation.z, 2)
+        )
 
-    def tts_say(self, string_to_say):
+    def tts_say(self, string_to_say, duration=None):
         """
         Say something via text-to-speech, if text-to-speech narration is enabled.
         Args:
@@ -193,6 +260,8 @@ class ManipulationAction(object):
         """
         if self.tts_narrate:
             self.tts.say(string_to_say)
+            if duration is not None:
+                rospy.sleep(duration)
 
     # Common kinematic functionality
 
@@ -202,7 +271,9 @@ class ManipulationAction(object):
         """
         if back_away:
             self.omni_base.go_pose(
-                geometry.pose(x=-self.ARM_SWING_DIST), 10.0, ref_frame_id=self.BASE_FRAME
+                geometry.pose(x=-self.ARM_SWING_DIST),
+                10.0,
+                ref_frame_id=self.BASE_FRAME,
             )
 
         if arm_lift_joint_height < self.MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION:
@@ -212,8 +283,10 @@ class ManipulationAction(object):
             return
 
         self.whole_body.move_to_joint_positions(
-            {'arm_lift_joint': arm_lift_joint_height,
-             'arm_flex_joint': self.MIN_ANGLE_ARM_FLEX_HEIGHT}
+            {
+                "arm_lift_joint": arm_lift_joint_height,
+                "arm_flex_joint": self.MIN_ANGLE_ARM_FLEX_HEIGHT,
+            }
         )
 
         if back_away:
@@ -221,7 +294,7 @@ class ManipulationAction(object):
                 geometry.pose(x=self.ARM_SWING_DIST), 10.0, ref_frame_id=self.BASE_FRAME
             )
 
-    def look_at_object(self, object_tf, rotate_to_face=True):
+    def look_at_object(self, object_tf, rotate_to_face=False):
         """
         Get a "best-view" look at the object at the specified tf.
         Args:
@@ -241,7 +314,9 @@ class ManipulationAction(object):
         object_height = trans.translation.z
         self.move_camera_to_height(object_height + self.LOOK_ANGLE_OFFSET)
 
-        self.whole_body.gaze_point(point=geometry.Vector3(0, 0, 0), ref_frame_id=object_tf)
+        self.whole_body.gaze_point(
+            point=geometry.Vector3(0, 0, 0), ref_frame_id=object_tf
+        )
 
         return True
 
@@ -265,104 +340,41 @@ class ManipulationAction(object):
 
         if arm_joint_height < self.MIN_HEIGHT_ARM_LIFT_JOINT_NO_HAND_OCCLUSION:
             self.whole_body.move_to_joint_positions(
-                {'arm_lift_joint': arm_joint_height}
+                {"arm_lift_joint": arm_joint_height}
             )
         else:
             self.move_arm_down(arm_lift_joint_height=arm_joint_height)
 
+    # Common collision world functionality
 
-class CollisionMapper:
-    """
-    This class is an interface to collision mapping on the robot.
-    This is not intended to be used asynchronously, but avoids being broken by
-    asynchronous by nodes to the robot's collision map.
-    """
+    def get_goal_cropped_collision_map(self, goal_tf, crop_dist_3d=0.1):
+        """
+        Get a 2m*2m*2m collision map centred on goal_tf, with the area around goal_tf
+        cropped out to a distance of crop_dist_3d.
+        """
+        rospy.loginfo("%s: Getting Collision Map." % self._action_name)
 
-    def __init__(self, robot):
-        self.robot = robot
-        self.global_collision_world = self.robot.try_get("global_collision_world")
+        (trans, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
+        goal_x = trans.translation.x
+        goal_y = trans.translation.y
+        goal_z = trans.translation.z
 
-        rospy.loginfo(
-            "%s: Waiting for octomap reset service..." % self.__class__.__name__
-        )
-        rospy.wait_for_service("/octomap_server/reset")
-        self.reset_service = rospy.ServiceProxy("/octomap_server/reset", Empty)
-
-        rospy.loginfo(
-            "%s: Waiting for reconstruction service..." % self.__class__.__name__
-        )
-        rospy.wait_for_service("/GetReconstruction")
-        self.reconstruction_service = rospy.ServiceProxy(
-            "/GetReconstruction", GetReconstruction
+        external_bounding_box = BoundingBox(
+            min=Point(goal_x - 1.0, goal_y - 1.0, goal_z - 1.0),
+            max=Point(goal_x + 1.0, goal_y + 1.0, goal_z + 1.0),
         )
 
-    def reset_collision_map(self):
-        """
-        Clears all objects from the HSR's collision map and the octomap server node's map.
-        """
-        try:
-            self.reset_service()
-        except rospy.ServiceException as e:
-            print(f"Service call failed: {e}")
+        # NOTE this is a hard-coded axis-aligned goal bounding box
+        bound_x = bound_y = bound_z = crop_dist_3d
+        object_bounding_box = BoundingBox(
+            min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z),
+            max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z),
+        )
 
-        # Clear everything in global collision map
-        self.global_collision_world.remove_all()
+        collision_world = self.collision_mapper.build_collision_world(
+            external_bounding_box, crop_bounding_boxes=[object_bounding_box]
+        )
 
-    def get_converted_octomap(self, external_bb, crop_bbs, stl_path):
-        """
-        Requests the octomap_to_reconstruction node to build an STL mesh from the octomap
-        produced by octomap_server.
-        Args:
-            external_bb: external BoundingBox that bounds the STL mesh to be created
-            crop_bbs: list of BoundingBox to crop out of the map (e.g. covering an object)
-            stl_path: path to save the STL mesh file to
-        Returns: success flag returned from octomap_to_reconstruction node
-        """
-        try:
-            resp = self.reconstruction_service(external_bb, crop_bbs, stl_path)
-            return resp.flag
+        rospy.loginfo("%s: Collision Map generated." % self._action_name)
 
-        except rospy.ServiceException as e:
-            print(f"Service call failed: {e}")
-
-    def build_collision_world(self, external_bounding_box, crop_bounding_boxes=None):
-        """
-        Add the robot's 3D occupancy map of a specified area to the HSR collision world.
-        Args:
-            external_bb: external BoundingBox that bounds the STL mesh to be created
-            crop_bbs: list of BoundingBox to crop out of the map (e.g. covering an object)
-        """
-
-        # STL path to save to
-        timestamp_str = str(rospy.get_time()).replace(".", "-")
-        stl_path = "/tmp/collision_mesh_" + timestamp_str + ".stl"
-
-        crop_bbs = [] if crop_bounding_boxes is None else crop_bounding_boxes
-
-        # Reset reconstruction
-        self.reset_collision_map()
-
-        # Wait for map to populate
-        # TODO confirm that Octomap server is actually building the map during this sleep
-        rospy.sleep(3)
-
-        # Get and return collision map generated over last 3s
-        flag = self.get_converted_octomap(external_bounding_box, crop_bbs, stl_path)
-
-        # Add the collision map (from octomap) to the global collision world
-        if flag:
-            self.add_map_to_global_collision_world(stl_path)
-        else:
-            rospy.logwarn(
-                "%s: Octomap reconstruction node returned an empty collision mesh."
-                % (self.__class__.__name__)
-            )
-
-        return self.global_collision_world
-
-    def add_map_to_global_collision_world(self, stl_path):
-        """
-        Add an STL mesh to the HSR's global collision world.
-        """
-        self.global_collision_world.add_mesh(stl_path, frame_id="map", timeout=0.0)
-        return
+        return collision_world
