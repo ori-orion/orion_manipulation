@@ -36,7 +36,9 @@ class GiveObjectToOperatorAction(ManipulationAction):
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
     def _execute_cb(self, goal_msg):
-
+        """
+        Action server callback for GiveObjectToOperatorAction
+        """
         _result = msg.GiveObjectToOperatorResult()
 
         # NOTE not tested therefore disabled

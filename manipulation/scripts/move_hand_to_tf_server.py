@@ -17,9 +17,6 @@ _robot.enable_interactive()
 
 
 class MoveHandToTfAction(ManipulationAction):
-    # create messages that are used to publish feedback/result
-    _feedback = msg.MoveHandToTfActionFeedback()
-    _result = msg.MoveHandToTfActionResult()
 
     # Whether to finally return to the map position the manipulation action was called at
     RETURN_TO_START_AFTER_ACTION = False
@@ -47,6 +44,8 @@ class MoveHandToTfAction(ManipulationAction):
         """
         Action server callback for MoveHandToTfAction
         """
+        _result = msg.MoveHandToTfActionResult()
+
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to move hand to tf %s" % (self._action_name, goal_tf))
 
@@ -87,11 +86,11 @@ class MoveHandToTfAction(ManipulationAction):
 
         if move_success:
             rospy.loginfo("%s: Move succeeded" % self._action_name)
-            self._result.result = True
-            self._as.set_succeeded(self._result)
+            _result.result = True
+            self._as.set_succeeded(_result)
         else:
             rospy.loginfo("%s: Move failed" % self._action_name)
-            self._result.result = False
+            _result.result = False
             self._as.set_aborted()
 
 
