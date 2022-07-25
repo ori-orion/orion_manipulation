@@ -95,57 +95,65 @@ This will generate and publish grasps to /detect\_grasps/clustered\_grasps when 
 Note that when using the rotation matrix \[approach, binormal, axis\] to find the quaternion matrix for hand approach, you need to take the quaternion conjugate!
 
 
-## To do (ordered priority list):
+## Component status:
+- ReceiveObjectFromOperator.action
+    - [x] `receive_object_from_operator_server.py` updated to new inheritance structure
+    - [x] Tested in simulation
+    - [x] Tested on real robot
+- GiveObjectToOperator.action
+    - [x] `receive_object_from_operator_server.py` updated to new inheritance structure
+    - [x] Tested in simulation
+    - [x] Tested on real robot
+- PickUpObject.action
+    - [x] `pick_up_object_server.py` updated to new inheritance structure
+    - [x] Tested in simulation
+    - [x] Tested on real robot
+- PourInto.action
+    - [x] `pour_into_server.py` updated to new inheritance structure
+    - [x] Tested in simulation
+    - [ ] Tested on real robot
 - PutObjectOnSurface.action
-    - [ ] Code review of `put_object_on_surface_server.py` + equivalent client
+    - [ ] `put_object_on_surface_server.py` updated to new inheritance structure
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PutObjectOnFloor.action
-    - [ ] Code review of `put_object_on_floor_server.py` + equivalent client
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- ReceiveObjectFromOperator.action
-    - [ ] Code review of `receive_object_from_operator_server.py` + equivalent client
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- OpenDrawer.action
-    - [ ] Code review of `open_drawer_server.py` + equivalent client
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- CloseDrawer.action
-    - [ ] Code review of `close_drawer_server.py` + equivalent client
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- OpenDoor.action
-    - [ ] Code review of `open_door_server.py` + equivalent client
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- OpenFurnitureDoor.action
-    - [ ] Creation of action server `open_furniture_door_server.py` + equivalent client
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- CloseFurnitureDoor.action
-    - [ ] Creation of action server `close_furniture_door_server.py` + equivalent client
+    - [ ] `put_object_on_floor_server.py` updated to new inheritance structure
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PlaceObjectRelative.action
-    - [ ] Code review of `place_object_relative_server.py` (appears unfinished)
+    - [ ] `place_object_relative_server.py` (appears unfinished)
+    - [ ] Tested in simulation
+    - [ ] Tested on real robot
+- OpenDrawer.action
+    - [ ] `open_drawer_server.py` updated to new inheritance structure
+    - [ ] Tested in simulation
+    - [ ] Tested on real robot
+- CloseDrawer.action
+    - [ ] `close_drawer_server.py` updated to new inheritance structure
+    - [ ] Tested in simulation
+    - [ ] Tested on real robot
+- OpenDoor.action
+    - [ ] `open_door_server.py` updated to new inheritance structure
+    - [ ] Tested in simulation
+    - [ ] Tested on real robot
+- OpenFurnitureDoor.action
+    - [ ] Creation of action server `open_furniture_door_server.py` updated to new inheritance structure
+    - [ ] Tested in simulation
+    - [ ] Tested on real robot
+- CloseFurnitureDoor.action
+    - [ ] Creation of action server `close_furniture_door_server.py` updated to new inheritance structure
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - OpenBinLid.action
-    - [ ] Code review of `open_bin_lid_server.py` + equivalent client
+    - [ ] `open_bin_lid_server.py` updated to new inheritance structure
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PutObjectInBin.action
-    - [ ] Code review of `put_object_in_bin_server.py` + equivalent client
+    - [ ] `put_object_in_bin_server.py` updated to new inheritance structure
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PickUpBinBag.action
-    - [ ] Code review of `pick_up_bin_bag_server.py` + equivalent client
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- PourInto.action
-    - [ ] Code review of `pour_into_server.py` + equivalent client
+    - [ ] `pick_up_bin_bag_server.py` updated to new inheritance structure
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
