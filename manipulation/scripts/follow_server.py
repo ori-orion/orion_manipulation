@@ -26,6 +26,7 @@ class FollowAction(ManipulationAction):
 
     # Whether to finally return to the map position the manipulation action was called at
     RETURN_TO_START_AFTER_ACTION = False
+    RETURN_TO_START_GAZE_AFTER_ACTION = False
 
     # How recently the tf must have been published to be valid to follow
     FOLLOW_TF_TIMEOUT = 10.0

@@ -19,6 +19,7 @@ class MoveHandToTfAction(ManipulationAction):
 
     # Whether to finally return to the map position the manipulation action was called at
     RETURN_TO_START_AFTER_ACTION = False
+    RETURN_TO_START_GAZE_AFTER_ACTION = False
 
     def __init__(
         self,
