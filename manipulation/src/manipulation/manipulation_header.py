@@ -36,6 +36,7 @@ class ManipulationAction(object):
 
     # Whether to finally return to the map position the manipulation action was called at
     RETURN_TO_START_AFTER_ACTION = True
+    RETURN_TO_START_GAZE_AFTER_ACTION = True
 
     # Kinematic parameters
     MAX_HEIGHT_ARM_LIFT_JOINT = 0.69
@@ -159,6 +160,8 @@ class ManipulationAction(object):
             "%s: Stored action start pose: %s" % (self._action_name, action_start_pose)
         )
 
+        action_start_joint_poses = self.whole_body.joint_positions
+
         retval = self._execute_cb(goal_msg)
 
         if self.RETURN_TO_START_AFTER_ACTION:
@@ -171,6 +174,26 @@ class ManipulationAction(object):
                 y=action_start_pose[1],
                 yaw=action_start_pose[2],
                 timeout=10.0,
+            )
+
+        if self.RETURN_TO_START_GAZE_AFTER_ACTION:
+            rospy.loginfo(
+                "%s: Returning to start gaze: %s"
+                % (
+                    self._action_name,
+                    str(
+                        [
+                            action_start_joint_poses["head_pan_joint"],
+                            action_start_joint_poses["head_tilt_joint"],
+                        ]
+                    ),
+                )
+            )
+            self.whole_body.move_to_joint_positions(
+                {
+                    "head_pan_joint": action_start_joint_poses["head_pan_joint"],
+                    "head_tilt_joint": action_start_joint_poses["head_tilt_joint"],
+                }
             )
 
         return retval

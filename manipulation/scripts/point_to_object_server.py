@@ -16,10 +16,6 @@ _robot.enable_interactive()
 
 
 class PointToObjectAction(ManipulationAction):
-
-    # Whether to finally return to the map position the manipulation action was called at
-    RETURN_TO_START_AFTER_ACTION = False
-
     def __init__(
         self,
         action_name,
@@ -49,6 +45,7 @@ class PointToObjectAction(ManipulationAction):
         rospy.loginfo("%s: Requested to move hand to tf %s" % (self._action_name, goal_tf))
 
         rospy.loginfo("%s: Closing gripper to point at object" % self._action_name)
+        self.whole_body.move_to_neutral()
         self.gripper.set_distance(0.01)
 
         # Attempt to find transform from hand frame to goal_tf
