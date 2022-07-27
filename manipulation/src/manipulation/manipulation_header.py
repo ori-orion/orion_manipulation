@@ -32,6 +32,7 @@ class ManipulationAction(object):
     ODOM_FRAME = "odom"
     MAP_FRAME = "map"
     BASE_FRAME = "base_link"
+    BASE_FOOTPRINT_FRAME = "base_footprint"
 
     # Whether to finally return to the map position the manipulation action was called at
     RETURN_TO_START_AFTER_ACTION = True
@@ -240,17 +241,22 @@ class ManipulationAction(object):
         ):
             return None, None
 
-    def calc_transform_distance(self, t):
+    def calc_transform_distance(self, t, only_2d=False):
         """
         Calculate the L2 distance represented by a transform.
         Args:
             t: transform
         """
-        return math.sqrt(
-            math.pow(t.translation.x, 2)
-            + math.pow(t.translation.y, 2)
-            + math.pow(t.translation.z, 2)
-        )
+        if only_2d:
+            return math.sqrt(
+                math.pow(t.translation.x, 2) + math.pow(t.translation.y, 2)
+            )
+        else:
+            return math.sqrt(
+                math.pow(t.translation.x, 2)
+                + math.pow(t.translation.y, 2)
+                + math.pow(t.translation.z, 2)
+            )
 
     def tts_say(self, string_to_say, duration=None):
         """
@@ -378,3 +384,28 @@ class ManipulationAction(object):
         rospy.loginfo("%s: Collision Map generated." % self._action_name)
 
         return collision_world
+
+
+class ROSServiceContextManager:
+    """
+    Context manager wrapper to ensure services are called before/after blocks of code.
+    """
+
+    def __init__(self, enter_services, exit_services):
+        """
+        args:
+            - enter_services: {service_proxy: request_msg, ...}
+            - exit_services: {service_proxy: request_msg, ...}
+        """
+        self.enter_services = enter_services
+        self.exit_services = exit_services
+
+    def __enter__(self):
+        # Call enter services
+        for (service, message) in self.enter_services.items():
+            service.call(message)
+
+    def __exit__(self, type, value, traceback):
+        # Call exit services
+        for (service, message) in self.exit_services.items():
+            service.call(message)

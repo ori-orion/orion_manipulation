@@ -16,7 +16,7 @@ def follow_client(goal_tf):
     print("Finished waiting for server")
 
     # Creates a goal to send to the action server.
-    goal_msg = msg.FollowGoal(object_name=goal_tf)
+    goal_msg = msg.FollowGoal(goal_tf=goal_tf)
 
     # Sends the goal to the action server.
     client.send_goal(goal_msg)

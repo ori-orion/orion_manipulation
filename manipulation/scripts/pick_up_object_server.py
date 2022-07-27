@@ -34,12 +34,12 @@ _robot.enable_interactive()
 class PickUpObjectAction(ManipulationAction):
 
     ACTION_SERVER_CONNECTION_TIMEOUT = 15.0  # Used for e.g. vacuum action server
-    GOAL_OBJECT_TF_TIMEOUT = (
-        100.0  # How recently we must have seen an object to pick it up
-    )
-    GRASP_POSE_GENERATION_TIMEOUT = (
-        7.0  # How long we give grasp pose generation to generate grasps
-    )
+
+    # How recently we must have seen an object to pick it up
+    GOAL_OBJECT_TF_TIMEOUT = 100.0
+
+    # How long we give grasp pose generation to generate grasps
+    GRASP_POSE_GENERATION_TIMEOUT = 7.0
 
     SUCTION_TIMEOUT = rospy.Duration(20.0)  # Vacuum action timeout
     DEFAULT_GRASP_FORCE = 0.8
@@ -108,11 +108,11 @@ class PickUpObjectAction(ManipulationAction):
         if self.handle_possible_preemption():
             return
 
-        if (rospy.Time.now() - lookup_time).to_sec() > self.GOAL_OBJECT_TF_TIMEOUT:
+        transform_age = (rospy.Time.now() - lookup_time).to_sec()
+        if transform_age > self.GOAL_OBJECT_TF_TIMEOUT:
             rospy.logerr(
-                "Most recent published goal TF frame is too old ({} seconds old)".format(
-                    (rospy.Time.now() - lookup_time).to_sec()
-                )
+                "%s: Most recent published goal TF frame is too old (%.3g seconds old)."
+                % (self._action_name, transform_age)
             )
             self.tts_say("I can't see the object you want picked up.", duration=2.0)
             self.abandon_action()
