@@ -125,19 +125,19 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PutObjectOnFloor.action
-    - [ ] `put_object_on_floor_server.py` updated to new inheritance structure
+    - [ ] `put_object_on_floor_server.py` updated to new inheritance structure. Should inherit from PutObjectOnSurface.
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PlaceObjectRelative.action
-    - [ ] `place_object_relative_server.py` (appears unfinished)
+    - [ ] `place_object_relative_server.py` updated to new inheritance structure. Should inherit from PutObjectOnSurface.
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - OpenDrawer.action
-    - [ ] `open_drawer_server.py` updated to new inheritance structure
+    - [ ] `open_drawer_server.py` updated to new inheritance structure. Should inherit from OpenDoor.
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - CloseDrawer.action
-    - [ ] `close_drawer_server.py` updated to new inheritance structure
+    - [ ] `close_drawer_server.py` updated to new inheritance structure. Should inherit from OpenDrawer.
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - OpenDoor.action
@@ -154,17 +154,22 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
     - [ ] Tested on real robot
 - OpenBinLid.action
     - [ ] `open_bin_lid_server.py` updated to new inheritance structure
-    - [ ] Rewritten to be less hard-coded
+    - [ ] Rewritten to be less hard-coded and reduce duplication with PickUpBinBag which also attempts to do lid things.
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PickUpBinBag.action
-    - [ ] `pick_up_bin_bag_server.py` updated to new inheritance structure
+    - [ ] `pick_up_bin_bag_server.py` updated to new inheritance structure. Likely should inherit from PickUpObject.
     - [ ] Rewritten to be less hard-coded
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
 - [ ] Cleanup of unused actions e.g. GrabBothBinBags.action, TurnOnBlender.action
-
+- [ ] Manage all parameters (defaults and specific to specific action servers) through rosparam.
+    - [ ] Add YAML files to hold default parameters.
+- [ ] Update messages so bounding box sizes are passed through message interface rather than hard-coded on C++ node side.
+- [ ] Additional visualisation:
+    - [ ] Add a flag to octomap_to_reconstruction_service to publish octomap boxes as rviz markers if stl files not available over network
+    - [ ] Publish wireframe boxes for bounding boxes from other C++ nodes, in the same way as `octomap_to_reconstruction_service`
 ## Notes
 
 * The HSR struggles to generate handles in a point cloud if their material is too specular like that in the lab. Similarly it can't detect the glass doors.
