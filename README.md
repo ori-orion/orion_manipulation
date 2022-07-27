@@ -154,14 +154,12 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
     - [ ] Tested on real robot
 - OpenBinLid.action
     - [ ] `open_bin_lid_server.py` updated to new inheritance structure
-    - [ ] Tested in simulation
-    - [ ] Tested on real robot
-- PutObjectInBin.action
-    - [ ] `put_object_in_bin_server.py` updated to new inheritance structure
+    - [ ] Rewritten to be less hard-coded
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PickUpBinBag.action
     - [ ] `pick_up_bin_bag_server.py` updated to new inheritance structure
+    - [ ] Rewritten to be less hard-coded
     - [ ] Tested in simulation
     - [ ] Tested on real robot
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
