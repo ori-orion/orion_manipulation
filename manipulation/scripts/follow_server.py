@@ -3,203 +3,157 @@
 Takes a tf frame string as input to follow. Maintains 50cm distance away from object and follows
 until pre-empted
 """
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
 
 import rospy
-import actionlib
-import numpy as np
-import tf
 import math
-
-import hsrb_interface
 import hsrb_interface.geometry as geometry
 
+import orion_actions.msg as msg
+from manipulation.manipulation_header import (
+    ManipulationAction,
+    ROSServiceContextManager,
+)
 from std_srvs.srv import Empty, EmptyRequest
-# from move_base_msgs.msg import *
-from move_base_msgs.msg import MoveBaseAction
-from move_base_msgs.msg import MoveBaseGoal
-from actionlib_msgs.msg import GoalStatus
-from orion_actions.msg import *
 from geometry_msgs.msg import PoseStamped
 
+# Enable robot interface
 from hsrb_interface import robot as _robot
+
 _robot.enable_interactive()
 
-class FollowAction(object):
 
-    def __init__(self, name):
-        self._action_name = 'follow'
-        self._as = actionlib.SimpleActionServer(self._action_name, 	orion_actions.msg.FollowAction,
-                                                execute_cb=self.execute_cb, auto_start=False)
-        self._as.start()
+class FollowAction(ManipulationAction):
 
-        self.pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10)
+    # Whether to finally return to the map position the manipulation action was called at
+    RETURN_TO_START_AFTER_ACTION = False
+    RETURN_TO_START_GAZE_AFTER_ACTION = False
 
-        self.robot = hsrb_interface.Robot()
-        self.whole_body = self.robot.try_get('whole_body')
-        self.whole_body.end_effector_frame = 'hand_palm_link'
-        self.whole_body.looking_hand_constraint = True
-        self.omni_base = self.robot.try_get('omni_base')
-        self.tts = self.robot.try_get('default_tts')
-        self.tts.language = self.tts.ENGLISH
+    # How recently the tf must have been published to be valid to follow
+    FOLLOW_TF_TIMEOUT = 10.0
+    MINIMUM_FOLLOW_DISTANCE = 1.5  # metres
 
-        rospy.loginfo('%s: Action name is: %s' % (self._action_name, name))
-        rospy.loginfo('%s: Initialised. Ready for clients.' % self._action_name)
+    def __init__(
+        self,
+        action_name,
+        action_msg_type=msg.FollowAction,
+        use_collision_map=False,
+        tts_narrate=True,
+        prevent_motion=False,
+    ):
 
+        super(FollowAction, self).__init__(
+            action_name,
+            action_msg_type,
+            use_collision_map,
+            tts_narrate,
+            prevent_motion,
+        )
 
-    def get_object_pose(self, object_tf):
-        found_trans = False
-        listen = tf.TransformListener()
-        while not found_trans:
-            try:
-                t = listen.getLatestCommonTime("/base_footprint", object_tf)
-                (trans, rot) = listen.lookupTransform('/base_footprint', object_tf, t)
-                found_trans = True
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.Exception):
-                # rospy.loginfo('%s: Cant find object pose. Trying again....' % self._action_name)
-                if self._as.is_preempt_requested():
-                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                    self.whole_body.move_to_go()
-                    self._as.set_preempted()
-                    return None
+        self.pub = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=10)
 
-        return np.array([trans[0], trans[1]])
+        rospy.loginfo("%s: Waiting for gaze control services..." % self._action_name)
+        rospy.wait_for_service("viewpoint_controller/start")
+        self.gaze_start_client = rospy.ServiceProxy(
+            "/viewpoint_controller/start", Empty
+        )
+        rospy.wait_for_service("viewpoint_controller/stop")
+        self.gaze_stop_client = rospy.ServiceProxy("/viewpoint_controller/stop", Empty)
+        rospy.loginfo("%s: Got gaze control services" % self._action_name)
 
-    def check_for_object(self, object_tf):
-        rospy.loginfo('%s: Checking object is in sight...' % self._action_name)
-        found_marker = False
-        listen = tf.TransformListener()
-        rospy.sleep(1)
-        while not found_marker:
-            all_frames = listen.getFrameStrings()
-            found_marker = object_tf in all_frames
-            if self._as.is_preempt_requested():
-                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                return True
+        # This context manager disables automatic gaze for the context under it
+        self.disable_enable_gaze_context = ROSServiceContextManager(
+            {self.gaze_stop_client: EmptyRequest()},
+            {self.gaze_start_client: EmptyRequest()},
+        )
 
-    def get_similar_tf(self, tf_frame):
-        listen = tf.TransformListener()
-        rospy.sleep(3)
-        all_frames = listen.getFrameStrings()
-        for object_tf in all_frames:
-            if tf_frame.split('_')[-1] in object_tf.split('-')[0]:
-                return object_tf
+        rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
-    def execute_cb(self, goal_msg):
-        _result = FollowResult()
+    def _execute_cb(self, goal_msg):
+        _result = msg.FollowResult()
         _result.succeeded = False
 
-        goal_tf = None
+        goal_tf = goal_msg.goal_tf
+        rospy.loginfo("%s: Requested to follow tf %s" % (self._action_name, goal_tf))
 
-        rospy.loginfo('{0}: Finding similar tf frame.'.format(self._action_name))
+        # Attempt to find transform from base footprint frame to goal_tf
+        (trans, lookup_time) = self.lookup_transform(self.BASE_FOOTPRINT_FRAME, goal_tf)
 
-        is_preempted = False
-
-        while goal_tf is None:
-            goal_tf = self.get_similar_tf(goal_msg.object_name)
-
-            if goal_tf is not None:
-                rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
-
-            # if goal_tf is None:
-            #     # rospy.loginfo('{0}: Found no similar tf frame.'.format(self._action_name))
-            #     pass
-            # else:
-            #     rospy.loginfo('{0}: Choosing tf frame "{1}".'.format(self._action_name, str(goal_tf)))
-
-            # Give opportunity to preempt
-            if self._as.is_preempt_requested():
-                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                is_preempted = True
-                return
-
-        if is_preempted:
+        if trans is None:
+            rospy.logerr("Unable to find TF frame")
+            self.tts_say("I don't know that transform.", duration=2.0)
+            self.abandon_action()
             return
 
-        self.tts.say("I will now start following. Please do not go too fast.")
-        rospy.sleep(1)
+        self.tts_say(
+            "I will now start following. Please do not go too fast.", duration=2.0
+        )
 
-        while True:
-            # Check the object is in sight
-            is_preempted = self.check_for_object(goal_tf)
-            if is_preempted:
+        while not rospy.is_shutdown():
+            if self.handle_possible_preemption():
                 return
 
-            rospy.loginfo('%s: Moving head to look at the object.' % self._action_name)
-            can_look = False
-            while not can_look:
-                try:
-                    self.whole_body.gaze_point(ref_frame_id=goal_tf)
-                    can_look = True
-                except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf.Exception):
-                    rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                    if self._as.is_preempt_requested():
-                        rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                        self.whole_body.move_to_go()
-                        self._as.set_preempted()
-                        is_preempted = True
-                        return
+            # Check the object is still in sight
+            (trans, lookup_time) = self.lookup_transform(
+                self.BASE_FOOTPRINT_FRAME, goal_tf
+            )
 
-            if is_preempted:
+            transform_age = (rospy.Time.now() - lookup_time).to_sec()
+            if transform_age > self.FOLLOW_TF_TIMEOUT:
+                rospy.logerr(
+                    "%s: Most recent published target TF frame is too old (%.3g seconds old)."
+                    % (self._action_name, transform_age)
+                )
+                self.tts_say("Lost track of target.", duration=2.0)
+                self.abandon_action()
                 return
 
-            rospy.loginfo('%s: Getting person pose.' % self._action_name)
-            person_coords = self.get_object_pose(goal_tf)
+            rospy.loginfo("%s: Moving head to look at target." % self._action_name)
+            try:
+                self.whole_body.gaze_point(ref_frame_id=goal_tf)
+                rospy.sleep(1.0)
+            except:
+                rospy.loginfo("%s: Unable to point gaze at target." % self._action_name)
 
-            if person_coords is None:
+            if self.handle_possible_preemption():
                 return
 
-            rospy.loginfo('{0}: Found the person pose.'.format(self._action_name))
-            distance = math.sqrt(math.pow(person_coords[1], 2) + math.pow(person_coords[0], 2))
-            theta = math.atan(person_coords[1] / person_coords[0])
-            rospy.loginfo('{0}: Distance to person: "{1} Theta: {2}".'.format(self._action_name,
-                                                                              str(distance),
-                                                                              str(theta)))
+            distance_2d = self.calc_transform_distance(trans, only_2d=True)
+            yaw = math.atan2(trans.translation.y, trans.translation.x)
+
+            rospy.loginfo(
+                "%s: Target distance: %.3gm, yaw %.3g rad."
+                % (self._action_name, distance_2d, yaw)
+            )
+
+            # Prevent head from moving while navigating
+            with self.disable_enable_gaze_context:
+
+                if self.handle_possible_preemption():
+                    return
+
+                if distance_2d >= self.MINIMUM_FOLLOW_DISTANCE:
+                    ratio = 1 - (0.5 / distance_2d)
+                    rospy.loginfo("%s: Sending base goals." % self._action_name)
+                    base_pose = geometry.pose(
+                        ratio * trans.translation.x,
+                        ratio * trans.translation.y,
+                        0.0,
+                        0.0,
+                        0.0,
+                        yaw,
+                    )
+                    base_goal = self.omni_base.create_go_pose_goal(
+                        base_pose, "base_footprint"
+                    )
+                    self.omni_base.execute(base_goal)
+
+                    rospy.loginfo(
+                        "%s: Base movement complete. Continuing to follow."
+                        % self._action_name
+                    )
 
 
-            # Stop head moving
-            stop_client = rospy.ServiceProxy('/viewpoint_controller/stop', Empty)
-            stop_client.call(EmptyRequest())
-
-            if distance <= 0.5:
-                rospy.loginfo('%s: Sending base goals.' % self._action_name)
-                # self.omni_base.go_rel(0, 0, theta)
-                base_pose = geometry.pose(0, 0, 0.0, 0.0, 0.0, theta)
-                base_goal = self.omni_base.create_go_pose_goal(base_pose, 'base_footprint')
-                self.omni_base.execute(base_goal)
-                rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
-            else:
-                ratio = 1 - (0.5/distance)
-                rospy.loginfo('%s: Sending base goals.' % self._action_name)
-                # self.omni_base.go_rel(ratio * person_coords[0], ratio * person_coords[1], theta)
-                base_pose = geometry.pose(ratio * person_coords[0], ratio * person_coords[1], 0.0, 0.0, 0.0, theta)
-                base_goal = self.omni_base.create_go_pose_goal(base_pose, 'base_footprint')
-                self.omni_base.execute(base_goal)
-
-                rospy.loginfo('%s: Base movement complete. Continuing to follow.' % self._action_name)
-
-        # Give opportunity to preempt
-            if self._as.is_preempt_requested():
-                rospy.loginfo('%s: Preempted. Moving to go and exiting.' % self._action_name)
-                self.tts.say("I will now stop following you.")
-                rospy.sleep(1)
-                start_client = rospy.ServiceProxy('/viewpoint_controller/start', Empty)
-                start_client.call(EmptyRequest())
-                self.whole_body.move_to_go()
-                self._as.set_preempted()
-                is_preempted = True
-                return
-
-            if is_preempted:
-                return
-
-
-if __name__ == '__main__':
-    rospy.init_node('follow_server_node')
-    server = FollowAction(rospy.get_name())
+if __name__ == "__main__":
+    rospy.init_node("follow_server_node")
+    server = FollowAction("follow")
     rospy.spin()

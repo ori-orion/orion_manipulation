@@ -3,13 +3,12 @@
 Currently in development
 """
 
-__author__ = "Mark Finean"
-__email__ = "mfinean@robots.ox.ac.uk"
-
-import hsrb_interface
 import rospy
 import actionlib
+import hsrb_interface
 import hsrb_interface.geometry as geometry
+
+# Enable robot interface
 from hsrb_interface import robot as _robot
 
 _robot.enable_interactive()
@@ -21,6 +20,8 @@ from point_cloud_filtering.srv import SegmentSurface
 from geometry_msgs.msg import Point
 import tf
 import numpy as np
+
+
 class PutObjectOnSurfaceAction(ManipulationAction):
 
     GOAL_OBJECT_TF_TIMEOUT = 20
