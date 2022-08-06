@@ -34,9 +34,8 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         goal_tf = sys.argv[1]
     else:
-        print("Failed to provide tf frame as argument - defaulting to surface_goal_tf")
-        goal_tf = "surface_goal_tf"
+        print("Failed to provide tf frame as argument - defaulting to surface_placement_l")
+        goal_tf = "surface_placement_l"
 
     result = put_object_on_surface_client(goal_tf)
     print("Result:" + str(result.result))
-
