@@ -298,7 +298,9 @@ class PickUpObjectAction(ManipulationAction):
         # Move to pregrasp
         rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
 
-        hand_pose = self.get_default_grasp_pose(goal_tf, relative=chosen_pregrasp_pose)
+        hand_pose = self.get_relative_effector_pose(
+            goal_tf, relative=chosen_pregrasp_pose
+        )
 
         # Error checking in case can't find goal pose
         if hand_pose is None:
@@ -412,22 +414,6 @@ class PickUpObjectAction(ManipulationAction):
             rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
 
         return False
-
-    def get_default_grasp_pose(self, goal_tf, relative=geometry.pose()):
-        """
-        Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
-        goal tf, all in frame "odom".
-        Args:
-            goal_tf: goal tf
-            relative: relative hsrb_interface.geometry pose to goal tf to get hand pose
-        """
-
-        (trans, lookup_time) = self.lookup_transform(self.ODOM_FRAME, goal_tf)
-
-        odom_to_ref = geometry.transform_to_tuples(trans)
-        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
-
-        return odom_to_hand
 
     def grasp_callback(self, msg):
         self.grasps = msg.grasps

@@ -224,7 +224,7 @@ class ManipulationAction(object):
             return True
         return False
 
-    def publish_goal_pose_tf(self, p):
+    def publish_goal_pose_tf(self, p, goal_pose_name="goal_pose", source_frame="odom"):
         """
         Publish a tf to the goal pose, in odom frame
         Args:
@@ -232,8 +232,8 @@ class ManipulationAction(object):
         """
         t = TransformStamped()
         t.header.stamp = rospy.Time.now()
-        t.header.frame_id = "odom"
-        t.child_frame_id = "goal_pose"
+        t.header.frame_id = source_frame
+        t.child_frame_id = goal_pose_name
         t.transform.translation.x = p.pos.x
         t.transform.translation.y = p.pos.y
         t.transform.translation.z = p.pos.z
@@ -243,6 +243,25 @@ class ManipulationAction(object):
         t.transform.rotation.w = p.ori.w
 
         self.goal_pose_br.sendTransform(t)
+
+    def get_relative_effector_pose(self, goal_tf, relative=geometry.pose()):
+        """
+        Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
+        goal tf, all in frame "odom".
+        Args:
+            goal_tf: goal tf
+            relative: relative hsrb_interface.geometry pose to goal tf to get hand pose
+        """
+
+        (trans, lookup_time) = self.lookup_transform(self.ODOM_FRAME, goal_tf)
+
+        if trans is None:
+            return None
+
+        odom_to_ref = geometry.transform_to_tuples(trans)
+        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
+
+        return odom_to_hand
 
     def lookup_transform(self, source, dest):
         """
@@ -393,15 +412,18 @@ class ManipulationAction(object):
             max=Point(goal_x + 1.0, goal_y + 1.0, goal_z + 1.0),
         )
 
+        crop_bounding_boxes = []
         # NOTE this is a hard-coded axis-aligned goal bounding box
-        bound_x = bound_y = bound_z = crop_dist_3d
-        object_bounding_box = BoundingBox(
-            min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z),
-            max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z),
-        )
+        if crop_dist_3d > 0:
+            bound_x = bound_y = bound_z = crop_dist_3d
+            object_bounding_box = BoundingBox(
+                min=Point(goal_x - bound_x, goal_y - bound_y, goal_z - bound_z),
+                max=Point(goal_x + bound_x, goal_y + bound_y, goal_z + bound_z),
+            )
+            crop_bounding_boxes.append(object_bounding_box)
 
         collision_world = self.collision_mapper.build_collision_world(
-            external_bounding_box, crop_bounding_boxes=[object_bounding_box]
+            external_bounding_box, crop_bounding_boxes=crop_bounding_boxes
         )
 
         rospy.loginfo("%s: Collision Map generated." % self._action_name)
