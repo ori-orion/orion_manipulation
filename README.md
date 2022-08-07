@@ -162,6 +162,7 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
     - [ ] Rewritten to be less hard-coded
     - [ ] Tested in simulation
     - [ ] Tested on real robot
+- [ ] Standardise all point cloud filtering components to correctly take the RGBD camera orientation into account when e.g. detecting flat surfaces. Currently, there is an assumption that the RGBD camera is level which does not hold for all situations.
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
 - [ ] Cleanup of unused actions e.g. GrabBothBinBags.action, TurnOnBlender.action
 - [ ] Manage all parameters (defaults and specific to specific action servers) through rosparam.
