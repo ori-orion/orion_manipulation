@@ -1,6 +1,6 @@
 //
 // Original author: Mark Finean
-// Maintainer: Matthew Budd
+// Maintainer: Kim Tien Ly
 //
 
 #include "segment_object_utils.h"
@@ -8,7 +8,7 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <visualization_msgs/Marker.h>
 
-#include "geometry_msgs/PointStamped.h"
+#include "geometry_msgs/Point.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 
@@ -20,74 +20,64 @@ namespace point_cloud_filtering {
 ObjectSegmenter::ObjectSegmenter(const ros::Publisher& object_pub, const double x_in,
                                  const double y_in, const double z_in) {
   object_pub_ = object_pub;
-  object_x = x_in;
-  object_y = y_in;
-  object_z = z_in;
+  query_point << x_in, y_in, z_in;
+
   ros::NodeHandle nh;
 
-  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
+  // Specific to object segmentation
   crop_pub = nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 1, true);
+
+  visual_tools.reset(new rviz_visual_tools::RvizVisualTools("head_rgbd_sensor_rgb_frame",
+                                                            "vis_markers"));
+  visual_tools->trigger();
 }
 
 void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
-  // Check the incoming point cloud
+  //------ Receive the point cloud --------
   PointCloudC::Ptr cloud(new PointCloudC());
   pcl::fromROSMsg(msg, *cloud);
   ROS_INFO("Got point cloud with %ld points", cloud->size());
 
-  visualization_msgs::Marker marker;
-  marker.header.frame_id = "head_rgbd_sensor_rgb_frame";
-  marker.header.stamp = ros::Time();
-  marker.ns = "my_namespace";
-  marker.id = 0;
-  marker.type = visualization_msgs::Marker::SPHERE;
-  marker.action = visualization_msgs::Marker::ADD;
-  marker.pose.position.x = object_x;
-  marker.pose.position.y = object_y;
-  marker.pose.position.z = object_z;
-  marker.pose.orientation.x = 0.0;
-  marker.pose.orientation.y = 0.0;
-  marker.pose.orientation.z = 0.0;
-  marker.pose.orientation.w = 1.0;
-  marker.scale.x = 0.1;
-  marker.scale.y = 0.1;
-  marker.scale.z = 0.1;
-  marker.color.a = 1.0;
-  marker.color.r = 0.0;
-  marker.color.g = 1.0;
-  marker.color.b = 0.0;
-  marker_pub.publish(marker);
+  //------ Reset any visualisation --------
+  visual_tools->deleteAllMarkers();
 
-  //------ Crop the point cloud roughly 20 cm around the object--------
-  float crop_radius = 0.17;
-  Eigen::Vector4f min_crop_pt(object_x - crop_radius, object_y - crop_radius,
-                              object_z - crop_radius, 1);
-  Eigen::Vector4f max_crop_pt(object_x + crop_radius, object_y + crop_radius,
-                              object_z + crop_radius, 1);
+  //------ Crop the point cloud roughly 15 cm around the target --------
+  float crop_radius = 0.15;
+  Eigen::Vector3d min_crop_pt = query_point.array() - crop_radius;
+  Eigen::Vector3d max_crop_pt = query_point.array() + crop_radius;
+  ROS_INFO_STREAM("segment_utils: Crop points:  " << min_crop_pt << ", " << max_crop_pt);
+  PublishCropBoundingBoxMarker(min_crop_pt, max_crop_pt);
 
   PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
-  CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
+  CropCloud(cloud, first_cropped_cloud, ToHomogeneousCoordsVector(min_crop_pt),
+            ToHomogeneousCoordsVector(max_crop_pt));
 
-  ROS_INFO("Cropped cloud has cloud with %ld points", first_cropped_cloud->size());
+  ROS_INFO("segment_utils: Cropped cloud has cloud with %ld points",
+           first_cropped_cloud->size());
 
-  //------ Get the table in the point cloud --------
+  //------ Get the surface in the point cloud --------
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-  SegmentTable(first_cropped_cloud, inliers);
+  pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
+  SegmentPlane(first_cropped_cloud, inliers, plane_coeff);
 
   if (inliers->indices.empty()) {
-    PCL_ERROR("Could not estimate a planar model for the given dataset.");
+    PCL_ERROR("segment_utils: Could not estimate a planar model for the given dataset.");
+    return;
   }
 
-  // Extract the plane indices subset of cloud into output_cloud:
-  pcl::ExtractIndices<PointC> table_extract;
-  PointCloudC::Ptr table_cloud(new PointCloudC());
-  table_extract.setInputCloud(first_cropped_cloud);
-  table_extract.setIndices(inliers);
-  table_extract.filter(*table_cloud);
+  //------ Calculate and publish the plane parameters and visualisation --------
+  Eigen::Vector3d plane_projection;
+  CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
+  ROS_INFO_STREAM("segment_utils: Calculated plane point:  " << plane_projection);
+  PublishPlaneMarker(plane_coeff, plane_projection);
 
-  // Remove the door
+  //------ Extract the plane subset of cropped cloud into surface_cloud --------
+  PointCloudC::Ptr surface_cloud(new PointCloudC());
+  FilterCloudInliers(first_cropped_cloud, surface_cloud, inliers, false);
+
+  //------ Extract the non-plane subset of cropped cloud into no_surface_cloud --------
   PointCloudC::Ptr no_surface_cloud(new PointCloudC());
-  RemoveSurface(first_cropped_cloud, no_surface_cloud, inliers);
+  FilterCloudInliers(first_cropped_cloud, no_surface_cloud, inliers, true);
 
   sensor_msgs::PointCloud2 msg_cloud_out;
   pcl::toROSMsg(*no_surface_cloud, msg_cloud_out);
@@ -98,36 +88,118 @@ void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   // The y axis points towards the floor so need to crop anything above max y value in the
   // table inliers.
 
-  float max_y = std::numeric_limits<float>::min();
-  float min_y = std::numeric_limits<float>::max();
-
-  for (size_t i = 0; i < table_cloud->points.size(); ++i) {
-    if (table_cloud->points[i].y > max_y) {
-      max_y = table_cloud->points[i].y;
-    }
-    if (table_cloud->points[i].y < min_y) {
-      min_y = table_cloud->points[i].y;
-    }
-  }
+  float min_y, max_y;
+  GetCloudMinMaxY(surface_cloud, min_y, max_y);
   ROS_INFO("min_y= %f ", min_y);
   ROS_INFO("max_y= %f ", max_y);
-  //------ Crop the point cloud used to get the handle --------
-  Eigen::Vector4f min_pt(object_x - crop_radius, object_y - crop_radius,
-                         object_z - crop_radius, 1);
-  Eigen::Vector4f max_pt(object_x + crop_radius, min_y + 0.15, object_z + crop_radius, 1);
-  PointCloudC::Ptr object_cloud(new PointCloudC());
-  CropCloud(no_surface_cloud, object_cloud, min_pt, max_pt);
-  ROS_INFO("min_pt=");
-  std::cout << min_pt << std::endl;
-  ROS_INFO("max_pt=");
-  std::cout << max_pt << std::endl;
 
-  // Publish the object point cloud
+  //------ Crop the point cloud used to get the object --------
+  max_crop_pt[1] = min_y;
+  PointCloudC::Ptr object_cloud(new PointCloudC());
+  CropCloud(no_surface_cloud, object_cloud, ToHomogeneousCoordsVector(min_crop_pt),
+            ToHomogeneousCoordsVector(max_crop_pt));
+  ROS_INFO_STREAM("segment_utils: Crop points:  " << min_crop_pt << ", " << max_crop_pt);
+  PublishCropBoundingBoxMarker(min_crop_pt, max_crop_pt);
+
+  //------ Publish the object point cloud --------
   pcl::toROSMsg(*object_cloud, msg_cloud_out);
   object_pub_.publish(msg_cloud_out);
 }
 
-void SegmentTable(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices) {
+void ObjectSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
+                                                Eigen::Vector3d point,
+                                                Eigen::Vector3d& closest_point) {
+  // Calculate the closest point to a point on a plane.
+  // ax + by + cz + d = 0
+  float a = plane_coeff->values[0];
+  float b = plane_coeff->values[1];
+  float c = plane_coeff->values[2];
+  float d = plane_coeff->values[3];
+  Eigen::Vector3d plane_abc = Eigen::Vector3d(a, b, c);
+
+  float k = (-a * point[0] - b * point[1] - c * point[2] - d) /
+            static_cast<float>(a * a + b * b + c * c);
+
+  closest_point = point + (plane_abc * k);
+}
+
+void ObjectSegmenter::PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
+                                                   Eigen::Vector3d max_crop_pt) {
+  Eigen::Isometry3d identity_pose = Eigen::Isometry3d::Identity();
+
+  ROS_INFO("Publishing bounding box marker");
+  visual_tools->publishWireframeCuboid(identity_pose, min_crop_pt, max_crop_pt,
+                                       rviz_visual_tools::BLUE);
+  visual_tools->trigger();
+}
+
+void ObjectSegmenter::PublishPlaneMarker(pcl::ModelCoefficients::Ptr plane_coeff,
+                                         Eigen::Vector3d plane_projection) {
+  // Publish plane and normal vector markers
+  Eigen::Isometry3d plane_pose;
+
+  plane_pose.setIdentity();
+  Eigen::Vector3d plane_normal = Eigen::Vector3d(
+      plane_coeff->values[0], plane_coeff->values[1], plane_coeff->values[2]);
+  Eigen::Quaterniond rotQ =
+      Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), plane_normal);
+  plane_pose.rotate(rotQ);
+
+  plane_pose.translation() = plane_projection;
+
+  visual_tools->publishYZPlane(plane_pose, rviz_visual_tools::BLUE, 0.15);
+  visual_tools->publishArrow(plane_pose, rviz_visual_tools::BLUE,
+                             rviz_visual_tools::SMALL);
+  visual_tools->trigger();
+}
+
+void GetCloudMinMaxX(const PointCloudC::Ptr cloud, float& min_x, float& max_x) {
+  // Get the min and max x/y/z values of a point cloud
+  max_x = std::numeric_limits<float>::min();
+  min_x = std::numeric_limits<float>::max();
+
+  for (size_t i = 0; i < cloud->points.size(); ++i) {
+    if (cloud->points[i].x > max_x) {
+      max_x = cloud->points[i].x;
+    }
+    if (cloud->points[i].x < min_x) {
+      min_x = cloud->points[i].x;
+    }
+  }
+}
+
+void GetCloudMinMaxY(const PointCloudC::Ptr cloud, float& min_y, float& max_y) {
+  // Get the min and max x/y/z values of a point cloud
+  max_y = std::numeric_limits<float>::min();
+  min_y = std::numeric_limits<float>::max();
+
+  for (size_t i = 0; i < cloud->points.size(); ++i) {
+    if (cloud->points[i].y > max_y) {
+      max_y = cloud->points[i].y;
+    }
+    if (cloud->points[i].y < min_y) {
+      min_y = cloud->points[i].y;
+    }
+  }
+}
+
+void GetCloudMinMaxz(const PointCloudC::Ptr cloud, float& min_z, float& max_z) {
+  // Get the min and max x/z/z values of a point cloud
+  max_z = std::numeric_limits<float>::min();
+  min_z = std::numeric_limits<float>::max();
+
+  for (size_t i = 0; i < cloud->points.size(); ++i) {
+    if (cloud->points[i].z > max_z) {
+      max_z = cloud->points[i].z;
+    }
+    if (cloud->points[i].z < min_z) {
+      min_z = cloud->points[i].z;
+    }
+  }
+}
+
+void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
+                  pcl::ModelCoefficients::Ptr coeff) {
   pcl::PointIndices indices_internal;
   pcl::SACSegmentation<PointC> seg;
   seg.setOptimizeCoefficients(true);
@@ -148,9 +220,10 @@ void SegmentTable(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices) {
 
   // coeff contains the coefficients of the plane:
   // ax + by + cz + d = 0
-  pcl::ModelCoefficients coeff;
-  seg.segment(indices_internal, coeff);
+  pcl::ModelCoefficients plane_coeff;
+  seg.segment(indices_internal, plane_coeff);
 
+  *coeff = plane_coeff;
   *indices = indices_internal;
 
   if (indices->indices.empty()) {
@@ -158,12 +231,12 @@ void SegmentTable(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices) {
   }
 }
 
-void RemoveSurface(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
-                   pcl::PointIndices::Ptr inliers) {
+void FilterCloudInliers(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
+                        pcl::PointIndices::Ptr inliers, bool invert) {
   pcl::ExtractIndices<PointC> extract;
   extract.setInputCloud(in_cloud);
   extract.setIndices(inliers);
-  extract.setNegative(true);
+  extract.setNegative(invert);
   extract.filter(*out_cloud);
 }
 
@@ -176,4 +249,12 @@ void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
   crop.setMax(max_p);
   crop.filter(*out_cloud);
 }
+
+Eigen::Vector4f ToHomogeneousCoordsVector(const Eigen::Vector3d in) {
+  Eigen::Vector4f out =
+      Eigen::Vector4f(static_cast<double>(in[0]), static_cast<double>(in[1]),
+                      static_cast<double>(in[2]), 1.0);
+  return out;
+}
+
 }  // namespace point_cloud_filtering

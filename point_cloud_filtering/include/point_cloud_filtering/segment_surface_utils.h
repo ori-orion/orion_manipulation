@@ -39,8 +39,12 @@ void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
 void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
                   pcl::ModelCoefficients::Ptr coeff);
 
-void GetSurface(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
-                pcl::PointIndices::Ptr inliers);
+void FilterCloudInliers(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
+                        pcl::PointIndices::Ptr inliers, bool invert = false);
+
+Eigen::Vector4f ToHomogeneousCoordsVector(const Eigen::Vector3d in);
+
+
 
 class SurfaceSegmenter {
  public:
@@ -58,8 +62,8 @@ class SurfaceSegmenter {
                                 Eigen::Vector3d point,
                                 Eigen::Vector3d& closest_point);
 
-  void PublishCropBoundingBoxMarker(Eigen::Vector4f min_crop_pt,
-                                    Eigen::Vector4f max_crop_pt);
+  void PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
+                                    Eigen::Vector3d max_crop_pt);
 
   void PublishPlaneMarker(pcl::ModelCoefficients::Ptr plane_coeff,
                           Eigen::Vector3d plane_projection);

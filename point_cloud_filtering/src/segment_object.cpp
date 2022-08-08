@@ -1,6 +1,6 @@
 //
 // Original author: Mark Finean
-// Maintainer: Matthew Budd
+// Maintainer: Kim Tien Ly
 //
 
 #include <ros/callback_queue.h>
@@ -35,9 +35,9 @@ bool segment_object(point_cloud_filtering::SegmentObject::Request &req,
   double duration = 0;
   start = std::clock();
 
-  while (duration < 10) {
+  while (duration < 5) {
     ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
-    duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    duration = (std::clock() - start) / static_cast<double>CLOCKS_PER_SEC;
   }
 
   return true;
