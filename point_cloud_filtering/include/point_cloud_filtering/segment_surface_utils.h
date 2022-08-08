@@ -12,6 +12,7 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <tf/transform_broadcaster.h>
+#include <rviz_visual_tools/rviz_visual_tools.h>
 
 #include "pcl/PointIndices.h"
 #include "pcl/common/angles.h"
@@ -24,6 +25,7 @@
 #include "pcl/segmentation/extract_clusters.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
@@ -49,8 +51,18 @@ class SurfaceSegmenter {
  private:
   ros::Publisher object_pub_;
   ros::Publisher placeholder_pub;
-  ros::Publisher marker_pub;
-  double object_x, object_y, object_z;
+  Eigen::Vector3d query_point;
+  rviz_visual_tools::RvizVisualToolsPtr visual_tools;
+
+  void CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
+                                Eigen::Vector3d point,
+                                Eigen::Vector3d& closest_point);
+
+  void PublishCropBoundingBoxMarker(Eigen::Vector4f min_crop_pt,
+                                    Eigen::Vector4f max_crop_pt);
+
+  void PublishPlaneMarker(pcl::ModelCoefficients::Ptr plane_coeff,
+                          Eigen::Vector3d plane_projection);
 };
 
 }  // namespace point_cloud_filtering

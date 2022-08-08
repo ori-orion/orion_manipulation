@@ -21,14 +21,15 @@ namespace point_cloud_filtering {
 SurfaceSegmenter::SurfaceSegmenter(const ros::Publisher& object_pub, const double x_in,
                                    const double y_in, const double z_in) {
   object_pub_ = object_pub;
-  object_x = x_in;
-  object_y = y_in;
-  object_z = z_in;
+  query_point << x_in, y_in, z_in;
 
   ros::NodeHandle nh;
 
-  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
   placeholder_pub = nh.advertise<geometry_msgs::Point>("placeholder", 10);
+
+  visual_tools.reset(new rviz_visual_tools::RvizVisualTools("head_rgbd_sensor_rgb_frame",
+                                                            "vis_markers"));
+  visual_tools->trigger();
 }
 
 void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
@@ -37,73 +38,40 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   pcl::fromROSMsg(msg, *cloud);
   ROS_INFO("Got point cloud with %ld points", cloud->size());
 
-  visualization_msgs::Marker marker;
-  marker.header.frame_id = "head_rgbd_sensor_rgb_frame";
-  marker.header.stamp = ros::Time();
-  marker.ns = "segmentation_input_point";
-  marker.id = 0;
-  marker.type = visualization_msgs::Marker::SPHERE;
-  marker.action = visualization_msgs::Marker::ADD;
-  marker.pose.position.x = object_x;
-  marker.pose.position.y = object_y;
-  marker.pose.position.z = object_z;
-  marker.pose.orientation.x = 0.0;
-  marker.pose.orientation.y = 0.0;
-  marker.pose.orientation.z = 0.0;
-  marker.pose.orientation.w = 1.0;
-  marker.scale.x = 0.1;
-  marker.scale.y = 0.1;
-  marker.scale.z = 0.1;
-  marker.color.a = 1.0;
-  marker.color.r = 0.0;
-  marker.color.g = 1.0;
-  marker.color.b = 0.0;
-  marker_pub.publish(marker);
-  ROS_INFO("Marker published");
+  //------ Crop the point cloud roughly 15 cm around the object--------
+  float crop_radius = 0.15;
+  Eigen::Vector4f min_crop_pt(query_point[0] - crop_radius, query_point[1] - crop_radius,
+                              query_point[2] - crop_radius, 1);
+  Eigen::Vector4f max_crop_pt(query_point[0] + crop_radius, query_point[1] + crop_radius,
+                              query_point[2] + crop_radius, 1);
 
-  //------ Crop the point cloud roughly 20 cm around the object--------
-  float crop_radius = 0.2;
-  Eigen::Vector4f min_crop_pt(object_x - crop_radius, object_y - crop_radius,
-                              object_z - crop_radius, 1);
-  Eigen::Vector4f max_crop_pt(object_x + crop_radius, object_y + crop_radius,
-                              object_z + crop_radius, 1);
+  PublishCropBoundingBoxMarker(min_crop_pt, max_crop_pt);
 
   PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
   CropCloud(cloud, first_cropped_cloud, min_crop_pt, max_crop_pt);
 
-  ROS_INFO("Cropped cloud has cloud with %ld points", first_cropped_cloud->size());
+  ROS_INFO("segment_utils: Cropped cloud has cloud with %ld points",
+           first_cropped_cloud->size());
 
-  //------ Get the table in the point cloud --------
+  //------ Get the surface in the point cloud --------
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-  pcl::ModelCoefficients::Ptr coeff(new pcl::ModelCoefficients);
-  SegmentPlane(first_cropped_cloud, inliers, coeff);
-
-  // Calculate foot of object on the surface
-  // ax + by + cz + d = 0
-  float a = coeff->values[0];
-  float b = coeff->values[1];
-  float c = coeff->values[2];
-  float d = coeff->values[3];
-  float x1 = object_x;
-  float y1 = object_y;
-  float z1 = object_z;
-  float k = (-a * x1 - b * y1 - c * z1 - d) / (float)(a * a + b * b + c * c);
-  float x2 = a * k + x1;
-  float y2 = b * k + y1;
-  float z2 = c * k + z1;
-  ROS_INFO("x= %f", x2);
-  ROS_INFO("y= %f", y2);
-  ROS_INFO("z= %f", z2);
+  pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
+  SegmentPlane(first_cropped_cloud, inliers, plane_coeff);
 
   if (inliers->indices.empty()) {
-    PCL_ERROR("Could not estimate a planar model for the given dataset.");
+    PCL_ERROR("segment_utils: Could not estimate a planar model for the given dataset.");
+    return;
   }
 
-  geometry_msgs::Point placeholder;
-  placeholder.x = x2;
-  placeholder.y = y2;
-  placeholder.z = z2;
-  placeholder_pub.publish(placeholder);
+  Eigen::Vector3d plane_projection;
+  CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
+  ROS_INFO_STREAM("segment_utils: Calculated plane point:  " << plane_projection);
+  PublishPlaneMarker(plane_coeff, plane_projection);
+
+  // Publish the plane projection point
+  geometry_msgs::Point placeholder_msg;
+  tf::pointEigenToMsg(plane_projection, placeholder_msg);
+  placeholder_pub.publish(placeholder_msg);
 
   // Extract the plane indices subset of cloud into output_cloud:
   pcl::ExtractIndices<PointC> table_extract;
@@ -118,6 +86,56 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   sensor_msgs::PointCloud2 msg_cloud_out;
   pcl::toROSMsg(*surface_cloud, msg_cloud_out);
   object_pub_.publish(msg_cloud_out);
+}
+
+void SurfaceSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
+                                                Eigen::Vector3d point,
+                                                Eigen::Vector3d& closest_point) {
+  // Calculate the closest point to a point on a plane.
+  // ax + by + cz + d = 0
+  float a = plane_coeff->values[0];
+  float b = plane_coeff->values[1];
+  float c = plane_coeff->values[2];
+  float d = plane_coeff->values[3];
+  Eigen::Vector3d plane_abc = Eigen::Vector3d(a, b, c);
+
+  float k = (-a * point[0] - b * point[1] - c * point[2] - d) /
+            static_cast<float>(a * a + b * b + c * c);
+
+  closest_point = point + (plane_abc * k);
+}
+
+void SurfaceSegmenter::PublishCropBoundingBoxMarker(Eigen::Vector4f min_crop_pt,
+                                                    Eigen::Vector4f max_crop_pt) {
+  Eigen::Isometry3d identity_pose = Eigen::Isometry3d::Identity();
+
+  ROS_INFO("Publishing bounding box marker");
+  visual_tools->deleteAllMarkers();
+  visual_tools->publishWireframeCuboid(
+      identity_pose, min_crop_pt.head<3>().cast<double>(),
+      max_crop_pt.head<3>().cast<double>(), rviz_visual_tools::BLUE);
+  visual_tools->trigger();
+}
+
+void SurfaceSegmenter::PublishPlaneMarker(pcl::ModelCoefficients::Ptr plane_coeff,
+                                          Eigen::Vector3d plane_projection) {
+  // Publish normal vector marker
+
+  Eigen::Isometry3d plane_pose;
+
+  plane_pose.setIdentity();
+  Eigen::Vector3d plane_normal = Eigen::Vector3d(
+      plane_coeff->values[0], plane_coeff->values[1], plane_coeff->values[2]);
+  Eigen::Quaterniond rotQ =
+      Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), plane_normal);
+  plane_pose.rotate(rotQ);
+
+  plane_pose.translation() = plane_projection;
+
+  visual_tools->publishYZPlane(plane_pose, rviz_visual_tools::BLUE, 0.15);
+  visual_tools->publishArrow(plane_pose, rviz_visual_tools::BLUE,
+                             rviz_visual_tools::SMALL);
+  visual_tools->trigger();
 }
 
 void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,

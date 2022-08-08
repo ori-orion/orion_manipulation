@@ -8,7 +8,9 @@ project(point_cloud_filtering)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  rviz_visual_tools
   pcl_conversions
+  eigen_conversions
   pcl_ros
   roscpp
   rospy
