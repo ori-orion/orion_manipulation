@@ -48,6 +48,8 @@ class OctomapToReconstruction {
     Eigen::Vector3d vec_bb_min, vec_bb_max;
     tf::pointMsgToEigen(external_bb.min, vec_bb_min);
     tf::pointMsgToEigen(external_bb.max, vec_bb_max);
+
+    visual_tools->deleteAllMarkers();
     visual_tools->publishWireframeCuboid(identity_pose, vec_bb_min, vec_bb_max,
                                          rviz_visual_tools::GREEN);
 
