@@ -11,6 +11,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/filters/plane_clipper3D.h>
 #include <tf/transform_broadcaster.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
 
@@ -36,14 +37,24 @@ void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
                pcl::PointCloud<pcl::PointXYZRGB>::Ptr out_cloud, Eigen::Vector4f min_p,
                Eigen::Vector4f max_p);
 
+void FilterByPlane(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
+                   pcl::ModelCoefficients::Ptr plane_coeff,
+                   pcl::PointIndices::Ptr plane_side_points);
+
+Eigen::Isometry3d GetPlanePose(pcl::ModelCoefficients::Ptr plane_coeff,
+                               Eigen::Vector3d plane_projection);
+
 void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
                   pcl::ModelCoefficients::Ptr coeff);
 
-void FilterCloudInliers(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
-                        pcl::PointIndices::Ptr inliers, bool invert = false);
+void FilterCloudByIndices(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
+                          pcl::PointIndices::Ptr indices, bool invert = false);
 
 Eigen::Vector4f ToHomogeneousCoordsVector(const Eigen::Vector3d in);
 
+void GetCloudMinMaxX(const PointCloudC::Ptr cloud, float& min_x, float& max_x);
+void GetCloudMinMaxY(const PointCloudC::Ptr cloud, float& min_y, float& max_y);
+void GetCloudMinMaxZ(const PointCloudC::Ptr cloud, float& min_z, float& max_z);
 
 
 class SurfaceSegmenter {
@@ -65,8 +76,9 @@ class SurfaceSegmenter {
   void PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
                                     Eigen::Vector3d max_crop_pt);
 
-  void PublishPlaneMarker(pcl::ModelCoefficients::Ptr plane_coeff,
-                          Eigen::Vector3d plane_projection);
+  void PublishPlaneMarker(Eigen::Isometry3d plane_pose,
+                          float plane_size = 0.15,
+                          float arrow_size = 0.1);
 };
 
 }  // namespace point_cloud_filtering
