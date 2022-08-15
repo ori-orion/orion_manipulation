@@ -143,8 +143,8 @@ include_directories(
 # )
 # add_library(point_cloud_filtering_handle_segmentation src/handle_segmentation.cpp)
 # add_library(point_cloud_filtering_handle_utils src/handle_utils.cpp)
-add_library(point_cloud_filtering_object_segmentation src/segment_object_utils.cpp)
-add_library(point_cloud_filtering_surface_segmentation src/segment_surface_utils.cpp)
+add_library(point_cloud_filtering_object_segmentation src/object_segmenter.cpp)
+add_library(point_cloud_filtering_surface_segmentation src/surface_segmenter.cpp)
 # add_library(point_cloud_filtering_bin_handle_segmentation src/bin_handle_segmentation.cpp)
 #add_library(point_cloud_filtering_handle_grasp_pose src/handle_grasp_pose.cpp)
 
@@ -159,8 +159,8 @@ add_library(point_cloud_filtering_surface_segmentation src/segment_surface_utils
 # add_executable(${PROJECT_NAME}_node src/point_cloud_filtering_node.cpp)
 # add_executable(point_cloud_filtering_handle_grasp_pose src/handle_grasp_pose.cpp)
 # add_executable(point_cloud_filtering_drawer_handle_pose src/drawer_handle_pose.cpp)
-add_executable(point_cloud_filtering_segment_object  src/segment_object.cpp)
-add_executable(point_cloud_filtering_segment_surface  src/segment_surface.cpp)
+add_executable(point_cloud_filtering_segment_object  src/object_segmentation_node.cpp)
+add_executable(point_cloud_filtering_segment_surface  src/surface_segmentation_node.cpp)
 # add_executable(point_cloud_filtering_bin_handle_grasp_pose src/bin_handle_grasp_pose.cpp)
 
 ## Rename C++ executable without prefix

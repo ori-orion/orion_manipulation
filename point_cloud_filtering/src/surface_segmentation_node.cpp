@@ -11,7 +11,7 @@
 
 #include "geometry_msgs/PointStamped.h"
 #include "point_cloud_filtering/SegmentSurface.h"
-#include "segment_surface_utils.h"
+#include "surface_segmenter.h"
 
 bool segment_surface(point_cloud_filtering::SegmentSurface::Request &req,
                      point_cloud_filtering::SegmentSurface::Response &res) {

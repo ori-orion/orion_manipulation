@@ -11,7 +11,7 @@
 
 #include "geometry_msgs/PointStamped.h"
 #include "point_cloud_filtering/SegmentObject.h"
-#include "segment_object_utils.h"
+#include "object_segmenter.h"
 
 bool segment_object(point_cloud_filtering::SegmentObject::Request &req,
                     point_cloud_filtering::SegmentObject::Response &res) {

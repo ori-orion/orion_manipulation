@@ -3,7 +3,7 @@
 // Maintainer: Kim Tien Ly
 //
 
-#include "segment_surface_utils.h"
+#include "object_segmenter.h"
 
 #include <eigen_conversions/eigen_msg.h>
 #include <visualization_msgs/Marker.h>
@@ -17,22 +17,22 @@ typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 
 namespace point_cloud_filtering {
 
-SurfaceSegmenter::SurfaceSegmenter(const ros::Publisher& object_pub, const double x_in,
-                                   const double y_in, const double z_in) {
+ObjectSegmenter::ObjectSegmenter(const ros::Publisher& object_pub, const double x_in,
+                                 const double y_in, const double z_in) {
   object_pub_ = object_pub;
   query_point << x_in, y_in, z_in;
 
   ros::NodeHandle nh;
 
-  // Specific to plane detection - should be a service return
-  placeholder_pub = nh.advertise<geometry_msgs::Point>("placeholder", 10);
+  // Specific to object segmentation
+  crop_pub = nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 1, true);
 
   visual_tools.reset(new rviz_visual_tools::RvizVisualTools("head_rgbd_sensor_rgb_frame",
                                                             "vis_markers"));
   visual_tools->trigger();
 }
 
-void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
+void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   //------ Receive the point cloud --------
   PointCloudC::Ptr cloud(new PointCloudC());
   pcl::fromROSMsg(msg, *cloud);
@@ -76,21 +76,32 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   FilterCloudByIndices(first_cropped_cloud, surface_cloud, plane_inliers, false);
   ROS_INFO("Surface cloud has %ld points", surface_cloud->size());
 
+  //------ Extract the non-plane subset of cropped cloud into no_surface_cloud --------
+  PointCloudC::Ptr no_surface_cloud(new PointCloudC());
+  FilterCloudByIndices(first_cropped_cloud, no_surface_cloud, plane_inliers, true);
+  ROS_INFO("Surface-removed cloud has %ld points", no_surface_cloud->size());
+
   sensor_msgs::PointCloud2 msg_cloud_out;
-  pcl::toROSMsg(*surface_cloud, msg_cloud_out);
+  pcl::toROSMsg(*no_surface_cloud, msg_cloud_out);
+  crop_pub.publish(msg_cloud_out);
+
+  //------ Crop the point cloud using the plane to get the object --------
+  // At this point the object cloud may have anything below the surface still in.
+  // Use the plane to crop out everything below the surface.
+  pcl::PointIndices::Ptr filter_indices(new pcl::PointIndices());
+  PointCloudC::Ptr object_cloud(new PointCloudC());
+  FilterByPlane(no_surface_cloud, plane_coeff, filter_indices);
+  FilterCloudByIndices(no_surface_cloud, object_cloud, filter_indices, false);
+  ROS_INFO("Object cloud has %ld points", object_cloud->size());
+
+  //------ Publish the object point cloud --------
+  pcl::toROSMsg(*object_cloud, msg_cloud_out);
   object_pub_.publish(msg_cloud_out);
-
-  //------ Publish the plane projection point (should be a service return really) --------
-  geometry_msgs::Point placeholder_msg;
-  tf::pointEigenToMsg(plane_projection, placeholder_msg);
-  placeholder_pub.publish(placeholder_msg);
-
-
 }
 
-void SurfaceSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
-                                                Eigen::Vector3d point,
-                                                Eigen::Vector3d& closest_point) {
+void ObjectSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
+                                               Eigen::Vector3d point,
+                                               Eigen::Vector3d& closest_point) {
   // Calculate the closest point to a point on a plane.
   // ax + by + cz + d = 0
   float a = plane_coeff->values[0];
@@ -105,17 +116,17 @@ void SurfaceSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plan
   closest_point = point + (plane_abc * k);
 }
 
-void SurfaceSegmenter::PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
-                                                    Eigen::Vector3d max_crop_pt) {
+void ObjectSegmenter::PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
+                                                   Eigen::Vector3d max_crop_pt) {
   Eigen::Isometry3d identity_pose = Eigen::Isometry3d::Identity();
   visual_tools->publishWireframeCuboid(identity_pose, min_crop_pt, max_crop_pt,
                                        rviz_visual_tools::BLUE);
   visual_tools->trigger();
 }
 
-void SurfaceSegmenter::PublishPlaneMarker(Eigen::Isometry3d plane_pose,
-                                          float plane_size,
-                                          float arrow_size) {
+void ObjectSegmenter::PublishPlaneMarker(Eigen::Isometry3d plane_pose,
+                                         float plane_size,
+                                         float arrow_size) {
   // Publish plane and normal vector markers
   visual_tools->publishXYPlane(plane_pose, rviz_visual_tools::BLUE, plane_size);
   visual_tools->publishZArrow(plane_pose, rviz_visual_tools::BLUE,
