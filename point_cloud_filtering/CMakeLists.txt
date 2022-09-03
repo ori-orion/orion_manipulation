@@ -170,8 +170,8 @@ add_executable(point_cloud_filtering_segment_surface  src/surface_segmentation_n
 # set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
 # set_target_properties(point_cloud_filtering_handle_grasp_pose PROPERTIES OUTPUT_NAME handle_grasp_pose PREFIX "")
 # set_target_properties(point_cloud_filtering_drawer_handle_pose PROPERTIES OUTPUT_NAME drawer_handle_pose PREFIX "")
-set_target_properties(point_cloud_filtering_segment_object PROPERTIES OUTPUT_NAME segment_object PREFIX "")
-set_target_properties(point_cloud_filtering_segment_surface PROPERTIES OUTPUT_NAME segment_surface PREFIX "")
+set_target_properties(point_cloud_filtering_segment_object PROPERTIES OUTPUT_NAME object_segmentation_node PREFIX "")
+set_target_properties(point_cloud_filtering_segment_surface PROPERTIES OUTPUT_NAME surface_segmentation_node PREFIX "")
 # set_target_properties(point_cloud_filtering_bin_handle_grasp_pose PROPERTIES OUTPUT_NAME bin_handle_grasp_pose PREFIX "")
 
 

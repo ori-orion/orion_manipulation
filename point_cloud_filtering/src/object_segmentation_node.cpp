@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
 
   ros::ServiceServer service = nh.advertiseService("object_segmentation", segment_object);
 
-  ROS_INFO("Ready to segment object.");
+  ROS_INFO("Ready to segment objects.");
 
   ros::spin();
 

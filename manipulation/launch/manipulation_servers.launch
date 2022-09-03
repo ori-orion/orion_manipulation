@@ -5,12 +5,12 @@
 	<node name="receive_object_from_operator_server" pkg="manipulation" type="receive_object_from_operator_server.py" output="screen"> </node>
 
 	<!-- Point cloud processing: segmentation for grasping synthesis -->
-	<node name="segment_object_node" pkg="point_cloud_filtering" type="segment_object" output="screen">
+	<node name="object_segmentation_node" pkg="point_cloud_filtering" type="object_segmentation_node" output="screen">
 		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
 	</node>
 
 	<!-- Point cloud processing: segmentation for surface detection -->
-	<node name="segment_surface_node" pkg="point_cloud_filtering" type="segment_surface" output="screen">
+	<node name="surface_segmentation_node" pkg="point_cloud_filtering" type="surface_segmentation_node" output="screen">
 		<remap from="cloud_in" to="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
 	</node>
 

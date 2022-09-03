@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
   ros::ServiceServer service =
       nh.advertiseService("surface_segmentation", segment_surface);
 
-  ROS_INFO("Ready to segment surface.");
+  ROS_INFO("Ready to segment plane surfaces.");
 
   ros::spin();
 
