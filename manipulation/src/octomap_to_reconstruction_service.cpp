@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
 
   OctomapToReconstruction srv = OctomapToReconstruction(&nh);
 
-  ROS_INFO("Ready to convert octomap service output to tmc_reconstruction equivalent");
+  ROS_INFO("%s: service ready", ros::this_node::getName().c_str());
 
   ros::spin();
 
