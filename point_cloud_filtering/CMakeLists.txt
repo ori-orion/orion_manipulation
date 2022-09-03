@@ -117,9 +117,9 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include/
   LIBRARIES
-        point_cloud_filtering_handle_segmentation
+        # point_cloud_filtering_handle_segmentation
         # point_cloud_filtering_bin_handle_segmentation
-        point_cloud_filtering_handle_utils
+        # point_cloud_filtering_handle_utils
         point_cloud_filtering_object_segmentation
         point_cloud_filtering_surface_segmentation
 #  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp rospy sensor_msgs std_msgs
