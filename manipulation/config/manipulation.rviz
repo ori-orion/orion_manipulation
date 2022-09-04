@@ -744,7 +744,7 @@ Visualization Manager:
       Displays:
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /segment_surface_node/vis_markers
+          Marker Topic: /surface_segmentation_node/vis_markers
           Name: Visualisation
           Namespaces:
             Arrow: true

@@ -10,11 +10,12 @@
 #include <iostream>
 
 #include "geometry_msgs/PointStamped.h"
-#include "point_cloud_filtering/SegmentSurface.h"
+#include "point_cloud_filtering/DetectSurface.h"
 #include "surface_segmenter.h"
 
-bool segment_surface(point_cloud_filtering::SegmentSurface::Request &req,
-                     point_cloud_filtering::SegmentSurface::Response &res) {
+
+bool segment_surface(point_cloud_filtering::DetectSurface::Request &req,
+                     point_cloud_filtering::DetectSurface::Response &res) {
   ros::NodeHandle nh;
   tf::TransformBroadcaster br;
 
@@ -45,11 +46,11 @@ bool segment_surface(point_cloud_filtering::SegmentSurface::Request &req,
 }
 
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "surface_segmentation");
+  ros::init(argc, argv, "surface_segmentation_node");
   ros::NodeHandle nh;
 
   ros::ServiceServer service =
-      nh.advertiseService("surface_segmentation", segment_surface);
+      nh.advertiseService("detect_surface", segment_surface);
 
   ROS_INFO("%s: service ready", ros::this_node::getName().c_str());
 

@@ -67,7 +67,7 @@ add_service_files(
    DetectBinHandle.srv
    DetectDrawerHandles.srv
    SegmentObject.srv
-   SegmentSurface.srv
+   DetectSurface.srv
    GetSurfaceGoal.srv
 )
 
