@@ -19,25 +19,37 @@ typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 
 namespace point_cloud_filtering {
 
-SurfaceSegmenter::SurfaceSegmenter(const ros::Publisher& object_pub, const double x_in,
-                                   const double y_in, const double z_in) {
-  object_pub_ = object_pub;
-  query_point << x_in, y_in, z_in;
+SurfaceSegmenter::SurfaceSegmenter(ros::NodeHandle* nh) {
+  ros_node_handle = nh;
 
-  ros::NodeHandle nh;
+  object_pub = nh->advertise<sensor_msgs::PointCloud2>("surface_cloud", 1, true);
 
-  // Specific to plane detection - should be a service return
-  placeholder_pub = nh.advertise<geometry_msgs::Point>("placeholder", 10);
+  service_server =
+      nh->advertiseService("detect_surface", &SurfaceSegmenter::ServiceCallback, this);
 
   visual_tools.reset(new rviz_visual_tools::RvizVisualTools("head_rgbd_sensor_rgb_frame",
                                                             "vis_markers"));
   visual_tools->trigger();
 }
 
-void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
-  //------ Receive the point cloud --------
+bool SurfaceSegmenter::ServiceCallback(
+    point_cloud_filtering::DetectSurface::Request& req,
+    point_cloud_filtering::DetectSurface::Response& res) {
+  res.success = false;
+
+  Eigen::Vector3d query_point;
+  query_point << req.x, req.y, req.z;
+
+  //------ Receive one point cloud from RGBD sensor --------
+  sensor_msgs::PointCloud2ConstPtr msg =
+      ros::topic::waitForMessage<sensor_msgs::PointCloud2>("cloud_in", ros::Duration(3));
+  if (msg == NULL) {
+    ROS_INFO("No point clound messages received");
+    return false;
+  }
+
   PointCloudC::Ptr cloud(new PointCloudC());
-  pcl::fromROSMsg(msg, *cloud);
+  pcl::fromROSMsg(*msg, *cloud);
   ROS_INFO("Received point cloud with %ld points", cloud->size());
 
   //------ Reset any visualisation --------
@@ -67,7 +79,7 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
 
   if (plane_inliers->indices.empty()) {
     ROS_ERROR("Could not estimate a planar model for the given dataset.");
-    return;
+    return false;
   }
 
   //------ Calculate and publish the plane parameters and visualisation --------
@@ -85,12 +97,14 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
 
   sensor_msgs::PointCloud2 msg_cloud_out;
   pcl::toROSMsg(*surface_cloud, msg_cloud_out);
-  object_pub_.publish(msg_cloud_out);
+  object_pub.publish(msg_cloud_out);
 
   //------ Publish the plane projection point (should be a service return really) --------
   geometry_msgs::Point placeholder_msg;
   tf::pointEigenToMsg(plane_projection, placeholder_msg);
-  placeholder_pub.publish(placeholder_msg);
+  res.placeholder = placeholder_msg;
+  res.success = true;
+  return true;
 }
 
 void SurfaceSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,

@@ -14,6 +14,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
 #include <tf/transform_broadcaster.h>
+
 #include <vector>
 
 #include "pcl/PointIndices.h"
@@ -27,6 +28,7 @@
 #include "pcl/segmentation/extract_clusters.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "point_cloud_filtering/DetectSurface.h"
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
@@ -67,15 +69,18 @@ void GetLargestCluster(std::vector<pcl::PointIndices>* clusters,
 
 class SurfaceSegmenter {
  public:
-  SurfaceSegmenter(const ros::Publisher& object_pub, const double x_in, const double y_in,
-                   const double z_in);
-  void Callback(const sensor_msgs::PointCloud2& msg);
+  explicit SurfaceSegmenter(ros::NodeHandle* nh);
 
  private:
-  ros::Publisher object_pub_;
+  ros::NodeHandle* ros_node_handle;
+  ros::ServiceServer service_server;
+  ros::Publisher object_pub;
   ros::Publisher placeholder_pub;
-  Eigen::Vector3d query_point;
+
   rviz_visual_tools::RvizVisualToolsPtr visual_tools;
+
+  bool ServiceCallback(point_cloud_filtering::DetectSurface::Request& req,
+                       point_cloud_filtering::DetectSurface::Response& res);
 
   void CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
                                 Eigen::Vector3d point, Eigen::Vector3d& closest_point);
