@@ -8,6 +8,8 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <visualization_msgs/Marker.h>
 
+#include <cmath>
+
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
@@ -57,7 +59,11 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   //------ Get the surface in the point cloud --------
   pcl::PointIndices::Ptr plane_inliers(new pcl::PointIndices());
   pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
-  SegmentPlane(first_cropped_cloud, plane_inliers, plane_coeff);
+  Eigen::Vector3f axis = Eigen::Vector3f::UnitY();
+  float eps_degrees_tolerance = 20.0;
+
+  SegmentPlane(first_cropped_cloud, plane_inliers, axis, eps_degrees_tolerance,
+               plane_coeff);
 
   if (plane_inliers->indices.empty()) {
     ROS_ERROR("Could not estimate a planar model for the given dataset.");
@@ -68,6 +74,7 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   Eigen::Vector3d plane_projection;
   CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
   ROS_INFO_STREAM("Calculated plane point:  " << plane_projection);
+  ROS_INFO_STREAM("Plane parameters:  " << *plane_coeff);
   Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection);
   PublishPlaneMarker(plane_pose);
 
@@ -84,8 +91,6 @@ void SurfaceSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   geometry_msgs::Point placeholder_msg;
   tf::pointEigenToMsg(plane_projection, placeholder_msg);
   placeholder_pub.publish(placeholder_msg);
-
-
 }
 
 void SurfaceSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
@@ -113,8 +118,7 @@ void SurfaceSegmenter::PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
   visual_tools->trigger();
 }
 
-void SurfaceSegmenter::PublishPlaneMarker(Eigen::Isometry3d plane_pose,
-                                          float plane_size,
+void SurfaceSegmenter::PublishPlaneMarker(Eigen::Isometry3d plane_pose, float plane_size,
                                           float arrow_size) {
   // Publish plane and normal vector markers
   visual_tools->publishXYPlane(plane_pose, rviz_visual_tools::BLUE, plane_size);
@@ -185,9 +189,8 @@ void GetCloudMinMaxz(const PointCloudC::Ptr cloud, float& min_z, float& max_z) {
 }
 
 void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
+                  Eigen::Vector3f axis, float eps_degrees_tolerance,
                   pcl::ModelCoefficients::Ptr coeff) {
-  // NOTE this assumes that the normal vector is always in the correct direction. Ideally
-  // another input would provide a bias for normal vector direction.
   pcl::PointIndices indices_internal;
   pcl::SACSegmentation<PointC> seg;
   seg.setOptimizeCoefficients(true);
@@ -200,11 +203,9 @@ void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
   seg.setDistanceThreshold(0.01);
   seg.setInputCloud(cloud);
 
-  // Make sure that the plane is perpendicular to X-axis, 10 degree tolerance.
-  Eigen::Vector3f axis;
-  axis << 0, 1, 0;
+  // Make sure that the plane is perpendicular to given axis, given some degree tolerance.
   seg.setAxis(axis);
-  seg.setEpsAngle(pcl::deg2rad(35.0));
+  seg.setEpsAngle(pcl::deg2rad(eps_degrees_tolerance));
 
   // coeff contains the coefficients of the plane:
   // ax + by + cz + d = 0
@@ -254,6 +255,37 @@ void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
   crop.setMin(min_p);
   crop.setMax(max_p);
   crop.filter(*out_cloud);
+}
+
+void ClusterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+                  std::vector<pcl::PointIndices>* clusters, double cluster_tolerance,
+                  double min_cluster_proportion, double max_cluster_proportion) {
+  pcl::EuclideanClusterExtraction<PointC> euclid;
+  euclid.setInputCloud(cloud);
+  euclid.setClusterTolerance(cluster_tolerance);
+  euclid.setMinClusterSize(std::round(min_cluster_proportion * cloud->size()));
+  euclid.setMaxClusterSize(std::round(max_cluster_proportion * cloud->size()));
+  euclid.extract(*clusters);
+}
+
+void GetLargestCluster(std::vector<pcl::PointIndices>* clusters,
+                       PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud) {
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+  pcl::ExtractIndices<PointC> handle_extract;
+
+  int clust_size, ind;
+  clust_size = 0;
+  ind = 0;
+  for (size_t i = 0; i < clusters->size(); ++i) {
+    if (clusters->at(i).indices.size() > clust_size) {
+      ind = i;
+    }
+  }
+
+  *inliers = clusters->at(ind);
+  handle_extract.setInputCloud(in_cloud);
+  handle_extract.setIndices(inliers);
+  handle_extract.filter(*out_cloud);
 }
 
 }  // namespace point_cloud_filtering

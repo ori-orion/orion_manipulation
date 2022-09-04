@@ -7,13 +7,14 @@
 #define POINT_CLOUD_FILTERING_INCLUDE_POINT_CLOUD_FILTERING_SURFACE_SEGMENTER_H_
 
 #include <pcl/ModelCoefficients.h>
+#include <pcl/filters/plane_clipper3D.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl/filters/plane_clipper3D.h>
-#include <tf/transform_broadcaster.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
+#include <tf/transform_broadcaster.h>
+#include <vector>
 
 #include "pcl/PointIndices.h"
 #include "pcl/common/angles.h"
@@ -26,7 +27,6 @@
 #include "pcl/segmentation/extract_clusters.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
-
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
@@ -45,6 +45,7 @@ Eigen::Isometry3d GetPlanePose(pcl::ModelCoefficients::Ptr plane_coeff,
                                Eigen::Vector3d plane_projection);
 
 void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
+                  Eigen::Vector3f axis, float eps_degrees_tolerance,
                   pcl::ModelCoefficients::Ptr coeff);
 
 void FilterCloudByIndices(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
@@ -56,6 +57,13 @@ void GetCloudMinMaxX(const PointCloudC::Ptr cloud, float& min_x, float& max_x);
 void GetCloudMinMaxY(const PointCloudC::Ptr cloud, float& min_y, float& max_y);
 void GetCloudMinMaxZ(const PointCloudC::Ptr cloud, float& min_z, float& max_z);
 
+void ClusterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+                  std::vector<pcl::PointIndices>* clusters,
+                  double cluster_tolerance = 0.01, double min_cluster_proportion = 0.05,
+                  double max_cluster_proportion = 1.0);
+
+void GetLargestCluster(std::vector<pcl::PointIndices>* clusters,
+                       PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud);
 
 class SurfaceSegmenter {
  public:
@@ -70,14 +78,12 @@ class SurfaceSegmenter {
   rviz_visual_tools::RvizVisualToolsPtr visual_tools;
 
   void CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
-                                Eigen::Vector3d point,
-                                Eigen::Vector3d& closest_point);
+                                Eigen::Vector3d point, Eigen::Vector3d& closest_point);
 
   void PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
                                     Eigen::Vector3d max_crop_pt);
 
-  void PublishPlaneMarker(Eigen::Isometry3d plane_pose,
-                          float plane_size = 0.15,
+  void PublishPlaneMarker(Eigen::Isometry3d plane_pose, float plane_size = 0.15,
                           float arrow_size = 0.1);
 };
 
