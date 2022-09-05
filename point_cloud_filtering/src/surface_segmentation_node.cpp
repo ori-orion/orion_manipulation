@@ -21,8 +21,6 @@ int main(int argc, char** argv) {
 
   point_cloud_filtering::SurfaceSegmenter surface_segmenter(&nh);
 
-  ROS_INFO("%s: service ready", ros::this_node::getName().c_str());
-
   ros::spin();
 
   return 0;

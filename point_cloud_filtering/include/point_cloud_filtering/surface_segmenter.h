@@ -72,6 +72,8 @@ class SurfaceSegmenter {
   explicit SurfaceSegmenter(ros::NodeHandle* nh);
 
  private:
+  char node_name[128];
+
   ros::NodeHandle* ros_node_handle;
   ros::ServiceServer service_server;
   ros::Publisher object_pub;

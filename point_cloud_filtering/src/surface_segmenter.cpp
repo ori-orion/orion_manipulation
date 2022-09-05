@@ -22,21 +22,22 @@ namespace point_cloud_filtering {
 
 SurfaceSegmenter::SurfaceSegmenter(ros::NodeHandle* nh) {
   ros_node_handle = nh;
+  std::snprintf(node_name, 128, "%s", ros::this_node::getName().c_str());
+
+  visual_tools.reset(new rviz_visual_tools::RvizVisualTools("head_rgbd_sensor_rgb_frame",
+                                                            "vis_markers"));
+  visual_tools->trigger();
 
   object_pub = nh->advertise<sensor_msgs::PointCloud2>("surface_cloud", 1, true);
 
   service_server =
       nh->advertiseService("detect_surface", &SurfaceSegmenter::ServiceCallback, this);
-
-  visual_tools.reset(new rviz_visual_tools::RvizVisualTools("head_rgbd_sensor_rgb_frame",
-                                                            "vis_markers"));
-  visual_tools->trigger();
+  ROS_INFO("%s: /detect_surface service ready", ros::this_node::getName().c_str());
 }
 
 bool SurfaceSegmenter::ServiceCallback(
     point_cloud_filtering::DetectSurface::Request& req,
     point_cloud_filtering::DetectSurface::Response& res) {
-
   float eps_degrees_tolerance = req.eps_degrees_tolerance;
   float crop_box_dimension = req.search_box_dimension;
 
@@ -64,25 +65,26 @@ bool SurfaceSegmenter::ServiceCallback(
   sensor_msgs::PointCloud2ConstPtr msg =
       ros::topic::waitForMessage<sensor_msgs::PointCloud2>("cloud_in", ros::Duration(3));
   if (msg == NULL) {
-    ROS_INFO("No point clound messages received");
+    ROS_ERROR("%s: no point cloud received in timeout", node_name);
     return false;
   }
 
   PointCloudC::Ptr cloud(new PointCloudC());
   pcl::fromROSMsg(*msg, *cloud);
-  ROS_INFO("Received point cloud with %ld points", cloud->size());
+  ROS_INFO("%s: received point cloud with %ld points", node_name, cloud->size());
 
   //------ Crop the point cloud roughly 15 cm around the target --------
   Eigen::Vector3d min_crop_pt = query_point.array() - crop_box_dimension;
   Eigen::Vector3d max_crop_pt = query_point.array() + crop_box_dimension;
-  ROS_INFO_STREAM("Crop points:  " << min_crop_pt << ", " << max_crop_pt);
+  ROS_INFO_STREAM(node_name << ": crop points:  " << min_crop_pt << ", " << max_crop_pt);
   PublishCropBoundingBoxMarker(min_crop_pt, max_crop_pt);
 
   PointCloudC::Ptr first_cropped_cloud(new PointCloudC());
   CropCloud(cloud, first_cropped_cloud, ToHomogeneousCoordsVector(min_crop_pt),
             ToHomogeneousCoordsVector(max_crop_pt));
 
-  ROS_INFO("Box cropped cloud has %ld points", first_cropped_cloud->size());
+  ROS_INFO("%s: box cropped cloud has %ld points", node_name,
+           first_cropped_cloud->size());
 
   //------ Get the surface in the point cloud --------
   pcl::PointIndices::Ptr plane_inliers(new pcl::PointIndices());
@@ -92,14 +94,14 @@ bool SurfaceSegmenter::ServiceCallback(
                plane_coeff);
 
   if (plane_inliers->indices.empty()) {
-    ROS_ERROR("Could not estimate a planar model for the given dataset.");
+    ROS_ERROR("%s: could not estimate a planar model for the given dataset.", node_name);
     return false;
   }
 
   //------ Extract the plane subset of cropped cloud into surface_cloud --------
   PointCloudC::Ptr surface_cloud(new PointCloudC());
   FilterCloudByIndices(first_cropped_cloud, surface_cloud, plane_inliers, false);
-  ROS_INFO("Surface cloud has %ld points", surface_cloud->size());
+  ROS_INFO("%s: surface cloud has %ld points", node_name, surface_cloud->size());
 
   sensor_msgs::PointCloud2 msg_cloud_out;
   pcl::toROSMsg(*surface_cloud, msg_cloud_out);
@@ -108,8 +110,9 @@ bool SurfaceSegmenter::ServiceCallback(
   //------ Calculate the plane transform, show visualisation and return transform --------
   Eigen::Vector3d plane_projection;
   CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
-  ROS_INFO_STREAM("Calculated plane point:  " << plane_projection);
-  ROS_INFO_STREAM("Plane parameters:  " << *plane_coeff);
+
+  ROS_INFO_STREAM(node_name << ": calculated plane point:  " << plane_projection);
+  ROS_INFO_STREAM(node_name << ": plane parameters:  " << *plane_coeff);
   Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection);
   PublishPlaneMarker(plane_pose, crop_box_dimension);
 
@@ -245,10 +248,7 @@ void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
   // coeff contains the coefficients of the plane:
   // ax + by + cz + d = 0
   pcl::ModelCoefficients plane_coeff;
-  seg.segment(indices_internal, plane_coeff);
-
-  *coeff = plane_coeff;
-  *indices = indices_internal;
+  seg.segment(*indices, *coeff);
 }
 
 void FilterByPlane(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
