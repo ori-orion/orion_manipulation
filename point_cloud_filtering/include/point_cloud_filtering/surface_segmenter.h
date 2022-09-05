@@ -44,10 +44,11 @@ void FilterByPlane(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
                    pcl::PointIndices::Ptr plane_side_points);
 
 Eigen::Isometry3d GetPlanePose(pcl::ModelCoefficients::Ptr plane_coeff,
-                               Eigen::Vector3d plane_projection);
+                               Eigen::Vector3d plane_projection,
+                               Eigen::Vector3d search_axis);
 
 void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
-                  Eigen::Vector3f axis, float eps_degrees_tolerance,
+                  Eigen::Vector3d axis, float eps_degrees_tolerance,
                   pcl::ModelCoefficients::Ptr coeff);
 
 void FilterCloudByIndices(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,

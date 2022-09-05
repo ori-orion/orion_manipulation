@@ -57,7 +57,7 @@ bool SurfaceSegmenter::ServiceCallback(
   z.w() = 0;
   z.vec() = Eigen::Vector3d::UnitZ();
   Eigen::Quaterniond rotatedP = rotQ * z * rotQ.inverse();
-  Eigen::Vector3f search_axis = rotatedP.vec().cast<float>();
+  Eigen::Vector3d search_axis = rotatedP.vec();
 
   res.success = false;
 
@@ -113,7 +113,7 @@ bool SurfaceSegmenter::ServiceCallback(
 
   ROS_INFO_STREAM(node_name << ": calculated plane point:  " << plane_projection);
   ROS_INFO_STREAM(node_name << ": plane parameters:  " << *plane_coeff);
-  Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection);
+  Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection, search_axis);
   PublishPlaneMarker(plane_pose, crop_box_dimension);
 
   geometry_msgs::Transform transform_msg;
@@ -166,10 +166,19 @@ void SurfaceSegmenter::PublishPlaneMarker(Eigen::Isometry3d plane_pose, float pl
 }
 
 Eigen::Isometry3d GetPlanePose(pcl::ModelCoefficients::Ptr plane_coeff,
-                               Eigen::Vector3d plane_projection) {
-  // Generate a pose representing the plane
+                               Eigen::Vector3d plane_projection,
+                               Eigen::Vector3d search_axis) {
+  // Generate a pose representing the plane. Enforce that the normal is in the direction
+  // of search_axis.
   Eigen::Vector3d plane_normal = Eigen::Vector3d(
       plane_coeff->values[0], plane_coeff->values[1], plane_coeff->values[2]);
+
+  double dot_product = plane_normal.dot(search_axis);
+  if (dot_product < 0) {
+    // Flip the plane normal to match search_axis direction
+    plane_normal = -1 * plane_normal;
+  }
+
   Eigen::Quaterniond rotQ =
       Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), plane_normal);
 
@@ -227,8 +236,10 @@ void GetCloudMinMaxz(const PointCloudC::Ptr cloud, float& min_z, float& max_z) {
 }
 
 void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
-                  Eigen::Vector3f axis, float eps_degrees_tolerance,
+                  Eigen::Vector3d axis, float eps_degrees_tolerance,
                   pcl::ModelCoefficients::Ptr coeff) {
+  // NOTE that the model coefficients returned by this function may be *either direction*:
+  // i.e. they plane normal may point the opposite direction to the search axis.
   pcl::PointIndices indices_internal;
   pcl::SACSegmentation<PointC> seg;
   seg.setOptimizeCoefficients(true);
@@ -242,7 +253,7 @@ void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
   seg.setInputCloud(cloud);
 
   // Make sure that the plane is perpendicular to given axis, given some degree tolerance.
-  seg.setAxis(axis);
+  seg.setAxis(axis.cast<float>());
   seg.setEpsAngle(pcl::deg2rad(eps_degrees_tolerance));
 
   // coeff contains the coefficients of the plane:
