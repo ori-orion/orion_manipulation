@@ -6,6 +6,7 @@
 #include "surface_segmenter.h"
 
 #include <eigen_conversions/eigen_msg.h>
+#include <tf_conversions/tf_eigen.h>
 #include <visualization_msgs/Marker.h>
 
 #include <cmath>
@@ -35,10 +36,29 @@ SurfaceSegmenter::SurfaceSegmenter(ros::NodeHandle* nh) {
 bool SurfaceSegmenter::ServiceCallback(
     point_cloud_filtering::DetectSurface::Request& req,
     point_cloud_filtering::DetectSurface::Response& res) {
-  res.success = false;
 
+  float eps_degrees_tolerance = req.eps_degrees_tolerance;
+  float crop_box_dimension = req.search_box_dimension;
+
+  //------ Reset any visualisation --------
+  visual_tools->deleteAllMarkers();
+  PublishTransformMarker(req.search_axis);
+
+  // Plane search point transform translation
   Eigen::Vector3d query_point;
-  query_point << req.x, req.y, req.z;
+  query_point << req.search_axis.translation.x, req.search_axis.translation.y,
+      req.search_axis.translation.z;
+
+  // Plane search axis from Z-direction vector given by transform
+  Eigen::Quaterniond rotQ;
+  tf::quaternionMsgToEigen(req.search_axis.rotation, rotQ);
+  Eigen::Quaterniond z;
+  z.w() = 0;
+  z.vec() = Eigen::Vector3d::UnitZ();
+  Eigen::Quaterniond rotatedP = rotQ * z * rotQ.inverse();
+  Eigen::Vector3f search_axis = rotatedP.vec().cast<float>();
+
+  res.success = false;
 
   //------ Receive one point cloud from RGBD sensor --------
   sensor_msgs::PointCloud2ConstPtr msg =
@@ -52,13 +72,9 @@ bool SurfaceSegmenter::ServiceCallback(
   pcl::fromROSMsg(*msg, *cloud);
   ROS_INFO("Received point cloud with %ld points", cloud->size());
 
-  //------ Reset any visualisation --------
-  visual_tools->deleteAllMarkers();
-
   //------ Crop the point cloud roughly 15 cm around the target --------
-  float crop_radius = 0.15;
-  Eigen::Vector3d min_crop_pt = query_point.array() - crop_radius;
-  Eigen::Vector3d max_crop_pt = query_point.array() + crop_radius;
+  Eigen::Vector3d min_crop_pt = query_point.array() - crop_box_dimension;
+  Eigen::Vector3d max_crop_pt = query_point.array() + crop_box_dimension;
   ROS_INFO_STREAM("Crop points:  " << min_crop_pt << ", " << max_crop_pt);
   PublishCropBoundingBoxMarker(min_crop_pt, max_crop_pt);
 
@@ -71,24 +87,14 @@ bool SurfaceSegmenter::ServiceCallback(
   //------ Get the surface in the point cloud --------
   pcl::PointIndices::Ptr plane_inliers(new pcl::PointIndices());
   pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
-  Eigen::Vector3f axis = Eigen::Vector3f::UnitY();
-  float eps_degrees_tolerance = 20.0;
 
-  SegmentPlane(first_cropped_cloud, plane_inliers, axis, eps_degrees_tolerance,
+  SegmentPlane(first_cropped_cloud, plane_inliers, search_axis, eps_degrees_tolerance,
                plane_coeff);
 
   if (plane_inliers->indices.empty()) {
     ROS_ERROR("Could not estimate a planar model for the given dataset.");
     return false;
   }
-
-  //------ Calculate and publish the plane parameters and visualisation --------
-  Eigen::Vector3d plane_projection;
-  CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
-  ROS_INFO_STREAM("Calculated plane point:  " << plane_projection);
-  ROS_INFO_STREAM("Plane parameters:  " << *plane_coeff);
-  Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection);
-  PublishPlaneMarker(plane_pose);
 
   //------ Extract the plane subset of cropped cloud into surface_cloud --------
   PointCloudC::Ptr surface_cloud(new PointCloudC());
@@ -99,10 +105,18 @@ bool SurfaceSegmenter::ServiceCallback(
   pcl::toROSMsg(*surface_cloud, msg_cloud_out);
   object_pub.publish(msg_cloud_out);
 
-  //------ Publish the plane projection point (should be a service return really) --------
-  geometry_msgs::Point placeholder_msg;
-  tf::pointEigenToMsg(plane_projection, placeholder_msg);
-  res.placeholder = placeholder_msg;
+  //------ Calculate the plane transform, show visualisation and return transform --------
+  Eigen::Vector3d plane_projection;
+  CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
+  ROS_INFO_STREAM("Calculated plane point:  " << plane_projection);
+  ROS_INFO_STREAM("Plane parameters:  " << *plane_coeff);
+  Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection);
+  PublishPlaneMarker(plane_pose, crop_box_dimension);
+
+  geometry_msgs::Transform transform_msg;
+  tf::transformEigenToMsg(plane_pose, transform_msg);
+  res.plane_axis = transform_msg;
+
   res.success = true;
   return true;
 }
@@ -122,6 +136,13 @@ void SurfaceSegmenter::CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plan
             static_cast<float>(a * a + b * b + c * c);
 
   closest_point = point + (plane_abc * k);
+}
+
+void SurfaceSegmenter::PublishTransformMarker(geometry_msgs::Transform transform) {
+  Eigen::Isometry3d transformed_pose = Eigen::Isometry3d::Identity();
+  tf::transformMsgToEigen(transform, transformed_pose);
+  visual_tools->publishAxis(transformed_pose, rviz_visual_tools::SMALL);
+  visual_tools->trigger();
 }
 
 void SurfaceSegmenter::PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,

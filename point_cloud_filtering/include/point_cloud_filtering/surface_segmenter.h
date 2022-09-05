@@ -85,6 +85,8 @@ class SurfaceSegmenter {
   void CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
                                 Eigen::Vector3d point, Eigen::Vector3d& closest_point);
 
+  void PublishTransformMarker(geometry_msgs::Transform transform);
+
   void PublishCropBoundingBoxMarker(Eigen::Vector3d min_crop_pt,
                                     Eigen::Vector3d max_crop_pt);
 

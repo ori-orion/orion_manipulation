@@ -1,6 +1,6 @@
-float64 x
-float64 y
-float64 z
+geometry_msgs/Transform search_axis
+float32 eps_degrees_tolerance
+float32 search_box_dimension
 ---
 bool success
-geometry_msgs/Point placeholder
+geometry_msgs/Transform plane_axis
