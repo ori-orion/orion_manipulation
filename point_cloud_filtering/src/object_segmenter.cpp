@@ -33,6 +33,11 @@ ObjectSegmenter::ObjectSegmenter(const ros::Publisher& object_pub, const double 
 }
 
 void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
+
+  Eigen::Vector3d search_axis;
+  search_axis << 0, 1, 0;
+  float eps_degrees_tolerance = 15.0;
+
   //------ Receive the point cloud --------
   PointCloudC::Ptr cloud(new PointCloudC());
   pcl::fromROSMsg(msg, *cloud);
@@ -57,7 +62,8 @@ void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   //------ Get the surface in the point cloud --------
   pcl::PointIndices::Ptr plane_inliers(new pcl::PointIndices());
   pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
-  SegmentPlane(first_cropped_cloud, plane_inliers, plane_coeff);
+  SegmentPlane(first_cropped_cloud, plane_inliers, search_axis, eps_degrees_tolerance,
+               plane_coeff);
 
   if (plane_inliers->indices.empty()) {
     ROS_ERROR("Could not estimate a planar model for the given dataset.");
@@ -68,7 +74,7 @@ void ObjectSegmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   Eigen::Vector3d plane_projection;
   CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
   ROS_INFO_STREAM("Calculated plane point:  " << plane_projection);
-  Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection);
+  Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection, search_axis);
   PublishPlaneMarker(plane_pose);
 
   //------ Extract the plane subset of cropped cloud into surface_cloud --------
@@ -132,139 +138,6 @@ void ObjectSegmenter::PublishPlaneMarker(Eigen::Isometry3d plane_pose,
   visual_tools->publishZArrow(plane_pose, rviz_visual_tools::BLUE,
                               rviz_visual_tools::SMALL, arrow_size);
   visual_tools->trigger();
-}
-
-Eigen::Isometry3d GetPlanePose(pcl::ModelCoefficients::Ptr plane_coeff,
-                               Eigen::Vector3d plane_projection) {
-  // Generate a pose representing the plane
-  Eigen::Vector3d plane_normal = Eigen::Vector3d(
-      plane_coeff->values[0], plane_coeff->values[1], plane_coeff->values[2]);
-  Eigen::Quaterniond rotQ =
-      Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), plane_normal);
-
-  Eigen::Isometry3d plane_pose;
-  plane_pose.setIdentity();
-  plane_pose.rotate(rotQ);
-  plane_pose.translation() = plane_projection;
-
-  return plane_pose;
-}
-
-void GetCloudMinMaxX(const PointCloudC::Ptr cloud, float& min_x, float& max_x) {
-  // Get the min and max x/y/z values of a point cloud
-  max_x = std::numeric_limits<float>::min();
-  min_x = std::numeric_limits<float>::max();
-
-  for (size_t i = 0; i < cloud->points.size(); ++i) {
-    if (cloud->points[i].x > max_x) {
-      max_x = cloud->points[i].x;
-    }
-    if (cloud->points[i].x < min_x) {
-      min_x = cloud->points[i].x;
-    }
-  }
-}
-
-void GetCloudMinMaxY(const PointCloudC::Ptr cloud, float& min_y, float& max_y) {
-  // Get the min and max x/y/z values of a point cloud
-  max_y = std::numeric_limits<float>::min();
-  min_y = std::numeric_limits<float>::max();
-
-  for (size_t i = 0; i < cloud->points.size(); ++i) {
-    if (cloud->points[i].y > max_y) {
-      max_y = cloud->points[i].y;
-    }
-    if (cloud->points[i].y < min_y) {
-      min_y = cloud->points[i].y;
-    }
-  }
-}
-
-void GetCloudMinMaxz(const PointCloudC::Ptr cloud, float& min_z, float& max_z) {
-  // Get the min and max x/z/z values of a point cloud
-  max_z = std::numeric_limits<float>::min();
-  min_z = std::numeric_limits<float>::max();
-
-  for (size_t i = 0; i < cloud->points.size(); ++i) {
-    if (cloud->points[i].z > max_z) {
-      max_z = cloud->points[i].z;
-    }
-    if (cloud->points[i].z < min_z) {
-      min_z = cloud->points[i].z;
-    }
-  }
-}
-
-void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
-                  pcl::ModelCoefficients::Ptr coeff) {
-  // NOTE this assumes that the normal vector is always in the correct direction. Ideally
-  // another input would provide a bias for normal vector direction.
-  pcl::PointIndices indices_internal;
-  pcl::SACSegmentation<PointC> seg;
-  seg.setOptimizeCoefficients(true);
-
-  // Search for a plane perpendicular to some axis (specified below).
-  seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
-  seg.setMethodType(pcl::SAC_RANSAC);
-
-  // Set the distance to the plane for a point to be a plane inlier.
-  seg.setDistanceThreshold(0.01);
-  seg.setInputCloud(cloud);
-
-  // Make sure that the plane is perpendicular to X-axis, 10 degree tolerance.
-  Eigen::Vector3f axis;
-  axis << 0, 1, 0;
-  seg.setAxis(axis);
-  seg.setEpsAngle(pcl::deg2rad(35.0));
-
-  // coeff contains the coefficients of the plane:
-  // ax + by + cz + d = 0
-  pcl::ModelCoefficients plane_coeff;
-  seg.segment(indices_internal, plane_coeff);
-
-  *coeff = plane_coeff;
-  *indices = indices_internal;
-}
-
-void FilterByPlane(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
-                   pcl::ModelCoefficients::Ptr plane_coeff,
-                   pcl::PointIndices::Ptr plane_side_points) {
-  float a = plane_coeff->values[0];
-  float b = plane_coeff->values[1];
-  float c = plane_coeff->values[2];
-  float d = plane_coeff->values[3];
-  Eigen::Vector4f plane_abcd = Eigen::Vector4f(a, b, c, d);
-
-  pcl::PlaneClipper3D<PointC> crop = pcl::PlaneClipper3D<PointC>(plane_abcd);
-  crop.clipPointCloud3D(*in_cloud, plane_side_points->indices);
-
-  return;
-}
-
-Eigen::Vector4f ToHomogeneousCoordsVector(const Eigen::Vector3d in) {
-  Eigen::Vector4f out =
-      Eigen::Vector4f(static_cast<double>(in[0]), static_cast<double>(in[1]),
-                      static_cast<double>(in[2]), 1.0);
-  return out;
-}
-
-void FilterCloudByIndices(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
-                          pcl::PointIndices::Ptr indices, bool invert) {
-  pcl::ExtractIndices<PointC> extract;
-  extract.setInputCloud(in_cloud);
-  extract.setIndices(indices);
-  extract.setNegative(invert);
-  extract.filter(*out_cloud);
-}
-
-void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
-               pcl::PointCloud<pcl::PointXYZRGB>::Ptr out_cloud, Eigen::Vector4f min_p,
-               Eigen::Vector4f max_p) {
-  pcl::CropBox<PointC> crop;
-  crop.setInputCloud(in_cloud);
-  crop.setMin(min_p);
-  crop.setMax(max_p);
-  crop.filter(*out_cloud);
 }
 
 }  // namespace point_cloud_filtering

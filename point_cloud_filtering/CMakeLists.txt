@@ -181,7 +181,7 @@ set_target_properties(point_cloud_filtering_segment_surface PROPERTIES OUTPUT_NA
 # add_dependencies(point_cloud_filtering_handle_grasp_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # add_dependencies(point_cloud_filtering_bin_handle_grasp_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # add_dependencies(point_cloud_filtering_drawer_handle_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(point_cloud_filtering_segment_object ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(point_cloud_filtering_segment_object ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} point_cloud_filtering_segment_surface)
 add_dependencies(point_cloud_filtering_segment_surface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
@@ -191,7 +191,7 @@ add_dependencies(point_cloud_filtering_segment_surface ${${PROJECT_NAME}_EXPORTE
 # target_link_libraries(point_cloud_filtering_bin_handle_segmentation ${catkin_LIBRARIES} point_cloud_filtering_handle_utils)
 # target_link_libraries(point_cloud_filtering_handle_segmentation ${catkin_LIBRARIES} point_cloud_filtering_handle_utils)
 # target_link_libraries(point_cloud_filtering_handle_utils ${catkin_LIBRARIES})
-target_link_libraries(point_cloud_filtering_object_segmentation ${catkin_LIBRARIES})
+target_link_libraries(point_cloud_filtering_object_segmentation ${catkin_LIBRARIES} point_cloud_filtering_surface_segmentation)
 target_link_libraries(point_cloud_filtering_surface_segmentation ${catkin_LIBRARIES})
 
 # target_link_libraries(point_cloud_filtering_handle_grasp_pose
