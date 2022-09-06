@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh;
 
   point_cloud_filtering::SurfaceSegmenter surface_segmenter(&nh);
+  surface_segmenter.StartServices();
 
   ros::spin();
 

@@ -71,13 +71,13 @@ class PickUpObjectAction(ManipulationAction):
         if self.use_grasp_synthesis:
             rospy.loginfo("%s: Grasp pose synthesis is enabled" % self._action_name)
             rospy.loginfo(
-                "%s: Waiting for object_segmentation service..." % self._action_name
+                "%s: Waiting for /segment_object service..." % self._action_name
             )
-            rospy.wait_for_service("/object_segmentation")
+            rospy.wait_for_service("/segment_object")
             self.segment_object_service = rospy.ServiceProxy(
-                "/object_segmentation", SegmentObject
+                "/segment_object", SegmentObject
             )
-            rospy.loginfo("%s: Got object_segmentation service" % self._action_name)
+            rospy.loginfo("%s: Got /segment_object service" % self._action_name)
 
             self.grasps = None
             self.grasp_sub = rospy.Subscriber(
@@ -190,6 +190,7 @@ class PickUpObjectAction(ManipulationAction):
                 )
 
             if not successfully_positioned:
+                rospy.loginfo("%s: Using fixed grasp pose." % self._action_name)
                 successfully_positioned = self.position_end_effector_fixed_grasp(
                     goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose
                 )
@@ -223,20 +224,36 @@ class PickUpObjectAction(ManipulationAction):
         # Clear the previous grasp list
         self.grasps = None
 
-        # Segment the object point cloud first
-        (head_obj_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
+        # We must ensure that the z-direction of the goal TF is in the plane axis (i.e.
+        # upwards) so that plane detection will detect the surface the object is on.
+        (base_to_goal_oriented, _) = self.lookup_transform(self.BASE_FRAME, goal_tf)
+        if base_to_goal_oriented is None:
+            rospy.logerr(
+                "%s: Unable to transform from base to goal_tf." % (self._action_name)
+            )
+            return False
+        base_to_goal_oriented.rotation.x = 0
+        base_to_goal_oriented.rotation.y = 0
+        base_to_goal_oriented.rotation.z = 0
+        base_to_goal_oriented.rotation.w = 1
+        self.publish_tf(base_to_goal_oriented, self.BASE_FRAME, "oriented_goal_tf")
 
-        rospy.loginfo("%s: Calling segmentation." % (self._action_name))
-        # Call segmentation (lasts 10s)
-        self.tts_say("I am trying to calculate the best possible grasp position")
-        seg_response = self.segment_grasp_target_object(
-            [
-                head_obj_transform.translation.x,
-                head_obj_transform.translation.y,
-                head_obj_transform.translation.z,
-            ]
+        # Pass the correctly oriented transform into object segmentation service
+        (head_obj_plane_transform, _) = self.lookup_transform(
+            self.RGBD_CAMERA_FRAME, "oriented_goal_tf"
         )
 
+        if head_obj_plane_transform is None:
+            rospy.logerr(
+                "%s: Unable to transform from base to oriented_goal_tf."
+                % (self._action_name)
+            )
+            return False
+
+        rospy.loginfo("%s: Calling segmentation." % (self._action_name))
+        # Call segmentation
+        self.tts_say("Calculating grasp options")
+        seg_response = self.segment_grasp_target_object(head_obj_plane_transform)
         rospy.loginfo("%s: Finished calling segmentation." % (self._action_name))
 
         if not seg_response:
@@ -253,16 +270,16 @@ class PickUpObjectAction(ManipulationAction):
             if elapsed_secs > self.GRASP_POSE_GENERATION_TIMEOUT:
                 break
 
-        rospy.loginfo(
-            "%s: Got grasps list of length %i." % (self._action_name, len(self.grasps))
-        )
-
         if self.grasps is None:
             # gpg failed to return a list of grasp poses
             rospy.loginfo(
                 "%s: GPG failed to produce grasp poses." % (self._action_name)
             )
             return False
+
+        rospy.loginfo(
+            "%s: Got grasps list of length %i." % (self._action_name, len(self.grasps))
+        )
 
         with collision_world:
             found_valid_grasp = False
@@ -423,21 +440,23 @@ class PickUpObjectAction(ManipulationAction):
             geometry.Quaternion(q[0], q[1], q[2], q[3]),
         )
 
-    def segment_grasp_target_object(self, object_pos_head_frame):
+    def segment_grasp_target_object(self, object_and_plane_transform_in_head_frame):
         """
-        Request the object_segmentation node to publish a segmented point cloud at a
+        Request the /segment_object node to publish a segmented point cloud at a
         specified location in the head RGBD frame, containing the object we wish to
         generate grasp poses for.
         The grasp pose synthesis node will input this point cloud and publish a list of
         candidate poses.
+        Z component is used to find the plane axis: Z vector of transform should align
+        with where the plane axis is expected to be.
         """
         try:
-            self.segment_object_service(
-                object_pos_head_frame[0],
-                object_pos_head_frame[1],
-                object_pos_head_frame[2],
+            res = self.segment_object_service(
+                object_and_plane_transform_in_head_frame,
+                10.0,  # EPS plane search angle tolerance in degrees
+                0.2,  # Box crop size to search for plane in. Axis aligned w/ head frame.
             )
-            return True
+            return res.success
         except rospy.ServiceException as e:
             rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
             return False
@@ -446,6 +465,6 @@ class PickUpObjectAction(ManipulationAction):
 if __name__ == "__main__":
     rospy.init_node("pick_up_object_server_node")
     server = PickUpObjectAction(
-        "pick_up_object", use_collision_map=True, use_grasp_synthesis=True
+        "pick_up_object", use_collision_map=False, use_grasp_synthesis=True, prevent_motion=True
     )
     rospy.spin()

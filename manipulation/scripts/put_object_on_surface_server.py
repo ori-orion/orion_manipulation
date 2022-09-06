@@ -41,10 +41,12 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             prevent_motion,
         )
 
+        rospy.loginfo("%s: Waiting for /detect_surface service..." % self._action_name)
         rospy.wait_for_service("/detect_surface")
         self.detect_surface_service = rospy.ServiceProxy(
             "/detect_surface", DetectSurface
         )
+        rospy.loginfo("%s: Got /detect_surface service" % self._action_name)
 
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 

@@ -28,10 +28,13 @@ SurfaceSegmenter::SurfaceSegmenter(ros::NodeHandle* nh) {
                                                             "vis_markers"));
   visual_tools->trigger();
 
-  object_pub = nh->advertise<sensor_msgs::PointCloud2>("surface_cloud", 1, true);
+  surface_point_cloud_pub =
+      nh->advertise<sensor_msgs::PointCloud2>("surface_cloud", 1, true);
+}
 
-  service_server =
-      nh->advertiseService("detect_surface", &SurfaceSegmenter::ServiceCallback, this);
+void SurfaceSegmenter::StartServices(void) {
+  service_server = ros_node_handle->advertiseService(
+      "detect_surface", &SurfaceSegmenter::ServiceCallback, this);
   ROS_INFO("%s: /detect_surface service ready", ros::this_node::getName().c_str());
 }
 
@@ -105,7 +108,7 @@ bool SurfaceSegmenter::ServiceCallback(
 
   sensor_msgs::PointCloud2 msg_cloud_out;
   pcl::toROSMsg(*surface_cloud, msg_cloud_out);
-  object_pub.publish(msg_cloud_out);
+  surface_point_cloud_pub.publish(msg_cloud_out);
 
   //------ Calculate the plane transform, show visualisation and return transform --------
   Eigen::Vector3d plane_projection;

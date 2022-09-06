@@ -71,14 +71,14 @@ void GetLargestCluster(std::vector<pcl::PointIndices>* clusters,
 class SurfaceSegmenter {
  public:
   explicit SurfaceSegmenter(ros::NodeHandle* nh);
+  void StartServices(void);
 
- private:
+ protected:
   char node_name[128];
 
   ros::NodeHandle* ros_node_handle;
   ros::ServiceServer service_server;
-  ros::Publisher object_pub;
-  ros::Publisher placeholder_pub;
+  ros::Publisher surface_point_cloud_pub;
 
   rviz_visual_tools::RvizVisualToolsPtr visual_tools;
 
