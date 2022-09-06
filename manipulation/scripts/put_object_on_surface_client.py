@@ -16,7 +16,8 @@ def put_object_on_surface_client(goal_tf):
     print("Finished waiting for server")
 
     # Creates a goal to send to the action server.
-    goal_msg = msg.PutObjectOnSurfaceGoal(goal_tf=goal_tf)
+    goal_msg = msg.PutObjectOnSurfaceGoal(goal_tf=goal_tf,
+                                          abandon_action_if_no_plane_found=False)
 
     # Sends the goal to the action server.
     client.send_goal(goal_msg)

@@ -9,10 +9,11 @@ import math
 import tf2_ros
 import hsrb_interface
 import hsrb_interface.geometry as geometry
-from geometry_msgs.msg import TransformStamped, Point
+from geometry_msgs.msg import Transform, TransformStamped, Point
 from manipulation.msg import BoundingBox
 from manipulation.wrist_force_sensor import WristForceSensorCapture
 from manipulation.collision_mapping import CollisionMapper
+import tf.transformations
 
 from hsrb_interface import robot as _robot
 
@@ -125,16 +126,17 @@ class ManipulationAction(object):
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
 
         # All manipulation actions can publish a "goal" tf
-        self.goal_pose_br = tf2_ros.TransformBroadcaster()
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
 
-        self._as = actionlib.SimpleActionServer(
-            self._action_name,
-            self._action_msg_type,
-            execute_cb=self.execute_cb,
-            auto_start=False,
-        )
-        self._as.start()
-        rospy.loginfo("%s: Action server started." % self._action_name)
+        if self._action_msg_type is not None:
+            self._as = actionlib.SimpleActionServer(
+                self._action_name,
+                self._action_msg_type,
+                execute_cb=self.execute_cb,
+                auto_start=False,
+            )
+            self._as.start()
+            rospy.loginfo("%s: Action server started." % self._action_name)
 
     def override(self, name, *args, **kwargs):
         """
@@ -224,44 +226,90 @@ class ManipulationAction(object):
             return True
         return False
 
-    def publish_goal_pose_tf(self, p, goal_pose_name="goal_pose", source_frame="odom"):
+    def publish_goal_pose_tf(
+        self, p, source_frame="base_frame", goal_pose_name="goal_pose"
+    ):
         """
-        Publish a tf to the goal pose, in odom frame
+        Publish a tf to the goal pose, in odom (or specified) frame
         Args:
             p: goal pose
         """
+        t = Transform()
+        t.translation.x = p.pos.x
+        t.translation.y = p.pos.y
+        t.translation.z = p.pos.z
+        t.rotation.x = p.ori.x
+        t.rotation.y = p.ori.y
+        t.rotation.z = p.ori.z
+        t.rotation.w = p.ori.w
+        self.publish_tf(t, source_frame, goal_pose_name)
+
+    def publish_tf(self, transform, source_frame_id, child_frame_id):
+        """
+        Convenience function to publish a transform.
+        Args:
+            transform: geometry_msgs Transform type, from source_frame to child_frame
+            source_frame_id: name of source frame
+            child_frame_id: name of child frame
+        """
         t = TransformStamped()
         t.header.stamp = rospy.Time.now()
-        t.header.frame_id = source_frame
-        t.child_frame_id = goal_pose_name
-        t.transform.translation.x = p.pos.x
-        t.transform.translation.y = p.pos.y
-        t.transform.translation.z = p.pos.z
-        t.transform.rotation.x = p.ori.x
-        t.transform.rotation.y = p.ori.y
-        t.transform.rotation.z = p.ori.z
-        t.transform.rotation.w = p.ori.w
+        t.header.frame_id = source_frame_id
+        t.child_frame_id = child_frame_id
+        t.transform = transform
+        self.tf_broadcaster.sendTransform(t)
 
-        self.goal_pose_br.sendTransform(t)
+        # Wait until transform is available
+        return self._tf_buffer.can_transform(
+            source_frame_id, child_frame_id, rospy.Time.now(), rospy.Duration(1.0)
+        )
 
-    def get_relative_effector_pose(self, goal_tf, relative=geometry.pose()):
+    def get_relative_effector_pose(
+        self, goal_tf, relative=geometry.pose(), override_yaw=True, publish_tf=None,
+    ):
         """
         Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
-        goal tf, all in frame "odom".
+        goal tf, all in base link frame.
+        Override the yaw component of the target to point away from the robot, so the hand
+        approaches from the correct direction.
         Args:
             goal_tf: goal tf
             relative: relative hsrb_interface.geometry pose to goal tf to get hand pose
+        Grasp pose targets use the HSRB hand-palm link coordinate frame. When the hand is
+        in go/neutral position:
+            - X (red) points UP from hand-palm link.
+            - Y (green) points to the RIGHT of the hand, from the hand camera viewpoint.
+            - Z (blue) points OUTWARDS from the hand, in the same direction the
+              hand camera looks.
         """
 
-        (trans, lookup_time) = self.lookup_transform(self.ODOM_FRAME, goal_tf)
+        (trans, lookup_time) = self.lookup_transform(self.BASE_FRAME, goal_tf)
 
         if trans is None:
             return None
 
-        odom_to_ref = geometry.transform_to_tuples(trans)
-        odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
+        if override_yaw:
+            # Replace transform rotation component with the adjusted version
+            # This ensures the hand approaches from the direction of the robot
+            yaw = math.atan2(trans.translation.y, trans.translation.x)
 
-        return odom_to_hand
+            # roll pitch yaw
+            # hard coded values are to ensure z direction points away from robot, with x
+            # direction pointing upwards
+            q = tf.transformations.quaternion_from_euler(1.57, -1.57, 1.57 + yaw)
+            trans.rotation.x = q[0]
+            trans.rotation.y = q[1]
+            trans.rotation.z = q[2]
+            trans.rotation.w = q[3]
+
+        frame_to_ref = geometry.transform_to_tuples(trans)
+        frame_to_hand = geometry.multiply_tuples(frame_to_ref, relative)
+
+        if publish_tf is not None:
+            relative_transform = geometry.tuples_to_transform(frame_to_hand)
+            self.publish_tf(relative_transform, self.BASE_FRAME, publish_tf)
+
+        return frame_to_hand
 
     def lookup_transform(self, source, dest):
         """
@@ -312,6 +360,47 @@ class ManipulationAction(object):
                 rospy.sleep(duration)
 
     # Common kinematic functionality
+
+    def finish_position(self, collision_world):
+        """
+        Try to revert the robot to go position, free of any obstacles.
+        """
+
+        try:
+            rospy.loginfo(
+                "%s: Trying to move back and get into go position." % self._action_name
+            )
+            with collision_world:
+                self.omni_base.go_rel(-0.3, 0, 0)
+                self.whole_body.move_to_go()
+            return True
+
+        except Exception as e:
+            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
+
+        # Unsuccessful - try without collision avoidance
+        try:
+            rospy.loginfo(
+                "%s: Retrying without collision detection." % self._action_name
+            )
+            self.omni_base.go_rel(-0.3, 0, 0)
+            self.whole_body.move_to_go()
+            return True
+
+        except Exception as e:
+            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
+
+        # Unsuccessful - try going sideways
+        try:
+            rospy.loginfo("%s: Trying to move to the side instead." % self._action_name)
+            self.omni_base.go_rel(0, 0.3, 0)
+            self.whole_body.move_to_go()
+            return True
+
+        except Exception as e:
+            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
+
+        return False
 
     def move_arm_down(self, arm_lift_joint_height, back_away=True):
         """

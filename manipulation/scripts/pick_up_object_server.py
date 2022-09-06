@@ -43,7 +43,8 @@ class PickUpObjectAction(ManipulationAction):
 
     SUCTION_TIMEOUT = rospy.Duration(20.0)  # Vacuum action timeout
     DEFAULT_GRASP_FORCE = 0.8
-    PREGRASP_POSE = geometry.pose(z=-0.08, ek=0)  # Relative to gripper
+    # Relative to goal_tf, in coordinate system of hand_palm_link (x=up in neutral position)
+    PREGRASP_POSE = geometry.pose(z=-0.08, ek=0)
     GRASP_POSE = geometry.pose(z=0.06)  # Relative to gripper
 
     def __init__(
@@ -88,6 +89,7 @@ class PickUpObjectAction(ManipulationAction):
         Action server callback for PickUpObjectAction
         """
         _result = msg.PickUpObjectResult()
+        _result.result = False
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))
@@ -298,22 +300,20 @@ class PickUpObjectAction(ManipulationAction):
         # Move to pregrasp
         rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
 
-        hand_pose = self.get_relative_effector_pose(
-            goal_tf, relative=chosen_pregrasp_pose
+        base_target_pose = self.get_relative_effector_pose(
+            goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose"
         )
 
-        # Error checking in case can't find goal pose
-        if hand_pose is None:
+        # Error checking in case we can't get a valid pose
+        if base_target_pose is None:
             self.abandon_action()
             return False
-
-        self.publish_goal_pose_tf(hand_pose)
 
         rospy.loginfo("%s: Moving to pre-grasp position." % (self._action_name))
         self.tts_say("Moving to pre-grasp.")
 
         with collision_world:
-            self.whole_body.move_end_effector_pose(hand_pose, "odom")
+            self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME)
 
         # Move to grasp pose without collision checking
         rospy.loginfo("%s: Moving to grasp." % (self._action_name))
@@ -373,47 +373,6 @@ class PickUpObjectAction(ManipulationAction):
 
         # Get close and grasp without collision checking
         self.whole_body.move_end_effector_pose(geometry.pose(z=0.045), goal_tf)
-
-    def finish_position(self, collision_world):
-        """
-        Try to revert the robot to go position, free of any obstacles.
-        """
-
-        try:
-            rospy.loginfo(
-                "%s: Trying to move back and get into go position." % self._action_name
-            )
-            with collision_world:
-                self.omni_base.go_rel(-0.3, 0, 0)
-                self.whole_body.move_to_go()
-            return True
-
-        except Exception as e:
-            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
-
-        # Unsuccessful - try without collision avoidance
-        try:
-            rospy.loginfo(
-                "%s: Retrying without collision detection." % self._action_name
-            )
-            self.omni_base.go_rel(-0.3, 0, 0)
-            self.whole_body.move_to_go()
-            return True
-
-        except Exception as e:
-            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
-
-        # Unsuccessful - try going sideways
-        try:
-            rospy.loginfo("%s: Trying to move to the side instead." % self._action_name)
-            self.omni_base.go_rel(0, 0.3, 0)
-            self.whole_body.move_to_go()
-            return True
-
-        except Exception as e:
-            rospy.loginfo("%s: Encountered exception %s." % (self._action_name, str(e)))
-
-        return False
 
     def grasp_callback(self, msg):
         self.grasps = msg.grasps

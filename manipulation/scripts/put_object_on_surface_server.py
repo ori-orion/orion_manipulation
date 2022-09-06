@@ -1,15 +1,16 @@
 #! /usr/bin/env python3
-""" Action server for putting objects on a surface in front.
+""" Action server for putting objects on a surface.
 """
 
 import rospy
 import tf
 import hsrb_interface.geometry as geometry
+import traceback
 
 import orion_actions.msg as msg
 from manipulation.manipulation_header import ManipulationAction
-from point_cloud_filtering.srv import SegmentSurface
-from geometry_msgs.msg import Point
+from manipulation.collision_mapping import CollisionWorld
+from point_cloud_filtering.srv import DetectSurface
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
@@ -19,31 +20,39 @@ _robot.enable_interactive()
 
 class PutObjectOnSurfaceAction(ManipulationAction):
 
-    PREGRASP_POSE = geometry.pose(z=-0.08, ek=0)  # Relative to gripper
+    # How far above the surface to let objects drop. If too small, the object may collide
+    # with the surface if the height of the object is slightly misjudged
+    DROP_HEIGHT = 0.01
 
     def __init__(
         self,
         action_name,
         action_msg_type=msg.PutObjectOnSurfaceAction,
         use_collision_map=True,
+        tts_narrate=True,
+        prevent_motion=False,
     ):
 
         super(PutObjectOnSurfaceAction, self).__init__(
-            action_name, action_msg_type, use_collision_map
-        )
-        rospy.wait_for_service("/surface_segmentation")
-        self.segment_surface_service = rospy.ServiceProxy(
-            "/surface_segmentation", SegmentSurface
+            action_name,
+            action_msg_type,
+            use_collision_map,
+            tts_narrate,
+            prevent_motion,
         )
 
-        self.placeholder = None
-        self.placeholder_sub = rospy.Subscriber(
-            "/placeholder", Point, self.placeholder_callback
+        rospy.wait_for_service("/detect_surface")
+        self.detect_surface_service = rospy.ServiceProxy(
+            "/detect_surface", DetectSurface
         )
 
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
     def _execute_cb(self, goal_msg):
+        """
+        Action server callback for PickUpObjectAction
+        """
+
         _result = msg.PutObjectOnSurfaceResult()
         _result.result = False
 
@@ -52,150 +61,162 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             "%s: Requested to put object on surface %s" % (self._action_name, goal_tf)
         )
 
-        # Give opportunity to preempt
-        if self._as.is_preempt_requested():
-            rospy.loginfo("%s: Preempted" % self._action_name)
-            self._as.set_preempted()
+        # Look at the goal - make sure that we get all of the necessary collision map
+        rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
+        self.look_at_object(goal_tf)
+        rospy.sleep(0.5)
+
+        # Attempt to find transform from camera frame to goal_tf
+        (rgbd_goal_transform, _) = self.lookup_transform(
+            self.RGBD_CAMERA_FRAME, goal_tf
+        )
+
+        if rgbd_goal_transform is None:
+            rospy.logerr("%s: Unable to find TF frame." % self._action_name)
+            self.tts_say("I don't know the surface frame you want to put object down.")
+            self.abandon_action()
             return
 
+        if self.handle_possible_preemption():
+            return
+
+        # Evaluate collision environment
+        if self.use_collision_map:
+            self.tts_say("Evaluating a collision-free path.", duration=1.0)
+            collision_world = self.get_goal_cropped_collision_map(
+                goal_tf, crop_dist_3d=0
+            )
+        else:
+            collision_world = CollisionWorld.empty(self.whole_body)
+
+        if self.handle_possible_preemption():
+            return
+
+        place_success = False
+
         try:
-            self.whole_body.end_effector_frame = self.HAND_FRAME
-            # rospy.loginfo('%s: Placing gripper close to surface in front' % (self._action_name))
-            # self.tts.say("I will place the object on the surface in front of me.")
-            # rospy.sleep(2)
-            self.whole_body.move_to_neutral()
-            rospy.sleep(1)
-
-            # Attempt to find transform from hand frame to goal_tf
-            (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
-            if trans is None:
-                rospy.logerr("Unable to find TF frame")
-                self.tts_say(
-                    "I don't know the surface frame you want to put object down."
-                )
-                self.abandon_action()
-                return
-
-            # Look at the object - make sure that we get all of the necessary collision map
-            rospy.loginfo(
-                "%s: Moving head to look at the location." % self._action_name
+            place_success = self.do_placement(
+                goal_tf,
+                collision_world,
+                rgbd_goal_transform,
+                goal_msg.abandon_action_if_no_plane_found,
             )
-            self.look_at_object(goal_tf)
-
-            (head_surf_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
-
-            rospy.loginfo("Segmenting surface..")
-            # Segment surface
-            self.segment_surface(
-                [
-                    head_surf_transform.translation.x,
-                    head_surf_transform.translation.y,
-                    head_surf_transform.translation.z,
-                ]
-            )
-            rospy.loginfo("Finished segmentation")
-
-            if self.placeholder is not None:
-                rospy.loginfo(self.placeholder)
-                # self.whole_body.move_end_effector_pose(geometry.pose(x=self.placeholder.x, y=self.placeholder.y, z=self.placeholder.z), self.RGBD_CAMERA_FRAME)
-                (trans, lookup_time) = self.lookup_transform(
-                    self.HAND_FRAME, self.RGBD_CAMERA_FRAME
-                )
-                self.whole_body.move_end_effector_pose(
-                    geometry.pose(
-                        x=self.placeholder.x + trans.translation.x,
-                        y=self.placeholder.y + trans.translation.y,
-                        z=self.placeholder.z + trans.translation.z,
-                    ),
-                    self.HAND_FRAME,
-                )
-            else:
-                rospy.loginfo(
-                    "Failed to find generated placeholder position from surface segmentation. Moving to the input frame instead.."
-                )
-                hand_pose = self.get_default_grasp_pose(
-                    goal_tf, relative=self.PREGRASP_POSE
-                )
-
-                # Place object of surface
-                # self.whole_body.move_end_effector_pose(geometry.pose(x=0, y=0, z=0.2), 'hand_palm_link')
-                self.whole_body.move_end_effector_pose(
-                    geometry.pose(
-                        x=trans.translation.x,
-                        y=trans.translation.y,
-                        z=trans.translation.z,
-                    ),
-                    self.HAND_FRAME,
-                )
-                # self.whole_body.move_end_effector_pose(hand_pose, self.ODOM_FRAME)
-
-            # Let go of the object
-            rospy.sleep(1)
-            rospy.loginfo("%s: Opening gripper." % (self._action_name))
-            self.gripper.command(1.2)
-            self.tts.say("Object placed successfully. Returning to go position.")
-            rospy.sleep(2)
-
-            # # Move the gripper back a bit then return to go
-            self.whole_body.linear_weight = 100
-            self.whole_body.move_end_effector_pose(
-                geometry.pose(z=-0.2), "hand_palm_link"
-            )
-            rospy.loginfo("%s: Returning to go pose." % (self._action_name))
-            self.whole_body.move_to_go()
-
-            rospy.loginfo("%s: Succeeded" % self._action_name)
-            _result.result = True
-            self._as.set_succeeded(_result)
 
         except Exception as e:
-            rospy.loginfo(
-                "{0}: Encountered exception {1}.".format(self._action_name, str(e))
-            )
-            self.tts.say(
-                "I encountered a problem. Returning to go position and aborting placement."
-            )
-            rospy.sleep(2)
-            rospy.loginfo("%s: Returning to go pose." % (self._action_name))
-            self.whole_body.move_to_go()
+            rospy.logerr("%s: Encountered exception %s." % (self._action_name, str(e)))
+            rospy.logerr(traceback.format_exc())
+            self.abandon_action()
+
+        if place_success:
+            self.tts_say("Place successful.")
+            # Now return to moving position
+        else:
+            self.tts_say("Failed to place")
+
+        self.finish_position(collision_world)
+
+        if place_success:
+            rospy.loginfo("%s: Placing succeeded" % self._action_name)
+            _result.result = True
+            self._as.set_succeeded(_result)
+        else:
+            rospy.loginfo("%s: Placing failed" % self._action_name)
+            _result.result = False
             self._as.set_aborted()
 
-    def get_default_grasp_pose(self, goal_tf, relative=geometry.pose()):
+    def do_placement(
+        self,
+        goal_tf,
+        collision_world,
+        rgbd_goal_transform,
+        abandon_action_if_no_plane_found,
+    ):
+
+        rospy.loginfo("%s: Running surface detection" % self._action_name)
+        # Segment surface
+        plane_transform = self.detect_plane_surface(rgbd_goal_transform)
+        found_plane = plane_transform is not None
+
+        if found_plane:
+            rospy.loginfo("%s: Received a plane transform." % self._action_name)
+            self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, "placement_plane")
+            target_id = "placement_plane"
+
+        elif not abandon_action_if_no_plane_found:
+            rospy.loginfo(
+                "%s: Did not receive a plane transform, continuing" % self._action_name
+            )
+            target_id = goal_tf
+
+        else:
+            rospy.loginfo(
+                "%s: Did not receive a plane transform, stopping" % self._action_name
+            )
+            return False
+
+        rel_placement_pose = self.get_relative_placement()
+        base_target_pose = self.get_relative_effector_pose(
+            target_id, relative=rel_placement_pose, publish_tf="goal_pose"
+        )
+
+        # Error checking in case we can't get a valid pose
+        if base_target_pose is None:
+            self.abandon_action()
+            return False
+
+        self.whole_body.end_effector_frame = self.HAND_FRAME
+
+        with collision_world:
+            self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME)
+
+            # Let go of the object
+            self.tts_say("Placing object.")
+            rospy.loginfo("%s: Opening gripper." % (self._action_name))
+            self.gripper.command(1.2)
+            rospy.sleep(1.0)
+
+            # Move the gripper back a bit then return to go
+            self.whole_body.linear_weight = 100
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.2), "hand_palm_link")
+
+        return True
+
+    def get_relative_placement(self, object_half_height=0.1):
         """
-        Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
-        goal tf, all in frame "odom".
+        Request the surface_detection node to detect the surface location.
         Args:
-            goal_tf: goal tf
-            relative: relative hsrb_interface.geometry pose to goal tf to get hand pose
+            object_half_height: how far the carried object extends below the gripper axis
+                                (from hand-palm link). This should come from keeping track
+                                of the height of the object when it is picked up, but at
+                                the moment we don't have any component that does this.
         """
+        return geometry.pose(z=-0.08, x=object_half_height + self.DROP_HEIGHT)
 
-        (trans, lookup_time) = self.lookup_transform(self.ODOM_FRAME, goal_tf)
-
-        odom_to_ref = geometry.transform_to_tuples(trans)
-        # odom_to_hand = geometry.multiply_tuples(odom_to_ref, relative)
-        return odom_to_ref
-
-    def placeholder_callback(self, msg):
-        self.placeholder = msg
-
-    def segment_surface(self, object_pos_head_frame):
+    def detect_plane_surface(self, plane_search_transform_in_head_frame):
         """
-        Request the surface_segmentation node to detect the surface location
+        Request the surface_detection node to detect the surface location.
+        Z component is used to find the plane axis: Z vector of transform should align
+        with where the plane axis is expected to be.
         """
         try:
-            self.segment_surface_service(
-                object_pos_head_frame[0],
-                object_pos_head_frame[1],
-                object_pos_head_frame[2],
+            res = self.detect_surface_service(
+                plane_search_transform_in_head_frame,
+                10.0,  # EPS plane search angle tolerance in degrees
+                0.15,  # Box crop size to search for plane in. Axis aligned w/ head frame.
             )
-            return True
+            if res.success:
+                return res.plane_axis
+            else:
+                return None
 
         except rospy.ServiceException as e:
             rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
-            return False
+            return None
 
 
 if __name__ == "__main__":
     rospy.init_node("put_object_on_surface_server")
-    server = PutObjectOnSurfaceAction("put_object_on_surface", use_collision_map=False)
+    server = PutObjectOnSurfaceAction(
+        "put_object_on_surface", use_collision_map=False, prevent_motion=False
+    )
     rospy.spin()
