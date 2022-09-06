@@ -86,6 +86,12 @@ if __name__ == "__main__":
         tester.execute(goal_tf)
 
     else:
+        print("TFs available to test in manipulation_test_sim world:")
+        print("  - surface_placement_l")
+        print("  - surface_high_1")
+        print("  - surface_low_1")
+        print("  - surface_floor_1")
+        print("  - surface_floor_2")
         while not rospy.is_shutdown():
             goal_tf = input('Enter a tf name to detect surfaces at: ')
             tester.execute(goal_tf)
