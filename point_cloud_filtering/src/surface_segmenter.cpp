@@ -15,9 +15,6 @@
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 
-typedef pcl::PointXYZRGB PointC;
-typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
-
 namespace point_cloud_filtering {
 
 SurfaceSegmenter::SurfaceSegmenter(ros::NodeHandle* nh) {
@@ -41,28 +38,43 @@ void SurfaceSegmenter::StartServices(void) {
 bool SurfaceSegmenter::ServiceCallback(
     point_cloud_filtering::DetectSurface::Request& req,
     point_cloud_filtering::DetectSurface::Response& res) {
-  float eps_degrees_tolerance = req.eps_degrees_tolerance;
-  float crop_box_dimension = req.search_box_dimension;
+  res.success = false;
 
   //------ Reset any visualisation --------
   visual_tools->deleteAllMarkers();
-  PublishTransformMarker(req.search_axis);
+  // PublishTransformMarker(req.search_axis);
 
-  // Plane search point transform translation
+  //------ Extract variables from request --------
+  float eps_degrees_tolerance = req.eps_degrees_tolerance;
+  float crop_box_dimension = req.search_box_dimension;
   Eigen::Vector3d query_point;
-  query_point << req.search_axis.translation.x, req.search_axis.translation.y,
-      req.search_axis.translation.z;
+  tf::vectorMsgToEigen(req.search_axis.translation, query_point);
+  Eigen::Vector3d search_axis = Vector3dFromZRotation(req.search_axis.rotation);
 
-  // Plane search axis from Z-direction vector given by transform
-  Eigen::Quaterniond rotQ;
-  tf::quaternionMsgToEigen(req.search_axis.rotation, rotQ);
-  Eigen::Quaterniond z;
-  z.w() = 0;
-  z.vec() = Eigen::Vector3d::UnitZ();
-  Eigen::Quaterniond rotatedP = rotQ * z * rotQ.inverse();
-  Eigen::Vector3d search_axis = rotatedP.vec();
+  //------ Process point cloud, expecting a surface --------
+  Eigen::Isometry3d plane_pose;
+  pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
+  PointCloudC::Ptr non_surface_cloud(new PointCloudC());
+  bool success = SeparatePointCloudByPlane(query_point, search_axis,
+                                           eps_degrees_tolerance, crop_box_dimension,
+                                           plane_pose, plane_coeff, non_surface_cloud);
 
-  res.success = false;
+  if (success == true) {
+    geometry_msgs::Transform transform_msg;
+    tf::transformEigenToMsg(plane_pose, transform_msg);
+    res.plane_axis = transform_msg;
+    res.success = true;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool SurfaceSegmenter::SeparatePointCloudByPlane(
+    Eigen::Vector3d query_point, Eigen::Vector3d search_axis, float eps_degrees_tolerance,
+    float crop_box_dimension, Eigen::Isometry3d& plane_pose,
+    pcl::ModelCoefficients::Ptr plane_coeff, PointCloudC::Ptr non_surface_cloud) {
+  // Carry out cropping, plane detection, plane segmentation
 
   //------ Receive one point cloud from RGBD sensor --------
   sensor_msgs::PointCloud2ConstPtr msg =
@@ -91,8 +103,6 @@ bool SurfaceSegmenter::ServiceCallback(
 
   //------ Get the surface in the point cloud --------
   pcl::PointIndices::Ptr plane_inliers(new pcl::PointIndices());
-  pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
-
   SegmentPlane(first_cropped_cloud, plane_inliers, search_axis, eps_degrees_tolerance,
                plane_coeff);
 
@@ -110,20 +120,17 @@ bool SurfaceSegmenter::ServiceCallback(
   pcl::toROSMsg(*surface_cloud, msg_cloud_out);
   surface_point_cloud_pub.publish(msg_cloud_out);
 
+  //------ Extract the non-plane subset of cropped cloud into non_surface_cloud --------
+  FilterCloudByIndices(first_cropped_cloud, non_surface_cloud, plane_inliers, true);
+
   //------ Calculate the plane transform, show visualisation and return transform --------
   Eigen::Vector3d plane_projection;
   CalculatePlaneProjection(plane_coeff, query_point, plane_projection);
 
   ROS_INFO_STREAM(node_name << ": calculated plane point:  " << plane_projection);
   ROS_INFO_STREAM(node_name << ": plane parameters:  " << *plane_coeff);
-  Eigen::Isometry3d plane_pose = GetPlanePose(plane_coeff, plane_projection, search_axis);
+  plane_pose = GetPlanePose(plane_coeff, plane_projection, search_axis);
   PublishPlaneMarker(plane_pose, crop_box_dimension);
-
-  geometry_msgs::Transform transform_msg;
-  tf::transformEigenToMsg(plane_pose, transform_msg);
-  res.plane_axis = transform_msg;
-
-  res.success = true;
   return true;
 }
 
@@ -166,6 +173,18 @@ void SurfaceSegmenter::PublishPlaneMarker(Eigen::Isometry3d plane_pose, float pl
   visual_tools->publishZArrow(plane_pose, rviz_visual_tools::BLUE,
                               rviz_visual_tools::SMALL, arrow_size);
   visual_tools->trigger();
+}
+
+Eigen::Vector3d Vector3dFromZRotation(const geometry_msgs::Quaternion& m) {
+  // Rotate the Z unit vector by a given rotation
+  Eigen::Quaterniond rotQ;
+  tf::quaternionMsgToEigen(m, rotQ);
+  Eigen::Quaterniond z;
+  z.w() = 0;
+  z.vec() = Eigen::Vector3d::UnitZ();
+  Eigen::Quaterniond rotatedP = rotQ * z * rotQ.inverse();
+  Eigen::Vector3d rotated = rotatedP.vec();
+  return rotated;
 }
 
 Eigen::Isometry3d GetPlanePose(pcl::ModelCoefficients::Ptr plane_coeff,
@@ -265,7 +284,7 @@ void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
   seg.segment(*indices, *coeff);
 }
 
-void FilterByPlane(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
+void FilterByPlane(PointCloudC::Ptr in_cloud,
                    pcl::ModelCoefficients::Ptr plane_coeff,
                    pcl::PointIndices::Ptr plane_side_points) {
   float a = plane_coeff->values[0];
@@ -296,8 +315,8 @@ void FilterCloudByIndices(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
   extract.filter(*out_cloud);
 }
 
-void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
-               pcl::PointCloud<pcl::PointXYZRGB>::Ptr out_cloud, Eigen::Vector4f min_p,
+void CropCloud(PointCloudC::Ptr in_cloud,
+               PointCloudC::Ptr out_cloud, Eigen::Vector4f min_p,
                Eigen::Vector4f max_p) {
   pcl::CropBox<PointC> crop;
   crop.setInputCloud(in_cloud);
@@ -306,7 +325,7 @@ void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
   crop.filter(*out_cloud);
 }
 
-void ClusterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+void ClusterCloud(PointCloudC::Ptr cloud,
                   std::vector<pcl::PointIndices>* clusters, double cluster_tolerance,
                   double min_cluster_proportion, double max_cluster_proportion) {
   pcl::EuclideanClusterExtraction<PointC> euclid;

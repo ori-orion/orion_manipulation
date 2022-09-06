@@ -26,14 +26,16 @@
 #include "pcl/sample_consensus/method_types.h"
 #include "pcl/sample_consensus/model_types.h"
 #include "pcl/segmentation/extract_clusters.h"
+#include "point_cloud_filtering/DetectSurface.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
-#include "point_cloud_filtering/DetectSurface.h"
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 
 namespace point_cloud_filtering {
+
+Eigen::Vector3d Vector3dFromZRotation(const geometry_msgs::Quaternion& m);
 
 void CropCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr in_cloud,
                pcl::PointCloud<pcl::PointXYZRGB>::Ptr out_cloud, Eigen::Vector4f min_p,
@@ -84,6 +86,12 @@ class SurfaceSegmenter {
 
   bool ServiceCallback(point_cloud_filtering::DetectSurface::Request& req,
                        point_cloud_filtering::DetectSurface::Response& res);
+
+  bool SeparatePointCloudByPlane(Eigen::Vector3d query_point, Eigen::Vector3d search_axis,
+                                 float eps_degrees_tolerance, float crop_box_dimension,
+                                 Eigen::Isometry3d& plane_pose,
+                                 pcl::ModelCoefficients::Ptr plane_coeff,
+                                 PointCloudC::Ptr non_surface_cloud);
 
   void CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
                                 Eigen::Vector3d point, Eigen::Vector3d& closest_point);

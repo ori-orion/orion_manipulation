@@ -272,7 +272,7 @@ class PickUpObjectAction(ManipulationAction):
 
         if self.grasps is None:
             # gpg failed to return a list of grasp poses
-            rospy.loginfo(
+            rospy.logerr(
                 "%s: GPG failed to produce grasp poses." % (self._action_name)
             )
             return False
