@@ -100,6 +100,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                 collision_world,
                 rgbd_goal_transform,
                 goal_msg.abandon_action_if_no_plane_found,
+                goal_msg.drop_object_by_metres,
+                goal_msg.check_weight_grams,
             )
 
         except Exception as e:
@@ -130,6 +132,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         collision_world,
         rgbd_goal_transform,
         abandon_action_if_no_plane_found,
+        drop_by,
+        check_weight_grams,
     ):
 
         rospy.loginfo("%s: Running surface detection" % self._action_name)
@@ -154,7 +158,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             )
             return False
 
-        rel_placement_pose = self.get_relative_placement()
+        rel_placement_pose = self.get_relative_placement(drop_by=drop_by)
         base_target_pose = self.get_relative_effector_pose(
             target_id, relative=rel_placement_pose, publish_tf="goal_pose"
         )
@@ -169,19 +173,37 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         with collision_world:
             self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME)
 
+            if check_weight_grams > 0.0:
+                self.wrist_force.zero()
+
             # Let go of the object
             self.tts_say("Placing object.")
             rospy.loginfo("%s: Opening gripper." % (self._action_name))
             self.gripper.command(1.2)
             rospy.sleep(1.0)
 
+            if check_weight_grams > 0.0:
+                weight_difference_grams = self.wrist_force.get_absolute_grams_delta()
+                rospy.loginfo("%s: Weight change is %i g." % (self._action_name, weight_difference_grams))
+
+                if weight_difference_grams < check_weight_grams:
+                    # Not enough weight change - shake the hand around
+                    self.shake_gripper()
+
             # Move the gripper back a bit then return to go
             self.whole_body.linear_weight = 100
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.2), "hand_palm_link")
+            self.whole_body.move_end_effector_pose(
+                geometry.pose(z=-0.2), "hand_palm_link"
+            )
 
         return True
 
-    def get_relative_placement(self, object_half_height=0.1):
+    def shake_gripper(self):
+        self.whole_body.move_to_joint_positions({"wrist_roll_joint": -1.8})
+        self.whole_body.move_to_joint_positions({"wrist_roll_joint": 1.8})
+        self.whole_body.move_to_joint_positions({"wrist_roll_joint": 0})
+
+    def get_relative_placement(self, object_half_height=0.1, drop_by=0.0):
         """
         Request the surface_detection node to detect the surface location.
         Args:
@@ -190,7 +212,9 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                                 of the height of the object when it is picked up, but at
                                 the moment we don't have any component that does this.
         """
-        return geometry.pose(z=-0.08, x=object_half_height + self.DROP_HEIGHT)
+        return geometry.pose(
+            z=-0.08, x=object_half_height + self.DROP_HEIGHT + max(drop_by, 0.0)
+        )
 
     def detect_plane_surface(self, plane_search_transform_in_head_frame):
         """
@@ -202,7 +226,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             res = self.detect_surface_service(
                 plane_search_transform_in_head_frame,
                 10.0,  # EPS plane search angle tolerance in degrees
-                0.15,  # Box crop size to search for plane in. Axis aligned w/ head frame.
+                0.2,  # Box crop size to search for plane in. Axis aligned w/ head frame.
             )
             if res.success:
                 return res.plane_axis

@@ -68,6 +68,6 @@ class WristForceSensorCapture(object):
         force_vector = self.get_current_force()
 
         force_difference = root_squared_difference(self.zeroed_force_list, force_vector)
-        weight_difference = math.round(force_difference / 9.81 * 1000, 1)
+        weight_difference = round(force_difference / 9.81 * 1000, 1)
 
         return weight_difference
