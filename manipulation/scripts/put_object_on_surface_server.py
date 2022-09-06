@@ -241,6 +241,6 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 if __name__ == "__main__":
     rospy.init_node("put_object_on_surface_server")
     server = PutObjectOnSurfaceAction(
-        "put_object_on_surface", use_collision_map=False, prevent_motion=False
+        "put_object_on_surface", use_collision_map=True,
     )
     rospy.spin()

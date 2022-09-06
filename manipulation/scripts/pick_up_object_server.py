@@ -46,6 +46,7 @@ class PickUpObjectAction(ManipulationAction):
     # Relative to goal_tf, in coordinate system of hand_palm_link (x=up in neutral position)
     PREGRASP_POSE = geometry.pose(z=-0.08, ek=0)
     GRASP_POSE = geometry.pose(z=0.06)  # Relative to gripper
+    LIFT_POSE = geometry.pose(x=0.03)  # Relative to gripper, to lift off surface
 
     def __init__(
         self,
@@ -200,6 +201,10 @@ class PickUpObjectAction(ManipulationAction):
             self.tts_say("Grasping object.")
             self.gripper.apply_force(self.DEFAULT_GRASP_FORCE)
             rospy.loginfo("%s: Object grasped." % self._action_name)
+
+            self.whole_body.move_end_effector_pose(
+                self.LIFT_POSE, self.whole_body.end_effector_frame
+            )
 
             return True
 
