@@ -1,101 +1,77 @@
 # orion\_manipulation
 Repo for packages related to manipulating objects and opening doors etc.
-Currently maintained by Matt Budd (mbudd@robots.ox.ac.uk).
+Currently maintained by Kim Tien Ly.
 
-
-## Data / Process Flow
-<img src="/doc/img/manipulation_data_flow.png" alt="Data Flow Diagram" width="600"/>
-
+<img src="/doc/img/header.png" alt="Header: plane detection, object segmentation, and things going wrong" width="1000"/>
 
 ## Build / Installation
 * See the Wiki for TMC package [installation](https://github.com/ori-orion/orion-documentation/wiki/Installing-HSR-Packages-and-Simulator-Locally) and ORIon package [initial environment setup, prerequisite installation, and building](https://github.com/ori-orion/orion-documentation/wiki/Installing-ORIon-Packages-Locally).
-* As in the flow diagram above:
-  * GPG and GPD are used for (optional) object grasp pose synthesis. Without grasp pose synthesis enabled, the HSR will choose a grasp which is hard coded relative to the target tf.
+* GPG and GPD are used for (optional) object grasp pose synthesis. Without grasp pose synthesis enabled, the HSR will choose a grasp which is hard coded relative to the target tf.
 
+## Running a manipulation demo in simulation:
+This simulation demo works with only manipulation components running. If you want to run it on the real robot, you should run perception's tf publisher node or use the AR tags and [`tmc_stereo_marker_recognizer`](https://docs.hsr.io/hsr_develop_manual_en/reference/packages/tmc_stereo_marker_recognizer/PKGDOC.html?highlight=ar%20marker#ros-interface), to ensure tfs are published for manipulation to use. You can use Rviz to display the TF tree to confirm the name of the TF and that it is located correctly.
 
-## orion\_manipulation Package
-This repo enables the HSR to perform manipulation tasks such as picking up an object, opening a door, or giving the object to a human operator via a set of action servers. An overview of the key functionality is provided here.
-This package makes use of the point\_cloud\_filtering 
+* `$ roslaunch orion_simulation manipulation_test_sim.launch`
+  * Starts the Gazebo simulation. This manipulation test environment includes several static tf publishers. These are useful for testing: for example, the `target` tf is placed in the same way on the glass jar as if perception image recognition had published that tf. Note that all HSR Gazebo worlds vibrate at high frequency (?) and objects will randomly wander over time. If you leave the simulator running for ~5 minutes, the `target` tf will no longer be on the glass jar.
+  * This launchfile also starts a manipulation-specific rviz setup, with visualisation of manipulation systems.
+  
+* `$ roslaunch manipulation manipulation_servers.launch`
+  * Starts up manipulation system basic components, including pick_up_object and put_object_on_surface actions.
 
+* Watch the Gazebo and Rviz windows for the next two commands, which make the robot do things.
 
-### Pick up object - `pick_up_object_server.py`
-`pick_up_object_server.py` makes use of point cloud input from the Xtion RGBD camera for online collision mapping. This feeds into an OctoMap server which provides occupancy estimation collision maps.
-This collision map is then modified on the fly to remove an area around the object you're dealing with and then publish to 'known_object' which is listened to by the collision world. As long as collision-world is turned on, motion planning will now avoid the collision environment generated. 
+* `$ rosrun manipulation pick_up_object_client.py target`
+  * When run, the robot should successfully pick up the glass jar that it spawns facing.
+  
+* Use Rviz goal pose tool to turn the robot 180 degrees so it faces the worktop.
 
+* `$ rosrun manipulation put_object_on_surface.py surface_placement_l`
+  * When run, the robot should successfully place the glass jar at the specified tf on the worktop.
 
-#### Running / Testing
-To call this action via a script: `$ rosrun manipulation pick_up_object_client.py <name_of_target_tf>`.
-* An example name of a target TF would be `potted_plant`. The published tf name will be `<object_id>_01` etc. You do not need to specify the `_0n` number - manipulation will choose whichever is available.
-* A node must be running to publish TFs for manipulation to attempt to pick up:
-    * [Object recognition](https://github.com/ori-orion/orion-documentation/wiki/Running-the-object-detector-on-the-Alienware) will publish TFs from vision input.
-    * For testing without requiring other components, [`tmc_stereo_marker_recognizer`](https://docs.hsr.io/hsr_develop_manual_en/reference/packages/tmc_stereo_marker_recognizer/PKGDOC.html?highlight=ar%20marker#ros-interface) is a built-in TMC package that will recognise and publish objects with AR tags attached, for example the HSR water™. The TF name format for these is `'ar_marker/nnn'`.
-* When running this on the real robot, use Rviz to display the TF tree to confirm the name of the TF and that it is located on top of the target object.
+## manipulation Package
+* This repo enables the HSR to perform manipulation tasks such as picking up an object, opening a door, or giving the object to a human operator via a set of action servers.
+* Nodes/scripts in this package are written in Python
 
+### Pick up object (example nodes/data flow for a single action):
 
-### Open doors - `open_door_server.py`
-The following combination now works to test the action server. This will segment the point cloud of the handle and compute the 3D coordinates of the centre. The robot will then attempt to grasp the handle and execute a rudimentary opening motion.
+<img src="/doc/img/manipulation_data_flow.png" alt="Data Flow Diagram" width="500"/>
+This is a data process flow illustration of `pick_up_object_server.py`. Similar to all updated manipulation action servers, it makes use of point cloud input from the Xtion RGBD camera for online collision mapping. This feeds into an OctoMap server which provides occupancy estimation collision maps.
 
-#### Running / Testing
-```
-rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
-rosrun manipulation open_door_server.py
-rosrun manipulation open_door_client.py 
-```
+### Collision mapping
 
+<img src="/doc/img/collision_mesh.png" alt="Collision mesh illustration" width="400"/>
+
+3D occupancy maps are maintained by `octomap_server`, using input from the Xtion RGBD camera. When carrying out manipulation actions, we:
+* Get an occupancy map from `octomap_server`,
+* Crop it (to make the map smaller and remove areas we want to ignore - e.g. crop out the object we want to pick up, lest the robot try to avoid touching the object),
+* Convert it to a binary .STL mesh (this is the fastest method to get a complex object collision world representation),
+* Insert the STL mesh in the correct location into the HSR's internal collision mapping system.
+
+### Grasp pose synthesis
+* Grasp pose components are launched by `manipulation grasp_synthesis.launch` (included in `manipulation_servers.launch`).
+* See the flow diagram above. The `object_segmentation_node` node is responsible for extracting a point cloud of the object and passing it to GPD/GPG ROS nodes which produce the grasp candidates.
+* The pick_up_object action server loops over the generated grasp candidates, highest score first, and chooses the first that HSRB motion planning can plan a collision-free path to.
+
+### Coordinate frames
+* The most important coordinate frame is the wrist-hand joint coordinate frame, which we use to specify where to move the end effector to:
+
+<img src="/doc/img/coord_frame.png" alt="Hand-palm link coordinate system" width="400"/>
+
+Red = x, green = y, blue = z.
 
 ## point\_cloud\_filtering Package
-This package is used for isolating, segmenting and clustering point clouds in order to determine grasp poses.
+* This package is used internally by manipulation for isolating, segmenting and clustering point clouds in order to determine grasp poses.
+* It processes point cloud data so is written in C++ for speed.
 
+### Surface segmenter
+* `surface_segmentation_node` provides the `/detect_surface` node.
+* Surface detection is used to detect surfaces that objects are placed on / should be placed on, detecting the floor level, and detecting plane door surfaces etc.
 
-### Topics published
-* /handle_cloud - Point cloud of the door handle (*sensor\_msgs::PointCloud2*)
-* /object_cloud - Point cloud of the object to grasp (*sensor\_msgs::PointCloud2*)
+### Object segmenter
+* `object_segmentation_node` provides the `/segment_object` node.
+* This is a specialised version of the surface segmenter, which takes the points above the detected surface and clusters them to find the target object.
 
-* tf frame 'door_handle' - the centroid of the door handle is published as a tf frame
-* tf frame 'drawer_handle' - the centroid of the drawer door handle is published as a tf frame
-* tf frame 'goal_pose' - the centroid of the door handle is published as a tf frame
-
-
-## Collision mapping
-
-This section needs content when Octomap collision mapping is tested and working.
-
-## Handle detection
-
-To launch the handle filter rosservice:
-```
-rosrun point_cloud_filtering handle_grasp_pose cloud_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
-```
-
-To make a call to handle detection:
-```
-rosservice call /handle_detection true
-```
-This will spin until a handle in front is detected and published as a tf frame. 
-
-## Object segmentation
-This requires first launching the service:
-```
-rosrun point_cloud_filtering segment_object clo_in:=/hsrb/head_rgbd_sensor/depth_registered/rectified_points
-```
-
-To call the object segmentation:
-```
-rosservice call /object_segmentation **x** **y** **z**
-```
-where x,y,z are the coordinates (**float**) of the object in the robot's camera frame (z in front, y down, x to right)
-
-## Grasp pose synthesis
-This is now wrapped up in a launch file. 
-```
-roslaunch manipulation grasp_synthesis.launch
-```
-This will generate and publish grasps to /detect\_grasps/clustered\_grasps when point clouds are received on the topic __/object\_cloud__
-
-Note that when using the rotation matrix \[approach, binormal, axis\] to find the quaternion matrix for hand approach, you need to take the quaternion conjugate!
-
-
-## Component status:
+## Action server status and TODOs:
 - ReceiveObjectFromOperator.action
     - [x] `receive_object_from_operator_server.py` updated to new inheritance structure
     - [x] Tested in simulation
@@ -123,10 +99,6 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
 - PutObjectOnSurface.action
     - [x] `put_object_on_surface_server.py` updated to new inheritance structure
     - [x] Tested in simulation
-    - [ ] Tested on real robot
-- PutObjectOnFloor.action
-    - [ ] `put_object_on_floor_server.py` updated to new inheritance structure. Should inherit from PutObjectOnSurface.
-    - [ ] Tested in simulation
     - [ ] Tested on real robot
 - PlaceObjectRelative.action
     - [ ] `place_object_relative_server.py` updated to new inheritance structure. Should inherit from PutObjectOnSurface.
@@ -162,15 +134,11 @@ Note that when using the rotation matrix \[approach, binormal, axis\] to find th
     - [ ] Rewritten to be less hard-coded
     - [ ] Tested in simulation
     - [ ] Tested on real robot
-- [ ] Standardise all point cloud filtering components to correctly take the RGBD camera orientation into account when e.g. detecting flat surfaces. Currently, there is an assumption that the RGBD camera is level which does not hold for all situations.
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
-- [ ] Cleanup of unused actions e.g. GrabBothBinBags.action, TurnOnBlender.action
 - [ ] Manage all parameters (defaults and specific to specific action servers) through rosparam.
     - [ ] Add YAML files to hold default parameters.
-- [ ] Update messages so bounding box sizes are passed through message interface rather than hard-coded on C++ node side.
 - [ ] Additional visualisation:
     - [ ] Add a flag to octomap_to_reconstruction_service to publish octomap boxes as rviz markers if stl files not available over network
-    - [ ] Publish wireframe boxes for bounding boxes from other C++ nodes, in the same way as `octomap_to_reconstruction_service`
 ## Notes
 
 * The HSR struggles to generate handles in a point cloud if their material is too specular like that in the lab. Similarly it can't detect the glass doors.
