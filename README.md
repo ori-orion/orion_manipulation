@@ -137,6 +137,7 @@ Red = x, green = y, blue = z.
 - [ ] Implement a check that the handle has been grasped (or object!)!!!
 - [ ] Manage all parameters (defaults and specific to specific action servers) through rosparam.
     - [ ] Add YAML files to hold default parameters.
+- [ ] Currently, when the robot puts objects down it assumes they are a certain height. We should track the height and grip point of objects after picking them up, and use that information when we put the object down again so that it is gently dropped from ~1cm height above the surface.
 - [ ] Additional visualisation:
     - [ ] Add a flag to octomap_to_reconstruction_service to publish octomap boxes as rviz markers if stl files not available over network
 ## Notes
