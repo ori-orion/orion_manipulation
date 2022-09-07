@@ -10,6 +10,7 @@
 #include <visualization_msgs/Marker.h>
 
 #include <cmath>
+#include <limits>
 
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
@@ -284,8 +285,7 @@ void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
   seg.segment(*indices, *coeff);
 }
 
-void FilterByPlane(PointCloudC::Ptr in_cloud,
-                   pcl::ModelCoefficients::Ptr plane_coeff,
+void FilterByPlane(PointCloudC::Ptr in_cloud, pcl::ModelCoefficients::Ptr plane_coeff,
                    pcl::PointIndices::Ptr plane_side_points) {
   float a = plane_coeff->values[0];
   float b = plane_coeff->values[1];
@@ -315,9 +315,8 @@ void FilterCloudByIndices(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
   extract.filter(*out_cloud);
 }
 
-void CropCloud(PointCloudC::Ptr in_cloud,
-               PointCloudC::Ptr out_cloud, Eigen::Vector4f min_p,
-               Eigen::Vector4f max_p) {
+void CropCloud(PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud,
+               Eigen::Vector4f min_p, Eigen::Vector4f max_p) {
   pcl::CropBox<PointC> crop;
   crop.setInputCloud(in_cloud);
   crop.setMin(min_p);
@@ -325,35 +324,71 @@ void CropCloud(PointCloudC::Ptr in_cloud,
   crop.filter(*out_cloud);
 }
 
-void ClusterCloud(PointCloudC::Ptr cloud,
-                  std::vector<pcl::PointIndices>* clusters, double cluster_tolerance,
-                  double min_cluster_proportion, double max_cluster_proportion) {
+void ClusterCloud(PointCloudC::Ptr cloud, std::vector<pcl::PointIndices>* clusters,
+                  double cluster_tolerance, int min_cluster_points,
+                  double max_cluster_proportion) {
   pcl::EuclideanClusterExtraction<PointC> euclid;
   euclid.setInputCloud(cloud);
   euclid.setClusterTolerance(cluster_tolerance);
-  euclid.setMinClusterSize(std::round(min_cluster_proportion * cloud->size()));
+  euclid.setMinClusterSize(min_cluster_points);
   euclid.setMaxClusterSize(std::round(max_cluster_proportion * cloud->size()));
   euclid.extract(*clusters);
 }
 
 void GetLargestCluster(std::vector<pcl::PointIndices>* clusters,
                        PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud) {
-  pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-  pcl::ExtractIndices<PointC> handle_extract;
+  // Get the cluster with the largest number of points in the cluster
 
-  int clust_size, ind;
+  int clust_size, cluster_index;
   clust_size = 0;
-  ind = 0;
+  cluster_index = 0;
   for (size_t i = 0; i < clusters->size(); ++i) {
     if (clusters->at(i).indices.size() > clust_size) {
-      ind = i;
+      cluster_index = i;
     }
   }
 
-  *inliers = clusters->at(ind);
-  handle_extract.setInputCloud(in_cloud);
-  handle_extract.setIndices(inliers);
-  handle_extract.filter(*out_cloud);
+  pcl::PointIndices::Ptr indices(new pcl::PointIndices());
+  pcl::ExtractIndices<PointC> indices_extracter;
+  *indices = clusters->at(cluster_index);
+  indices_extracter.setInputCloud(in_cloud);
+  indices_extracter.setIndices(indices);
+  indices_extracter.filter(*out_cloud);
+}
+
+void GetClosestCluster(std::vector<pcl::PointIndices>* clusters, Eigen::Vector3d query_p,
+                       PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud) {
+  // Get the clustered points closest to the point query_p
+
+  int cluster_index;
+  float closest_squared_dist = std::numeric_limits<float>::max();
+
+  PointC* point;
+  float squared_dist;
+  float query_x = static_cast<float>(query_p(0));
+  float query_y = static_cast<float>(query_p(1));
+  float query_z = static_cast<float>(query_p(2));
+
+  for (size_t i = 0; i < clusters->size(); ++i) {
+    for (std::vector<int>::const_iterator point_it = clusters->at(i).indices.begin();
+         point_it != clusters->at(i).indices.end(); ++point_it) {
+      point = &(in_cloud->points[*point_it]);
+      squared_dist = (point->x - query_x) * (point->x - query_x) +
+             (point->y - query_y) * (point->y - query_y) +
+             (point->z - query_z) * (point->z - query_z);
+      if (squared_dist < closest_squared_dist) {
+        cluster_index = i;
+        closest_squared_dist = squared_dist;
+      }
+    }
+  }
+
+  pcl::PointIndices::Ptr indices(new pcl::PointIndices());
+  pcl::ExtractIndices<PointC> indices_extracter;
+  *indices = clusters->at(cluster_index);
+  indices_extracter.setInputCloud(in_cloud);
+  indices_extracter.setIndices(indices);
+  indices_extracter.filter(*out_cloud);
 }
 
 }  // namespace point_cloud_filtering

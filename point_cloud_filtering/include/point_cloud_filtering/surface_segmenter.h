@@ -64,10 +64,13 @@ void GetCloudMinMaxZ(const PointCloudC::Ptr cloud, float& min_z, float& max_z);
 
 void ClusterCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                   std::vector<pcl::PointIndices>* clusters,
-                  double cluster_tolerance = 0.01, double min_cluster_proportion = 0.05,
+                  double cluster_tolerance = 0.01, int min_cluster_points = 50,
                   double max_cluster_proportion = 1.0);
 
 void GetLargestCluster(std::vector<pcl::PointIndices>* clusters,
+                       PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud);
+
+void GetClosestCluster(std::vector<pcl::PointIndices>* clusters, Eigen::Vector3d query_p,
                        PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud);
 
 class SurfaceSegmenter {
