@@ -2,7 +2,7 @@
 Repo for packages related to manipulating objects and opening doors etc.
 Currently maintained by Kim Tien Ly.
 
-<img src="/doc/img/header.png" alt="Header: plane detection, object segmentation, and things going wrong" width="1000"/>
+<img src="/doc/img/header.png" alt="Header: object placement, object segmentation, and things going wrong" width="1000"/>
 
 ## Build / Installation
 * See the Wiki for TMC package [installation](https://github.com/ori-orion/orion-documentation/wiki/Installing-HSR-Packages-and-Simulator-Locally) and ORIon package [initial environment setup, prerequisite installation, and building](https://github.com/ori-orion/orion-documentation/wiki/Installing-ORIon-Packages-Locally).
