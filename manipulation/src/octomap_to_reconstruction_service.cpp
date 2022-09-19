@@ -48,6 +48,8 @@ class OctomapToReconstruction {
     Eigen::Vector3d vec_bb_min, vec_bb_max;
     tf::pointMsgToEigen(external_bb.min, vec_bb_min);
     tf::pointMsgToEigen(external_bb.max, vec_bb_max);
+
+    visual_tools->deleteAllMarkers();
     visual_tools->publishWireframeCuboid(identity_pose, vec_bb_min, vec_bb_max,
                                          rviz_visual_tools::GREEN);
 
@@ -135,7 +137,7 @@ int main(int argc, char** argv) {
 
   OctomapToReconstruction srv = OctomapToReconstruction(&nh);
 
-  ROS_INFO("Ready to convert octomap service output to tmc_reconstruction equivalent");
+  ROS_INFO("%s: service ready", ros::this_node::getName().c_str());
 
   ros::spin();
 

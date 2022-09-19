@@ -1,14 +1,16 @@
 #! /usr/bin/env python3
-""" Action server for putting objects on a surface in front.
-Currently in development
+""" Action server for putting objects on a surface.
 """
 
 import rospy
-import actionlib
-import hsrb_interface
+import tf
 import hsrb_interface.geometry as geometry
+import traceback
 
 import orion_actions.msg as msg
+from manipulation.manipulation_header import ManipulationAction
+from manipulation.collision_mapping import CollisionWorld
+from point_cloud_filtering.srv import DetectSurface
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
@@ -16,91 +18,231 @@ from hsrb_interface import robot as _robot
 _robot.enable_interactive()
 
 
-class PutObjectOnSurfaceAction(object):
-    def __init__(self, name):
-        self._action_name = "put_object_on_surface"
-        self._as = actionlib.SimpleActionServer(
-            self._action_name,
-            msg.PutObjectOnSurfaceAction,
-            execute_cb=self.execute_cb,
-            auto_start=False,
-        )
-        self._as.start()
-        rospy.loginfo("%s: Action name is: %s" % (self._action_name, name))
+class PutObjectOnSurfaceAction(ManipulationAction):
 
-        # Preparation for using the robot functions
-        self.robot = hsrb_interface.Robot()
-        self.whole_body = self.robot.try_get("whole_body")
-        self.gripper = self.robot.try_get("gripper")
-        self.whole_body.end_effector_frame = "hand_palm_link"
-        self.whole_body.looking_hand_constraint = True
-        self.tts = self.robot.try_get("default_tts")
-        self.tts.language = self.tts.ENGLISH
+    # How far above the surface to let objects drop. If too small, the object may collide
+    # with the surface if the height of the object is slightly misjudged
+    DROP_HEIGHT = 0.01
 
-        self.whole_body.planning_timeout = (
-            20.0  # Increase planning timeout. Default is 10s
+    def __init__(
+        self,
+        action_name,
+        action_msg_type=msg.PutObjectOnSurfaceAction,
+        use_collision_map=True,
+        tts_narrate=True,
+        prevent_motion=False,
+    ):
+
+        super(PutObjectOnSurfaceAction, self).__init__(
+            action_name,
+            action_msg_type,
+            use_collision_map,
+            tts_narrate,
+            prevent_motion,
         )
+
+        rospy.loginfo("%s: Waiting for /detect_surface service..." % self._action_name)
+        rospy.wait_for_service("/detect_surface")
+        self.detect_surface_service = rospy.ServiceProxy(
+            "/detect_surface", DetectSurface
+        )
+        rospy.loginfo("%s: Got /detect_surface service" % self._action_name)
 
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
-    def execute_cb(self, goal_msg):
+    def _execute_cb(self, goal_msg):
+        """
+        Action server callback for PickUpObjectAction
+        """
+
         _result = msg.PutObjectOnSurfaceResult()
         _result.result = False
 
-        # Give opportunity to preempt
-        if self._as.is_preempt_requested():
-            rospy.loginfo("%s: Preempted" % self._action_name)
-            self._as.set_preempted()
+        goal_tf = goal_msg.goal_tf
+        rospy.loginfo(
+            "%s: Requested to put object on surface %s" % (self._action_name, goal_tf)
+        )
+
+        # Look at the goal - make sure that we get all of the necessary collision map
+        rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
+        self.look_at_object(goal_tf)
+        rospy.sleep(0.5)
+
+        # Attempt to find transform from camera frame to goal_tf
+        (rgbd_goal_transform, _) = self.lookup_transform(
+            self.RGBD_CAMERA_FRAME, goal_tf
+        )
+
+        if rgbd_goal_transform is None:
+            rospy.logerr("%s: Unable to find TF frame." % self._action_name)
+            self.tts_say("I don't know the surface frame you want to put object down.")
+            self.abandon_action()
             return
 
-        try:
-            rospy.loginfo(
-                "%s: Placing gripper close to surface in front" % (self._action_name)
-            )
-            self.tts.say("I will place the object on the surface in front of me.")
-            rospy.sleep(2)
-            self.whole_body.move_to_neutral()
-            rospy.sleep(1)
+        if self.handle_possible_preemption():
+            return
 
-            # Place object of surface
-            # NEED TO CHANGE THE GOAL LOCATION HERE
-            self.whole_body.move_end_effector_pose(
-                geometry.pose(x=-0.6, y=0, z=0.2), "hand_palm_link"
+        # Evaluate collision environment
+        if self.use_collision_map:
+            self.tts_say("Evaluating a collision-free path.", duration=1.0)
+            collision_world = self.get_goal_cropped_collision_map(
+                goal_tf, crop_dist_3d=0
             )
+        else:
+            collision_world = CollisionWorld.empty(self.whole_body)
+
+        if self.handle_possible_preemption():
+            return
+
+        place_success = False
+
+        try:
+            place_success = self.do_placement(
+                goal_tf,
+                collision_world,
+                rgbd_goal_transform,
+                goal_msg.abandon_action_if_no_plane_found,
+                goal_msg.drop_object_by_metres,
+                goal_msg.check_weight_grams,
+            )
+
+        except Exception as e:
+            rospy.logerr("%s: Encountered exception %s." % (self._action_name, str(e)))
+            rospy.logerr(traceback.format_exc())
+            self.abandon_action()
+
+        if place_success:
+            self.tts_say("Place successful.")
+            # Now return to moving position
+        else:
+            self.tts_say("Failed to place")
+
+        self.finish_position(collision_world)
+
+        if place_success:
+            rospy.loginfo("%s: Placing succeeded" % self._action_name)
+            _result.result = True
+            self._as.set_succeeded(_result)
+        else:
+            rospy.loginfo("%s: Placing failed" % self._action_name)
+            _result.result = False
+            self._as.set_aborted()
+
+    def do_placement(
+        self,
+        goal_tf,
+        collision_world,
+        rgbd_goal_transform,
+        abandon_action_if_no_plane_found,
+        drop_by,
+        check_weight_grams,
+    ):
+
+        rospy.loginfo("%s: Running surface detection" % self._action_name)
+        # Segment surface
+        plane_transform = self.detect_plane_surface(rgbd_goal_transform)
+        found_plane = plane_transform is not None
+
+        if found_plane:
+            rospy.loginfo("%s: Received a plane transform." % self._action_name)
+            self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, "placement_plane")
+            target_id = "placement_plane"
+
+        elif not abandon_action_if_no_plane_found:
+            rospy.loginfo(
+                "%s: Did not receive a plane transform, continuing" % self._action_name
+            )
+            target_id = goal_tf
+
+        else:
+            rospy.loginfo(
+                "%s: Did not receive a plane transform, stopping" % self._action_name
+            )
+            return False
+
+        rel_placement_pose = self.get_relative_placement(drop_by=drop_by)
+        base_target_pose = self.get_relative_effector_pose(
+            target_id, relative=rel_placement_pose, publish_tf="goal_pose"
+        )
+
+        # Error checking in case we can't get a valid pose
+        if base_target_pose is None:
+            self.abandon_action()
+            return False
+
+        self.whole_body.end_effector_frame = self.HAND_FRAME
+
+        with collision_world:
+            self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME)
+
+            if check_weight_grams > 0.0:
+                self.wrist_force.zero()
 
             # Let go of the object
-            rospy.sleep(1)
+            self.tts_say("Placing object.")
             rospy.loginfo("%s: Opening gripper." % (self._action_name))
             self.gripper.command(1.2)
-            self.tts.say("Object placed successfully. Returning to go position.")
-            rospy.sleep(2)
+            rospy.sleep(1.0)
+
+            if check_weight_grams > 0.0:
+                weight_difference_grams = self.wrist_force.get_absolute_grams_delta()
+                rospy.loginfo("%s: Weight change is %i g." % (self._action_name, weight_difference_grams))
+
+                if weight_difference_grams < check_weight_grams:
+                    # Not enough weight change - shake the hand around
+                    self.shake_gripper()
 
             # Move the gripper back a bit then return to go
             self.whole_body.linear_weight = 100
             self.whole_body.move_end_effector_pose(
                 geometry.pose(z=-0.2), "hand_palm_link"
             )
-            rospy.loginfo("%s: Returning to go pose." % (self._action_name))
-            self.whole_body.move_to_go()
 
-            rospy.loginfo("%s: Succeeded" % self._action_name)
-            _result.result = True
-            self._as.set_succeeded(_result)
+        return True
 
-        except Exception as e:
-            rospy.loginfo(
-                "{0}: Encountered exception {1}.".format(self._action_name, str(e))
+    def shake_gripper(self):
+        self.whole_body.move_to_joint_positions({"wrist_roll_joint": -1.8})
+        self.whole_body.move_to_joint_positions({"wrist_roll_joint": 1.8})
+        self.whole_body.move_to_joint_positions({"wrist_roll_joint": 0})
+
+    def get_relative_placement(self, object_half_height=0.1, drop_by=0.0):
+        """
+        Request the surface_detection node to detect the surface location.
+        Args:
+            object_half_height: how far the carried object extends below the gripper axis
+                                (from hand-palm link). This should come from keeping track
+                                of the height of the object when it is picked up, but at
+                                the moment we don't have any component that does this.
+        """
+        return geometry.pose(
+            z=-0.08, x=object_half_height + self.DROP_HEIGHT + max(drop_by, 0.0)
+        )
+
+    def detect_plane_surface(self, plane_search_transform_in_head_frame):
+        """
+        Request the surface_detection node to detect the surface location.
+        Z component is used to find the plane axis: Z vector of transform should align
+        with where the plane axis is expected to be.
+        """
+        try:
+            res = self.detect_surface_service(
+                plane_search_transform_in_head_frame,
+                10.0,  # EPS plane search angle tolerance in degrees
+                0.2,  # Box crop size to search for plane in. Axis aligned w/ head frame.
             )
-            self.tts.say(
-                "I encountered a problem. Returning to go position and aborting placement."
-            )
-            rospy.sleep(2)
-            rospy.loginfo("%s: Returning to go pose." % (self._action_name))
-            self.whole_body.move_to_go()
-            self._as.set_aborted()
+            if res.success:
+                return res.plane_axis
+            else:
+                return None
+
+        except rospy.ServiceException as e:
+            rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
+            return None
 
 
 if __name__ == "__main__":
     rospy.init_node("put_object_on_surface_server")
-    server = PutObjectOnSurfaceAction(rospy.get_name())
+    server = PutObjectOnSurfaceAction(
+        "put_object_on_surface", use_collision_map=True,
+    )
     rospy.spin()
