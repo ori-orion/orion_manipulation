@@ -11,7 +11,6 @@
 #include <iostream>
 
 #include "geometry_msgs/PointStamped.h"
-#include "point_cloud_filtering/SegmentSurface.h"
 #include "surface_segmenter.h"
 
 
