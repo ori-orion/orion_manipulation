@@ -35,7 +35,7 @@ class PointToObjectAction(ManipulationAction):
 
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
-    def _execute_cb(self, goal_msg):
+    def _execute_cb(self, goal_msg:msg.PointToObjectGoal):
         """
         Action server callback for PointToObjectAction
         """
@@ -73,7 +73,7 @@ class PointToObjectAction(ManipulationAction):
         else:
             req_ratio = 0.5
 
-        self.tts_say("Pointing to object", duration=1.0)
+        self.tts_say(goal_msg.statement_before_pointing, duration=1.0)
 
         if self.handle_possible_preemption():
             return
@@ -95,7 +95,7 @@ class PointToObjectAction(ManipulationAction):
             self.HAND_FRAME,
         )
 
-        self.tts_say("It is over there.", duration=1.0)
+        self.tts_say(goal_msg.statement_having_pointed, duration=1.0)
         rospy.sleep(3)
         self.finish_position()
 
