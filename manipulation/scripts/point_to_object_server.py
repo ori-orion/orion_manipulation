@@ -22,16 +22,14 @@ class PointToObjectAction(ManipulationAction):
         action_msg_type=msg.PointToObjectAction,
         use_collision_map=False,
         tts_narrate=True,
-        prevent_motion=False,
-    ):
+        prevent_motion=False):
 
         super(PointToObjectAction, self).__init__(
             action_name,
             action_msg_type,
             use_collision_map,
             tts_narrate,
-            prevent_motion,
-        )
+            prevent_motion);
 
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
@@ -49,7 +47,8 @@ class PointToObjectAction(ManipulationAction):
         self.gripper.set_distance(0.01)
 
         # Attempt to find transform from hand frame to goal_tf
-        (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
+        (trans, lookup_time) = self.lookup_transform(
+            self.HAND_FRAME, goal_tf, timeout=rospy.Duration(10))
 
         if trans is None:
             rospy.logerr("Unable to find TF frame")
