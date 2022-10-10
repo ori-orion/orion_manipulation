@@ -311,7 +311,7 @@ class ManipulationAction(object):
 
         return frame_to_hand
 
-    def lookup_transform(self, source, dest):
+    def lookup_transform(self, source, dest, timeout=rospy.Duration(0)):
         """
         Lookup a transfrom and its timestamp.
         Args:
@@ -321,7 +321,7 @@ class ManipulationAction(object):
                   is a rostime.Time
         """
         try:
-            trans_stamped = self._tf_buffer.lookup_transform(source, dest, rospy.Time())
+            trans_stamped = self._tf_buffer.lookup_transform(source, dest, rospy.Time(), timeout=timeout)
             return trans_stamped.transform, trans_stamped.header.stamp
 
         except (
