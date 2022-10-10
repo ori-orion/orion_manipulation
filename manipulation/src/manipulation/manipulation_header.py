@@ -5,6 +5,7 @@
 from functools import partial
 import rospy
 import actionlib
+import numpy as np
 import math
 import tf2_ros
 import hsrb_interface
@@ -265,7 +266,7 @@ class ManipulationAction(object):
         )
 
     def get_relative_effector_pose(
-        self, goal_tf, relative=geometry.pose(), override_yaw=True, publish_tf=None,
+        self, goal_tf, relative=geometry.pose(), override_yaw=True, publish_tf=None, approach_axis=None,
     ):
         """
         Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
@@ -302,8 +303,17 @@ class ManipulationAction(object):
             trans.rotation.z = q[2]
             trans.rotation.w = q[3]
 
+        rotation_trans = tf.transformations.identity_matrix()
+        if approach_axis is not None:
+            z_axis = trans.rotation.z
+            rotation_axis = np.cross(z_axis, approach_axis)
+            rotation_angle = np.dot(z_axis, approach_axis) / (np.linalg.norm(z_axis) * np.linalg.norm(approach_axis))
+            rotation_trans = tf.transformations.rotation_matrix(rotation_angle, rotation_axis)
+
         frame_to_ref = geometry.transform_to_tuples(trans)
-        frame_to_hand = geometry.multiply_tuples(frame_to_ref, relative)
+        rotate_frame = geometry.transform_to_tuples(rotation_trans)
+
+        frame_to_hand = geometry.multiply_tuples(geometry.multiply_tuples(frame_to_ref, rotate_frame), relative) # Double Check!
 
         if publish_tf is not None:
             relative_transform = geometry.tuples_to_transform(frame_to_hand)
