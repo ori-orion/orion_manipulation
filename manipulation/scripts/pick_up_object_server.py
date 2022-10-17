@@ -96,11 +96,15 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))
 
         approach_axis = goal_msg.approach_axis
-        if approach_axis != []:
-            if len(approach_axis) != 3:
-                rospy.logerr("Approach direction vector not given in correct format")
-                self.abandon_action()
-                return
+        if len(approach_axis) != 0 and len(approach_axis) != 3:
+            rospy.logerr("Approach direction vector not given in correct format")
+            self.abandon_action()
+            return
+        if len(approach_axis) == 0 or approach_axis == (0, 0, 0):
+            approach_axis = None
+        rospy.loginfo("Requested pick-up direction: {}".format("default" if approach_axis is None else str(approach_axis)))
+
+        extend_distance = goal_msg.extend_distance
 
         # Attempt to find transform from hand frame to goal_tf
         (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
@@ -153,7 +157,7 @@ class PickUpObjectAction(ManipulationAction):
             return
 
         grasp_success = self.grab_object(
-            goal_tf, collision_world, self.PREGRASP_POSE, self.GRASP_POSE, approach_axis
+            goal_tf, collision_world, self.PREGRASP_POSE, self.GRASP_POSE, approach_axis, extend_distance
         )
 
         if self.handle_possible_preemption():
@@ -176,7 +180,7 @@ class PickUpObjectAction(ManipulationAction):
             self._as.set_aborted()
 
     def grab_object(
-        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis=None
+        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis=None, extend_distance=0
     ):
         self.whole_body.end_effector_frame = self.HAND_FRAME
 
@@ -199,7 +203,7 @@ class PickUpObjectAction(ManipulationAction):
             if not successfully_positioned:
                 rospy.loginfo("%s: Using fixed grasp pose." % self._action_name)
                 successfully_positioned = self.position_end_effector_fixed_grasp(
-                    goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis
+                    goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis, extend_distance
                 )
 
             if not successfully_positioned:
@@ -320,7 +324,7 @@ class PickUpObjectAction(ManipulationAction):
         return True
 
     def position_end_effector_fixed_grasp(
-        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis=None
+        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis=None, extend_distance=0
     ):
         """
         Move to a valid grasping position using a fixed approach from robot to target.
@@ -330,7 +334,7 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
 
         base_target_pose = self.get_relative_effector_pose(
-            goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis
+            goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis, extend_distance=extend_distance
         )
 
         # Error checking in case we can't get a valid pose

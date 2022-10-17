@@ -9,7 +9,7 @@ import actionlib
 import orion_actions.msg as msg
 
 
-def pick_up_object_client(goal_tf, approach_axis=None):
+def pick_up_object_client(goal_tf, approach_axis=None, extend_distance=0):
     client = actionlib.SimpleActionClient("pick_up_object", msg.PickUpObjectAction)
 
     print("Waiting for server")
@@ -17,7 +17,7 @@ def pick_up_object_client(goal_tf, approach_axis=None):
     print("Finished waiting for server")
 
     # Creates a goal to send to the action server.
-    goal_msg = msg.PickUpObjectGoal(goal_tf=goal_tf)
+    goal_msg = msg.PickUpObjectGoal(goal_tf=goal_tf, approach_axis=approach_axis, extend_distance=extend_distance)
 
     # Sends the goal to the action server.
     client.send_goal(goal_msg)
@@ -31,8 +31,9 @@ def pick_up_object_client(goal_tf, approach_axis=None):
 def arg_parser():
     parser = argparse.ArgumentParser(description ='sort some integers.')
 
-    parser.add_argument('goal_tf', type = str)
-    parser.add_argument('--approach_axis', type = str)
+    parser.add_argument('goal_tf', type=str, nargs='?', default="")
+    parser.add_argument('-a', '--approach_axis', type=str, default=None)
+    parser.add_argument('-e', '--extend_distance', type=float, default=0)
 
     return parser
 
@@ -45,22 +46,22 @@ def str_to_tuple(txt):
 if __name__ == "__main__":
     rospy.init_node("pick_up_object_client")
 
-    # args = arg_parser().parse_args()
-    #
-    # goal_tf = args.goal_tf.strip()
-    # approach_axis = args.approach_axis
+    args = arg_parser().parse_args()
 
-    # if approach_axis is not None:
-    #     approach_axis = str_to_tuple(approach_axis)
+    goal_tf = args.goal_tf.strip()
+    approach_axis = args.approach_axis
+    extend_distance = args.extend_distance
 
-    if len(sys.argv) == 2:
-        goal_tf = sys.argv[1]
-    else:
+    if approach_axis is not None:
+        approach_axis = str_to_tuple(approach_axis)
+
+    if goal_tf == "":
         print("Failed to provide tf frame as argument - defaulting to ar_marker/201")
         goal_tf = "ar_marker/201"
 
-    # print(approach_axis)
-    print(goal_tf)
+    if extend_distance != 0 and approach_axis is None:
+        print("Extension Direction should be specified through approach_direction argument")
+        print("extend_distance not used")
 
-    result = pick_up_object_client(goal_tf)
+    result = pick_up_object_client(goal_tf, approach_axis, extend_distance)
     print("Result:" + str(result.result))
