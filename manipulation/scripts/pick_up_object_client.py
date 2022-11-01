@@ -9,7 +9,7 @@ import actionlib
 import orion_actions.msg as msg
 
 
-def pick_up_object_client(goal_tf, approach_axis=None, extend_distance=0):
+def pick_up_object_client(goal_tf, approach_axis=None, extend_distance=0, is_bin_bag=False):
     client = actionlib.SimpleActionClient("pick_up_object", msg.PickUpObjectAction)
 
     print("Waiting for server")
@@ -17,7 +17,7 @@ def pick_up_object_client(goal_tf, approach_axis=None, extend_distance=0):
     print("Finished waiting for server")
 
     # Creates a goal to send to the action server.
-    goal_msg = msg.PickUpObjectGoal(goal_tf=goal_tf, approach_axis=approach_axis, extend_distance=extend_distance)
+    goal_msg = msg.PickUpObjectGoal(goal_tf=goal_tf, approach_axis=approach_axis, extend_distance=extend_distance, is_bin_bag=is_bin_bag)
 
     # Sends the goal to the action server.
     client.send_goal(goal_msg)
@@ -34,6 +34,7 @@ def arg_parser():
     parser.add_argument('goal_tf', type=str, nargs='?', default="")
     parser.add_argument('-a', '--approach_axis', type=str, default=None)
     parser.add_argument('-e', '--extend_distance', type=float, default=0)
+    parser.add_argument('-b', '--bin_bag', action='store_true')
 
     return parser
 
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     goal_tf = args.goal_tf.strip()
     approach_axis = args.approach_axis
     extend_distance = args.extend_distance
+    is_bin_bag = args.bin_bag
 
     if approach_axis is not None:
         approach_axis = str_to_tuple(approach_axis)
@@ -63,5 +65,5 @@ if __name__ == "__main__":
         print("Extension Direction should be specified through approach_direction argument")
         print("extend_distance not used")
 
-    result = pick_up_object_client(goal_tf, approach_axis, extend_distance)
+    result = pick_up_object_client(goal_tf, approach_axis, extend_distance, is_bin_bag)
     print("Result:" + str(result.result))

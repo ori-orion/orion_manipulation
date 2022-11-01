@@ -47,6 +47,7 @@ class PickUpObjectAction(ManipulationAction):
     PREGRASP_POSE = geometry.pose(z=-0.08, ek=0)
     GRASP_POSE = geometry.pose(z=0.06)  # Relative to gripper
     LIFT_POSE = geometry.pose(x=0.03)  # Relative to gripper, to lift off surface
+    BIN_PREGRASP_DISTANCE = 0.2
 
     def __init__(
         self,
@@ -105,6 +106,7 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo("Requested pick-up direction: {}".format("default" if approach_axis is None else str(approach_axis)))
 
         extend_distance = goal_msg.extend_distance
+        is_bin_bag = goal_msg.is_bin_bag
 
         # Attempt to find transform from hand frame to goal_tf
         (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
@@ -114,6 +116,21 @@ class PickUpObjectAction(ManipulationAction):
             self.tts_say("I don't know the object you want picked up.", duration=2.0)
             self.abandon_action()
             return
+
+        pregrasp_pose = self.PREGRASP_POSE
+        grasp_pose = self.GRASP_POSE
+        lift_pose = self.LIFT_POSE
+
+        if extend_distance != 0:
+            grasp_pose = geometry.pose(z=extend_distance, ek=0)
+
+        if is_bin_bag:
+            (goal_trans, _) = self.lookup_transform(self.BASE_FRAME, goal_tf)
+            height = goal_trans.translation.z
+
+            pregrasp_pose = geometry.pose(z=-self.BIN_PREGRASP_DISTANCE)
+            grasp_pose = geometry.pose(z=extend_distance+self.BIN_PREGRASP_DISTANCE)
+            lift_pose = geometry.pose(z=-height-extend_distance)
 
         # Look at the object - make sure that we get all of the necessary collision map
         rospy.loginfo("%s: Moving head to look at the object." % self._action_name)
@@ -157,7 +174,7 @@ class PickUpObjectAction(ManipulationAction):
             return
 
         grasp_success = self.grab_object(
-            goal_tf, collision_world, self.PREGRASP_POSE, self.GRASP_POSE, approach_axis, extend_distance
+            goal_tf, collision_world, pregrasp_pose, grasp_pose, lift_pose, approach_axis
         )
 
         if self.handle_possible_preemption():
@@ -180,7 +197,7 @@ class PickUpObjectAction(ManipulationAction):
             self._as.set_aborted()
 
     def grab_object(
-        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis=None, extend_distance=0
+        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, chosen_lift_pose, approach_axis=None
     ):
         self.whole_body.end_effector_frame = self.HAND_FRAME
 
@@ -203,7 +220,7 @@ class PickUpObjectAction(ManipulationAction):
             if not successfully_positioned:
                 rospy.loginfo("%s: Using fixed grasp pose." % self._action_name)
                 successfully_positioned = self.position_end_effector_fixed_grasp(
-                    goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis, extend_distance
+                    goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis
                 )
 
             if not successfully_positioned:
@@ -215,7 +232,7 @@ class PickUpObjectAction(ManipulationAction):
             rospy.loginfo("%s: Object grasped." % self._action_name)
 
             self.whole_body.move_end_effector_pose(
-                self.LIFT_POSE, self.whole_body.end_effector_frame
+                chosen_lift_pose, self.whole_body.end_effector_frame
             )
 
             return True
@@ -324,7 +341,7 @@ class PickUpObjectAction(ManipulationAction):
         return True
 
     def position_end_effector_fixed_grasp(
-        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis=None, extend_distance=0
+        self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, approach_axis=None
     ):
         """
         Move to a valid grasping position using a fixed approach from robot to target.
@@ -334,7 +351,7 @@ class PickUpObjectAction(ManipulationAction):
         rospy.loginfo("%s: Calculating grasp pose." % (self._action_name))
 
         base_target_pose = self.get_relative_effector_pose(
-            goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis, extend_distance=extend_distance
+            goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis
         )
 
         # Error checking in case we can't get a valid pose

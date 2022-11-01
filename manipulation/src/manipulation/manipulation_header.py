@@ -266,7 +266,7 @@ class ManipulationAction(object):
         )
 
     def get_relative_effector_pose(
-        self, goal_tf, relative=geometry.pose(), override_yaw=True, publish_tf=None, approach_axis=None, extend_distance=0
+        self, goal_tf, relative=geometry.pose(), override_yaw=True, publish_tf=None, approach_axis=None
     ):
         """
         Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
@@ -294,31 +294,27 @@ class ManipulationAction(object):
             # This ensures the hand approaches from the direction of the robot
             yaw = math.atan2(trans.translation.y, trans.translation.x)
 
+            # roll pitch yaw
+            # hard coded values are to ensure z direction points away from robot, with x
+            # direction pointing upwards
             base_matrix = tf.transformations.euler_matrix(1.57, -1.57, 1.57 + yaw)
 
             rotation_matrix = tf.transformations.identity_matrix()
             if approach_axis is not None:
                 z_axis = base_matrix[:3, 2]
 
+                # Calculate the rotation matrix to let robot aproach from the specified direction
                 rotation_axis = np.cross(z_axis, approach_axis)
                 rotation_angle = np.arccos(np.dot(z_axis, approach_axis) / (np.linalg.norm(z_axis) * np.linalg.norm(approach_axis)))
                 rotation_matrix = tf.transformations.rotation_matrix(rotation_angle, rotation_axis)
 
-            # roll pitch yaw
-            # hard coded values are to ensure z direction points away from robot, with x
-            # direction pointing upwards
+            # Apply Rotation
             q = tf.transformations.quaternion_from_matrix(np.dot(rotation_matrix, base_matrix))
 
             trans.rotation.x = q[0]
             trans.rotation.y = q[1]
             trans.rotation.z = q[2]
             trans.rotation.w = q[3]
-
-        if extend_distance != 0 and approach_axis is not None:
-            displacement = extend_distance * np.array(approach_axis) / np.linalg.norm(approach_axis)
-            trans.translation.x += displacement[0]
-            trans.translation.y += displacement[1]
-            trans.translation.z += displacement[2]
 
         frame_to_ref = geometry.transform_to_tuples(trans)
         frame_to_hand = geometry.multiply_tuples(frame_to_ref, relative)
