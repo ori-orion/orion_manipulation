@@ -176,7 +176,7 @@ class ManipulationAction(object):
                 x=action_start_pose[0],
                 y=action_start_pose[1],
                 yaw=action_start_pose[2],
-                timeout=10.0,
+                timeout=20.0,
             )
 
         if self.RETURN_TO_START_GAZE_AFTER_ACTION:
