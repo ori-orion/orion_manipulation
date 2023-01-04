@@ -47,7 +47,7 @@ class PickUpObjectAction(ManipulationAction):
     PREGRASP_POSE = geometry.pose(z=-0.08, ek=0)
     GRASP_POSE = geometry.pose(z=0.06)  # Relative to gripper
     LIFT_POSE = geometry.pose(x=0.03)  # Relative to gripper, to lift off surface
-    BIN_PREGRASP_DISTANCE = 0.2
+    BIN_PREGRASP_DISTANCE = 0.2 # Relative to the handle of the bin bag
 
     def __init__(
         self,
@@ -125,12 +125,10 @@ class PickUpObjectAction(ManipulationAction):
             grasp_pose = geometry.pose(z=extend_distance, ek=0)
 
         if is_bin_bag:
-            (goal_trans, _) = self.lookup_transform(self.BASE_FRAME, goal_tf)
-            height = goal_trans.translation.z
+            pregrasp_pose = geometry.pose(z=-extend_distance-self.BIN_PREGRASP_DISTANCE)
+            grasp_pose = geometry.pose(z=self.BIN_PREGRASP_DISTANCE)
+            lift_pose = geometry.pose(z=-self.BIN_PREGRASP_DISTANCE)
 
-            pregrasp_pose = geometry.pose(z=-self.BIN_PREGRASP_DISTANCE)
-            grasp_pose = geometry.pose(z=extend_distance+self.BIN_PREGRASP_DISTANCE)
-            lift_pose = geometry.pose(z=-height-extend_distance)
 
         # Look at the object - make sure that we get all of the necessary collision map
         rospy.loginfo("%s: Moving head to look at the object." % self._action_name)

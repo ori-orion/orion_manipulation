@@ -54,6 +54,9 @@ if __name__ == "__main__":
     extend_distance = args.extend_distance
     is_bin_bag = args.bin_bag
 
+    if is_bin_bag:
+        approach_axis = "(0,0,-1)"
+
     if approach_axis is not None:
         approach_axis = str_to_tuple(approach_axis)
 
