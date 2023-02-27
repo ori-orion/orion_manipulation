@@ -1,0 +1,7 @@
+string goal_tf
+float32[] dims
+float32 maxHeight
+float32 radius
+int32 candidateNum
+---
+float32[] position
