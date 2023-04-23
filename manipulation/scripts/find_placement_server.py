@@ -52,11 +52,12 @@ class PlacementFinder(ManipulationAction):
             candidatePos = Point(origin_x + math.cos(angle_to_candidate) * radius,
                                  origin_y + math.sin(angle_to_candidate) * radius,
                                  origin_z)
-            bbx = BoundingBox(
-                min=Point(candidatePos.x - dims[0]/2, candidatePos.y - dims[1]/2, candidatePos.z - dims[2]/2),
-                max=Point(candidatePos.x + dims[0]/2, candidatePos.y + dims[1]/2, candidatePos.z + dims[2]/2),
-            )
-            checkerResp = self.placement_checking_service(bbx, candidatePos, maxHeight)
+            # bbx = BoundingBox(
+            #     min=Point(candidatePos.x - dims[0]/2, candidatePos.y - dims[1]/2, candidatePos.z - dims[2]/2),
+            #     max=Point(candidatePos.x + dims[0]/2, candidatePos.y + dims[1]/2, candidatePos.z + dims[2]/2),
+            # )
+            dimsInput = Point(*dims)
+            checkerResp = self.placement_checking_service(candidatePos, dimsInput, maxHeight)
 
             if (checkerResp.isAvailable and checkerResp.isSupported):
                 resp.position = (candidatePos.x, candidatePos.y, candidatePos.z)

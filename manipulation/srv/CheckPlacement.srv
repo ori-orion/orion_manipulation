@@ -1,5 +1,5 @@
-BoundingBox object_bb
 geometry_msgs/Point center
+geometry_msgs/Point dims
 float32 maxHeight
 ---
 bool isAvailable

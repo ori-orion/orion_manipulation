@@ -33,12 +33,14 @@ class OctomapPlacementChecker {
     return octomap::point3d(ptMsg.x, ptMsg.y, ptMsg.z);
   }
 
+  static inline tuple<octomap::point3d, octomap::point3d> msgToBBxCorners(const geometry_msgs::Point& center, const geometry_msgs::Point& dims) {
+    return {octomap::point3d(center.x + dims.x / 2, center.y + dims.y / 2, center.z + dims.z / 2),
+            octomap::point3d(center.x - dims.x / 2, center.y - dims.y / 2, center.z - dims.z / 2)};
+  }
 
   bool checkBbxClearance(octomap::OcTree* octree,
-                        manipulation::BoundingBox bb){
-    octomap::point3d bb_min = pointMsgToOctomap(bb.min);
-    octomap::point3d bb_max = pointMsgToOctomap(bb.max);
-
+                        octomap::point3d bb_max,
+                        octomap::point3d bb_min){
     // Check if given space is occupied
     int num_boxes = 0;
     for (octomap::OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(bb_min, bb_max),
@@ -53,10 +55,32 @@ class OctomapPlacementChecker {
 
   bool checkSupported(octomap::OcTree* octree,
                     geometry_msgs::Point& _origin,
-                    double maxRange){
-    octomap::point3d origin = pointMsgToOctomap(_origin);
-    octomap::point3d end = octomap::point3d(0, 0, 0);
-    bool flag = octree->castRay(origin, octomap::point3d(0, 0, -1), end, true, maxRange);
+                    geometry_msgs::Point& dims,
+                    double maxRange,
+                    bool checkCorners = false){
+    bool flag = true;
+
+    if (!checkCorners){
+        octomap::point3d origin = pointMsgToOctomap(_origin);
+        octomap::point3d end = octomap::point3d(0, 0, 0);
+        flag = octree->castRay(origin, octomap::point3d(0, 0, -1), end, true, maxRange);
+    }
+    else{
+        octomap::point3d origin;
+        int coef[2] = {1, -1};
+
+        for (int ii: coef){
+            for (int jj: coef){
+                origin = octomap::point3d(_origin.x + ii * dims.x / 2, _origin.y + jj * dims.y / 2, _origin.z);
+                octomap::point3d end = octomap::point3d(0, 0, 0);
+                bool tempFlag = octree->castRay(origin, octomap::point3d(0, 0, -1), end, true, maxRange);
+
+                if (!tempFlag){
+                    return false;
+                }
+            }
+        }
+    }
 
     return flag;
   }
@@ -75,8 +99,11 @@ class OctomapPlacementChecker {
     octomap::AbstractOcTree* tree = octomap_msgs::binaryMsgToMap(srv_data.response.map);
     octomap::OcTree* octree = dynamic_cast<octomap::OcTree*>(tree);
 
-    bool isAvailable = checkBbxClearance(octree, req.object_bb);
-    bool isSupported = checkSupported(octree, req.center, req.maxHeight);
+    octomap::point3d bb_max, bb_min;
+    tie(bb_max, bb_min) = msgToBBxCorners(req.center, req.dims);
+
+    bool isAvailable = checkBbxClearance(octree, bb_max, bb_min);
+    bool isSupported = checkSupported(octree, req.center, req.dims, req.maxHeight, true);
 
     res.isAvailable = isAvailable;
     res.isSupported = isSupported;
