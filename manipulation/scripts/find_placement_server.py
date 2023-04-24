@@ -27,6 +27,7 @@ class PlacementFinder(ManipulationAction):
 
     def find_placement(self, goal_msg):
         resp = FindPlacementResponse()
+        foundFlag = False
 
         goal_tf = goal_msg.goal_tf
         dims = goal_msg.dims
@@ -52,15 +53,14 @@ class PlacementFinder(ManipulationAction):
             candidatePos = Point(origin_x + math.cos(angle_to_candidate) * radius,
                                  origin_y + math.sin(angle_to_candidate) * radius,
                                  origin_z)
-            # bbx = BoundingBox(
-            #     min=Point(candidatePos.x - dims[0]/2, candidatePos.y - dims[1]/2, candidatePos.z - dims[2]/2),
-            #     max=Point(candidatePos.x + dims[0]/2, candidatePos.y + dims[1]/2, candidatePos.z + dims[2]/2),
-            # )
+
             dimsInput = Point(*dims)
             checkerResp = self.placement_checking_service(candidatePos, dimsInput, maxHeight)
 
             if (checkerResp.isAvailable and checkerResp.isSupported):
-                resp.position = (candidatePos.x, candidatePos.y, candidatePos.z)
+                if not foundFlag:
+                    resp.position = (candidatePos.x, candidatePos.y, candidatePos.z)
+                    foundFlag = True
 
                 pose = geometry.Pose(
                     geometry.Vector3(
@@ -69,7 +69,6 @@ class PlacementFinder(ManipulationAction):
                     geometry.Quaternion(0.5, 0.5, 0.5, 0.5), # TODO: Use a better Quaternion
                 )
                 self.publish_goal_pose_tf(pose, self.MAP_FRAME, "placement_candidate" + str(ii))
-                # return resp
 
         return resp
 
