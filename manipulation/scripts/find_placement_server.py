@@ -30,15 +30,20 @@ class PlacementFinder(ManipulationAction):
         foundFlag = False
 
         goal_tf = goal_msg.goal_tf
+        goal_pos = goal_msg.goal_pos
         dims = goal_msg.dims
         maxHeight, radius, candidateNum = goal_msg.maxHeight, goal_msg.radius, goal_msg.candidateNum
 
-        (origin_tf, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
-        origin_x, origin_y, origin_z = origin_tf.translation.x, origin_tf.translation.y, origin_tf.translation.z
+        if goal_tf != "":
+            (origin_tf, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
+            origin_x, origin_y, origin_z = origin_tf.translation.x, origin_tf.translation.y, origin_tf.translation.z
+        else:
+            assert len(goal_pos) == 3, "Dimensions of the goal TF position not set correctly"
+            origin_x, origin_y, origin_z = goal_pos
 
         (base_tf, _) = self.lookup_transform(self.MAP_FRAME, self.BASE_FRAME)
-        angle_to_base = math.atan2(base_tf.translation.y - origin_tf.translation.y,
-                                   base_tf.translation.x - origin_tf.translation.x)
+        angle_to_base = math.atan2(base_tf.translation.y - origin_y,
+                                   base_tf.translation.x - origin_x)
 
         # Define Bounding Box
         assert len(dims) == 1 or len(dims) == 3, "Dimensions of the bounding box not set correctly"
