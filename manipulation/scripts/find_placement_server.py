@@ -63,8 +63,10 @@ class PlacementFinder(ManipulationAction):
             checkerResp = self.placement_checking_service(candidatePos, dimsInput, maxHeight)
 
             if (checkerResp.isAvailable and checkerResp.isSupported):
+                tf_name = "placement_candidate"+str(ii);
                 if not foundFlag:
                     resp.position = (candidatePos.x, candidatePos.y, candidatePos.z)
+                    resp.best_tf = tf_name;
                     foundFlag = True
 
                 pose = geometry.Pose(
@@ -73,7 +75,7 @@ class PlacementFinder(ManipulationAction):
                     ),
                     geometry.Quaternion(0.5, 0.5, 0.5, 0.5), # TODO: Use a better Quaternion
                 )
-                self.publish_goal_pose_tf(pose, self.MAP_FRAME, "placement_candidate" + str(ii))
+                self.publish_goal_pose_tf(pose, self.MAP_FRAME, tf_name)
 
         return resp
 
