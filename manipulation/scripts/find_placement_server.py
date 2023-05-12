@@ -26,6 +26,7 @@ class PlacementFinder(ManipulationAction):
         rospy.loginfo("%s: Initialised. Ready for clients." % self.__class__.__name__)
 
     def find_placement(self, goal_msg):
+        print("START find_placement");
         resp = FindPlacementResponse()
         foundFlag = False
 
@@ -54,6 +55,7 @@ class PlacementFinder(ManipulationAction):
         idx = list(range(candidateNum // 2 - candidateNum, candidateNum // 2))
         idx.sort(key=abs)
         for ii in idx:
+            print("\tChecking candidate {0}".format(ii));
             angle_to_candidate = angle_to_base + ii * angleStep
             candidatePos = Point(origin_x + math.cos(angle_to_candidate) * radius,
                                  origin_y + math.sin(angle_to_candidate) * radius,
@@ -68,6 +70,7 @@ class PlacementFinder(ManipulationAction):
                     resp.position = (candidatePos.x, candidatePos.y, candidatePos.z)
                     resp.best_tf = tf_name;
                     foundFlag = True
+                    print("\tGoal found");
 
                 pose = geometry.Pose(
                     geometry.Vector3(
@@ -76,6 +79,8 @@ class PlacementFinder(ManipulationAction):
                     geometry.Quaternion(0.5, 0.5, 0.5, 0.5), # TODO: Use a better Quaternion
                 )
                 self.publish_goal_pose_tf(pose, self.MAP_FRAME, tf_name)
+
+        print("Finished");
 
         return resp
 
