@@ -1,4 +1,6 @@
+#! /usr/bin/env python3
 import rospy;
+
 
 from pick_up_object_server import PickUpObjectAction;
 from put_object_on_surface_server import PutObjectOnSurfaceAction;
