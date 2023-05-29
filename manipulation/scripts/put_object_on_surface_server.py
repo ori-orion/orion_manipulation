@@ -227,7 +227,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             res = self.detect_surface_service(
                 plane_search_transform_in_head_frame,
                 10.0,  # EPS plane search angle tolerance in degrees
-                0.2,  # Box crop size to search for plane in. Axis aligned w/ head frame.
+                0.3,  # Box crop size to search for plane in. Axis aligned w/ head frame.
             )
             if res.success:
                 return res.plane_axis
