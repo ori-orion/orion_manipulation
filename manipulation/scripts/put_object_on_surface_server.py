@@ -66,11 +66,11 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         # Look at the goal - make sure that we get all of the necessary collision map
         rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
         self.look_at_object(goal_tf)
-        rospy.sleep(0.5)
+        # rospy.sleep(0.5)
 
         # Attempt to find transform from camera frame to goal_tf
         (rgbd_goal_transform, _) = self.lookup_transform(
-            self.RGBD_CAMERA_FRAME, goal_tf
+            self.RGBD_CAMERA_FRAME, goal_tf, timeout=rospy.Duration(5)
         )
 
         if rgbd_goal_transform is None:
