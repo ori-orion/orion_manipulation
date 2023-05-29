@@ -86,8 +86,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         if self.use_collision_map:
             self.tts_say("Evaluating a collision-free path.", duration=1.0)
             collision_world = self.get_goal_cropped_collision_map(
-                goal_tf, crop_dist_3d=0
-            )
+                goal_tf, crop_dist_3d=0)
         else:
             collision_world = CollisionWorld.empty(self.whole_body)
 

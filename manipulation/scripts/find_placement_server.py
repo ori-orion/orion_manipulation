@@ -76,7 +76,7 @@ class PlacementFinder(ManipulationAction):
                 
                 pose = geometry.Pose(
                     geometry.Vector3(
-                        candidatePos.x, candidatePos.y, candidatePos.z
+                        candidatePos.x, candidatePos.y, candidatePos.z+0.05
                     ),
                     geometry.Quaternion(0.5, 0.5, 0.5, 0.5), # TODO: Use a better Quaternion
                 )
