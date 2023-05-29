@@ -32,7 +32,6 @@ class PlacementFinder(ManipulationAction):
     def find_placement(self, goal_msg):
         print("START find_placement");
         resp = FindPlacementResponse()
-        foundFlag = False
 
         goal_tf = goal_msg.goal_tf
         goal_pos = goal_msg.goal_pos
@@ -70,12 +69,11 @@ class PlacementFinder(ManipulationAction):
 
             if (checkerResp.isAvailable and checkerResp.isSupported):
                 tf_name = "placement_candidate"+str(ii);
-                if not foundFlag:
-                    resp.position = (candidatePos.x, candidatePos.y, candidatePos.z)
-                    resp.best_tf = tf_name;
-                    foundFlag = True
-                    print("\tGoal found");
-
+                
+                resp.position = (candidatePos.x, candidatePos.y, candidatePos.z)
+                resp.best_tf = tf_name;
+                print("\tGoal found");
+                
                 pose = geometry.Pose(
                     geometry.Vector3(
                         candidatePos.x, candidatePos.y, candidatePos.z
@@ -83,6 +81,8 @@ class PlacementFinder(ManipulationAction):
                     geometry.Quaternion(0.5, 0.5, 0.5, 0.5), # TODO: Use a better Quaternion
                 )
                 self.publish_goal_pose_tf(pose, self.MAP_FRAME, tf_name)
+                
+                break
 
         print("Finished");
 
