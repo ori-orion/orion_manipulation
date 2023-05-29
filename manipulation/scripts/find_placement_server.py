@@ -5,6 +5,7 @@ import math
 import hsrb_interface.geometry as geometry
 
 import rospy
+import tf2_ros
 from manipulation.msg import BoundingBox
 from geometry_msgs.msg import Transform, TransformStamped, Point
 from manipulation.srv import CheckPlacement, FindPlacement, FindPlacementResponse
@@ -23,6 +24,9 @@ class PlacementFinder(ManipulationAction):
         rospy.wait_for_service("/CheckPlacement")
         self.placement_checking_service = rospy.ServiceProxy( "/CheckPlacement", CheckPlacement)
         self.placement_finding_service = rospy.Service("find_placement_around", FindPlacement, self.find_placement)
+        
+        self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
+
         rospy.loginfo("%s: Initialised. Ready for clients." % self.__class__.__name__)
 
     def find_placement(self, goal_msg):
@@ -83,6 +87,24 @@ class PlacementFinder(ManipulationAction):
         print("Finished");
 
         return resp
+
+    def publish_tf(self, transform, source_frame_id, child_frame_id):
+        """
+        Convenience function to publish a transform.
+        Args:
+            transform: geometry_msgs Transform type, from source_frame to child_frame
+            source_frame_id: name of source frame
+            child_frame_id: name of child frame
+        
+        Overrides the function in ManipulationHeader
+        """
+        rospy.loginfo("Using the overridden publish_tf");
+        t = TransformStamped()
+        t.header.stamp = rospy.Time.now()
+        t.header.frame_id = source_frame_id
+        t.child_frame_id = child_frame_id
+        t.transform = transform
+        self.static_broadcaster.sendTransform(t)
 
 if __name__ == "__main__":
     rospy.init_node("find_placement_server_node")
