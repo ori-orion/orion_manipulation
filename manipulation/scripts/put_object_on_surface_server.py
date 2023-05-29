@@ -204,7 +204,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         self.whole_body.move_to_joint_positions({"wrist_roll_joint": 1.8})
         self.whole_body.move_to_joint_positions({"wrist_roll_joint": 0})
 
-    def get_relative_placement(self, object_half_height=0.5, drop_by=0.0):
+    def get_relative_placement(self, object_half_height=0.05, drop_by=0.0):
         """
         Request the surface_detection node to detect the surface location.
         Args:
