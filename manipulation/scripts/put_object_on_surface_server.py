@@ -144,8 +144,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         if found_plane:
             rospy.loginfo("%s: Received a plane transform." % self._action_name)
-            self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, "placement_plane")
             target_id = "placement_plane"
+            self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, target_id)
 
         elif not abandon_action_if_no_plane_found:
             rospy.loginfo(
@@ -204,7 +204,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         self.whole_body.move_to_joint_positions({"wrist_roll_joint": 1.8})
         self.whole_body.move_to_joint_positions({"wrist_roll_joint": 0})
 
-    def get_relative_placement(self, object_half_height=0.1, drop_by=0.0):
+    def get_relative_placement(self, object_half_height=0.5, drop_by=0.0):
         """
         Request the surface_detection node to detect the surface location.
         Args:
