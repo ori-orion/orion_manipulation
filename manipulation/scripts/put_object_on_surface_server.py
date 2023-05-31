@@ -214,7 +214,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                                 the moment we don't have any component that does this.
         """
         return geometry.pose(
-            x=-0.08, z=object_half_height + self.DROP_HEIGHT + max(drop_by, 0.0)
+            z=-0.08, x=object_half_height + self.DROP_HEIGHT + max(drop_by, 0.0)
         )
 
     def detect_plane_surface(self, plane_search_transform_in_head_frame):
