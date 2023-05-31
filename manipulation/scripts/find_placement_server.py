@@ -78,7 +78,7 @@ class PlacementFinder(ManipulationAction):
                     geometry.Vector3(
                         candidatePos.x, candidatePos.y, candidatePos.z
                     ),
-                    geometry.Quaternion(0.5, 0.5, 0.5, 0.5), # TODO: Use a better Quaternion
+                    geometry.Quaternion(0, 0, 0, 1), # TODO: Use a better Quaternion
                 )
                 self.publish_goal_pose_tf(pose, self.MAP_FRAME, tf_name)
                 
