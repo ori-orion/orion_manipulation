@@ -311,7 +311,7 @@ class ManipulationAction(object):
 
         return frame_to_hand
 
-    def lookup_transform(self, source, dest, timeout=rospy.Duration(0)):
+    def lookup_transform(self, source, dest, timeout=rospy.Duration(5)):
         """
         Lookup a transfrom and its timestamp.
         Args:
