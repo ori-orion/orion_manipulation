@@ -66,11 +66,11 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         # Look at the goal - make sure that we get all of the necessary collision map
         rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
         self.look_at_object(goal_tf)
-        rospy.sleep(0.5)
+        # rospy.sleep(0.5)
 
         # Attempt to find transform from camera frame to goal_tf
         (rgbd_goal_transform, _) = self.lookup_transform(
-            self.RGBD_CAMERA_FRAME, goal_tf
+            self.RGBD_CAMERA_FRAME, goal_tf, timeout=rospy.Duration(5)
         )
 
         if rgbd_goal_transform is None:
@@ -86,8 +86,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         if self.use_collision_map:
             self.tts_say("Evaluating a collision-free path.", duration=1.0)
             collision_world = self.get_goal_cropped_collision_map(
-                goal_tf, crop_dist_3d=0
-            )
+                goal_tf, crop_dist_3d=0)
         else:
             collision_world = CollisionWorld.empty(self.whole_body)
 
@@ -145,8 +144,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         if found_plane:
             rospy.loginfo("%s: Received a plane transform." % self._action_name)
-            self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, "placement_plane")
             target_id = "placement_plane"
+            self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, target_id)
 
         elif not abandon_action_if_no_plane_found:
             rospy.loginfo(
@@ -205,7 +204,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         self.whole_body.move_to_joint_positions({"wrist_roll_joint": 1.8})
         self.whole_body.move_to_joint_positions({"wrist_roll_joint": 0})
 
-    def get_relative_placement(self, object_half_height=0.1, drop_by=0.0):
+    def get_relative_placement(self, object_half_height=0.05, drop_by=0.0):
         """
         Request the surface_detection node to detect the surface location.
         Args:
@@ -227,8 +226,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         try:
             res = self.detect_surface_service(
                 plane_search_transform_in_head_frame,
-                10.0,  # EPS plane search angle tolerance in degrees
-                0.2,  # Box crop size to search for plane in. Axis aligned w/ head frame.
+                15.0,  # EPS plane search angle tolerance in degrees
+                0.3,  # Box crop size to search for plane in. Axis aligned w/ head frame.
             )
             if res.success:
                 return res.plane_axis
