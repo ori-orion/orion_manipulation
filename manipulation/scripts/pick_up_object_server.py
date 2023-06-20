@@ -91,6 +91,7 @@ class PickUpObjectAction(ManipulationAction):
         """
         _result = msg.PickUpObjectResult()
         _result.result = False
+        _result.failure_mode = 0
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))
@@ -102,6 +103,8 @@ class PickUpObjectAction(ManipulationAction):
             rospy.logerr("Unable to find TF frame")
             self.tts_say("I don't know the object you want picked up.", duration=2.0)
             self.abandon_action()
+
+            _result.failure_mode = 1
             return
 
         # Look at the object - make sure that we get all of the necessary collision map
@@ -119,6 +122,8 @@ class PickUpObjectAction(ManipulationAction):
             )
             self.tts_say("I can't see the object you want picked up.", duration=2.0)
             self.abandon_action()
+
+            _result.failure_mode = 2
             return
 
         if self.handle_possible_preemption():
@@ -166,6 +171,8 @@ class PickUpObjectAction(ManipulationAction):
         else:
             rospy.loginfo("%s: Grasping failed" % self._action_name)
             _result.result = False
+
+            _result.failure_mode = 3
             self._as.set_aborted()
 
     def grab_object(
