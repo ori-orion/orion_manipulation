@@ -91,7 +91,7 @@ class PickUpObjectAction(ManipulationAction):
         """
         _result = msg.PickUpObjectResult()
         _result.result = False
-        _result.failure_mode = 0
+        _result.failure_mode = msg.PickUpObjectResult.SUCCESS
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))

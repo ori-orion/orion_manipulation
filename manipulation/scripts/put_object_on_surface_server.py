@@ -57,7 +57,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         _result = msg.PutObjectOnSurfaceResult()
         _result.result = False
-        _result.failure_mode = 0
+        _result.failure_mode = msg.PutObjectOnSurfaceResult.SUCCESS
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo(
