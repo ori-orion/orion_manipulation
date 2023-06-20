@@ -13,5 +13,6 @@
         </node>
 
          <node name="octomap_to_reconstruction" pkg="manipulation" type="octomap_to_reconstruction" output="screen"> </node>
+         <node name="octomap_check_placement" pkg="manipulation" type="octomap_check_placement" output="screen"> </node>
 </launch>
 
