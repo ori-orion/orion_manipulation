@@ -57,6 +57,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         _result = msg.PutObjectOnSurfaceResult()
         _result.result = False
+        _result.failure_mode = 0
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo(
@@ -77,6 +78,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             rospy.logerr("%s: Unable to find TF frame." % self._action_name)
             self.tts_say("I don't know the surface frame you want to put object down.")
             self.abandon_action()
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.TF_TIMEOUT
             return
 
         if self.handle_possible_preemption():
@@ -110,6 +112,9 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             rospy.logerr(traceback.format_exc())
             self.abandon_action()
 
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.PLACING_EXCEPTION
+            return
+
         if place_success:
             self.tts_say("Place successful.")
             # Now return to moving position
@@ -125,6 +130,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         else:
             rospy.loginfo("%s: Placing failed" % self._action_name)
             _result.result = False
+
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.PLACING_FAILED
             self._as.set_aborted()
 
     def do_placement(
