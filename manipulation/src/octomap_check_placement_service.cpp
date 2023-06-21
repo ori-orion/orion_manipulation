@@ -79,12 +79,17 @@ class OctomapPlacementChecker {
                 octomap::point3d end = octomap::point3d(0, 0, 0);
                 bool tempFlag = octree->castRay(origin, octomap::point3d(0, 0, -1), end, true, maxRange);
 
+                std::cout << "\tii=" << ii << ", jj=" << jj << ", is_ray_supported=" 
+                    << (tempFlag==true ? "supported" : "unsupported") << std::endl;
+
                 if (!tempFlag){
                     return false;
                 }
             }
         }
     }
+
+    std::cout << "Location is supported." << std::endl;
 
     return flag;
   }
