@@ -174,8 +174,8 @@ class PickUpObjectAction(ManipulationAction):
         except Exception as e:
             rospy.logwarn("Tf error (probably)");
             print(e);
-            _result.failure_mode = msg.PickUpObjectResult.TF_TIMEOUT
-            self._as.set_aborted();
+            _result.failure_mode = msg.PickUpObjectResult.TF_TIMEOUT;
+            _result.result = False;
             return;
 
 
