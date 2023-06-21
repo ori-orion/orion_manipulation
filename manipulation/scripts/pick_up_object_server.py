@@ -335,7 +335,11 @@ class PickUpObjectAction(ManipulationAction):
         self.tts_say("Moving to pre-grasp.")
 
         with collision_world:
-            self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME)
+            try:
+                self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
+            except:
+                self.whole_body.move_to_joint_positions({'arm_lift_joint':0.5});
+                self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
 
         # Move to grasp pose without collision checking
         rospy.loginfo("%s: Moving to grasp." % (self._action_name))
