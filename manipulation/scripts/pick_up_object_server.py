@@ -13,6 +13,7 @@ import numpy as np
 import rospy
 import actionlib
 import tf
+# import tf2_ros;
 import tf.transformations as T
 import traceback
 import hsrb_interface.geometry as geometry
@@ -136,7 +137,16 @@ class PickUpObjectAction(ManipulationAction):
 
         # Look at the object - make sure that we get all of the necessary collision map
         rospy.loginfo("%s: Moving head to look at the object." % self._action_name)
-        self.look_at_object(goal_tf)
+        try:
+            self.look_at_object(goal_tf)
+        except Exception as e:
+            rospy.logwarn("Tf error (probably)");
+            print(e);
+            _result.failure_mode = msg.PickUpObjectResult.TF_TIMEOUT
+            self._as.set_aborted();
+            return;
+
+
 
         if self.handle_possible_preemption():
             return
@@ -150,7 +160,7 @@ class PickUpObjectAction(ManipulationAction):
             self.tts_say("I can't see the object you want picked up.", duration=2.0)
             self.abandon_action()
 
-            _result.failure_mode = _result.TF_TIMEOUT
+            _result.failure_mode = msg.PickUpObjectResult.TF_TIMEOUT
             return
 
         if self.handle_possible_preemption():
@@ -199,7 +209,7 @@ class PickUpObjectAction(ManipulationAction):
             rospy.loginfo("%s: Grasping failed" % self._action_name)
             _result.result = False
 
-            _result.failure_mode = _result.GRASPING_FAILED
+            _result.failure_mode = msg.PickUpObjectResult.GRASPING_FAILED
             self._as.set_aborted()
 
     def grab_object(
