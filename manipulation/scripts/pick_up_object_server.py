@@ -13,13 +13,15 @@ import numpy as np
 import rospy
 import actionlib
 import tf
-# import tf2_ros;
+import tf2_ros;
 import tf.transformations as T
 import traceback
 import hsrb_interface.geometry as geometry
 import math;
 
 import orion_actions.msg as msg
+import orion_actions.srv as srv
+import geometry_msgs.msg;
 from actionlib_msgs.msg import GoalStatus
 from manipulation.manipulation_header import ManipulationAction
 from manipulation.collision_mapping import CollisionWorld
@@ -50,6 +52,8 @@ class PickUpObjectAction(ManipulationAction):
     GRASP_POSE = geometry.pose(z=0.06)  # Relative to gripper
     LIFT_POSE = geometry.pose(x=0.03)  # Relative to gripper, to lift off surface
     BIN_PREGRASP_DISTANCE = 0.2 # Relative to the handle of the bin bag
+
+    TF_PUBLISHED_NAME = "MANIP_GOAL_TF_PICKUP"
 
     def __init__(
         self,
@@ -88,7 +92,9 @@ class PickUpObjectAction(ManipulationAction):
             )
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
-    def _execute_cb(self, goal_msg):
+        self.transform_broadcaster = tf2_ros.TransformBroadcaster();
+
+    def _execute_cb(self, goal_msg:msg.PickUpObjectGoal):
         """
         Action server callback for PickUpObjectAction
         """
@@ -98,6 +104,26 @@ class PickUpObjectAction(ManipulationAction):
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))
+
+        if goal_msg.publish_own_tf:
+            query = srv.SOMQueryObjectsRequest();
+            query.query.tf_name = goal_tf;
+            rospy.wait_for_service('/som/objects/basic_query');
+            object_query_srv = rospy.ServiceProxy('/som/objects/basic_query', srv.SOMQueryObjects);
+            result:srv.SOMQueryObjectsResponse = object_query_srv(query);
+            result_of_interest:msg.SOMObject = result.returns[0];
+            individual_tf = geometry_msgs.msg.TransformStamped();
+            individual_tf.header.frame_id = "map";
+            individual_tf.header.stamp = rospy.Time.now();
+            individual_tf.child_frame_id = self.TF_PUBLISHED_NAME;
+            individual_tf.transform.translation = result_of_interest.obj_position.position;
+            
+            tf_list = [individual_tf];
+            self.transform_broadcaster.sendTransform(tf_list);
+            
+            goal_tf = self.TF_PUBLISHED_NAME;
+            pass;
+
 
         approach_axis = goal_msg.approach_axis
         if len(approach_axis) != 0 and len(approach_axis) != 3:
