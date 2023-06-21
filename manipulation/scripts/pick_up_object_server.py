@@ -371,6 +371,7 @@ class PickUpObjectAction(ManipulationAction):
             try:
                 self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
             except:
+                rospy.logwarn("Initial planning failed.");
                 self.whole_body.move_to_joint_positions({'arm_lift_joint':0.5});
                 self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
 
