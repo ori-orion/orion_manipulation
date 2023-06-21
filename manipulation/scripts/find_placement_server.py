@@ -36,7 +36,7 @@ class PlacementFinder(ManipulationAction):
         goal_tf = goal_msg.goal_tf
         goal_pos = goal_msg.goal_pos
         dims = goal_msg.dims
-        maxHeight, radius, candidateNum = goal_msg.maxHeight, goal_msg.radius, goal_msg.candidateNum
+        maxHeight, radius, candidateNum, z_shift = goal_msg.maxHeight, goal_msg.radius, goal_msg.candidateNum, goal_msg.z_shift
 
         if goal_tf != "":
             (origin_tf, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
@@ -62,7 +62,7 @@ class PlacementFinder(ManipulationAction):
             angle_to_candidate = angle_to_base + ii * angleStep
             candidatePos = Point(origin_x + math.cos(angle_to_candidate) * radius,
                                  origin_y + math.sin(angle_to_candidate) * radius,
-                                 origin_z)
+                                 origin_z + z_shift)
 
             dimsInput = Point(*dims)
             checkerResp = self.placement_checking_service(candidatePos, dimsInput, maxHeight)
