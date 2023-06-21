@@ -148,9 +148,10 @@ class PickUpObjectAction(ManipulationAction):
                 % (self._action_name, transform_age)
             )
             self.tts_say("I can't see the object you want picked up.", duration=2.0)
-            self.abandon_action()
 
             _result.failure_mode = _result.TF_TIMEOUT
+            self.abandon_action(_result)
+
             return
 
         if self.handle_possible_preemption():
@@ -200,7 +201,7 @@ class PickUpObjectAction(ManipulationAction):
             _result.result = False
 
             _result.failure_mode = _result.GRASPING_FAILED
-            self._as.set_aborted()
+            self._as.set_aborted(_result)
 
     def grab_object(
         self, goal_tf, collision_world, chosen_pregrasp_pose, chosen_grasp_pose, chosen_lift_pose, approach_axis=None
@@ -246,7 +247,7 @@ class PickUpObjectAction(ManipulationAction):
         except Exception as e:
             rospy.logerr("%s: Encountered exception %s." % (self._action_name, str(e)))
             rospy.logerr(traceback.format_exc())
-            self.abandon_action()
+            # self.abandon_action()
             return False
 
     def position_end_effector_grasp_pose_synthesis(

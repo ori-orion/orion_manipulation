@@ -201,13 +201,16 @@ class ManipulationAction(object):
 
         return retval
 
-    def abandon_action(self):
+    def abandon_action(self, result=None):
         """
         Abandon manipulation action: move robot to go position and abort action server.
         """
         rospy.loginfo("%s: Aborted. Moving to go and exiting." % self._action_name)
         self.whole_body.move_to_go()
-        self._as.set_aborted()
+        if result==None:
+            self._as.set_aborted()
+        else:
+            self._as.set_aborted(result);
 
     def preempt_action(self):
         """
