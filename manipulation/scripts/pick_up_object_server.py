@@ -16,6 +16,7 @@ import tf
 import tf.transformations as T
 import traceback
 import hsrb_interface.geometry as geometry
+import math;
 
 import orion_actions.msg as msg
 from actionlib_msgs.msg import GoalStatus
@@ -372,7 +373,9 @@ class PickUpObjectAction(ManipulationAction):
                 self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
             except:
                 rospy.logwarn("Initial planning failed.");
-                self.whole_body.move_to_joint_positions({'arm_lift_joint':0.5});
+                self.whole_body.move_to_joint_positions({
+                    'arm_lift_joint':0.5,
+                    'arm_flex_joint':-math.pi/4});
                 self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
 
         # Move to grasp pose without collision checking
