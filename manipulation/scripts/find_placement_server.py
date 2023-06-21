@@ -67,6 +67,8 @@ class PlacementFinder(ManipulationAction):
             dimsInput = Point(*dims)
             checkerResp = self.placement_checking_service(candidatePos, dimsInput, maxHeight)
 
+            print("Is available:", checkerResp.isAvailable, "Is supported:", checkerResp.isSupported);
+
             if (checkerResp.isAvailable and checkerResp.isSupported):
                 tf_name = "placement_candidate"+str(ii);
                 
