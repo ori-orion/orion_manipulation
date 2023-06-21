@@ -375,7 +375,7 @@ class PickUpObjectAction(ManipulationAction):
                 rospy.logwarn("Initial planning failed.");
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    'arm_flex_joint':-math.pi/4});
+                    'arm_flex_joint':-math.pi/2});
                 self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
 
         # Move to grasp pose without collision checking
