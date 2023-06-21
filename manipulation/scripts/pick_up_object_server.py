@@ -105,6 +105,8 @@ class PickUpObjectAction(ManipulationAction):
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))
 
+        lookup_timeout = rospy.Duration(0);
+
         if goal_msg.publish_own_tf:
             query = srv.SOMQueryObjectsRequest();
             query.query.tf_name = goal_tf;
@@ -124,6 +126,8 @@ class PickUpObjectAction(ManipulationAction):
             
             goal_tf = self.TF_PUBLISHED_NAME;
             rospy.loginfo("Trying to pick up the tf {0}".format(goal_tf));
+
+            lookup_timeout = rospy.Duration(5);
             pass;
 
 
@@ -140,14 +144,14 @@ class PickUpObjectAction(ManipulationAction):
         is_bin_bag = goal_msg.is_bin_bag
 
         # Attempt to find transform from hand frame to goal_tf
-        (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf)
+        (trans, lookup_time) = self.lookup_transform(self.HAND_FRAME, goal_tf, lookup_timeout);
 
         if trans is None:
             rospy.logerr("Unable to find TF frame")
             self.tts_say("I don't know the object you want picked up.", duration=2.0)
             self.abandon_action()
 
-            _result.failure_mode = _result.TF_NOT_FOUND
+            _result.failure_mode = msg.PickUpObjectResult.TF_NOT_FOUND
             return
 
         pregrasp_pose = self.PREGRASP_POSE
