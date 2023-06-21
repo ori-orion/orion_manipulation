@@ -17,6 +17,8 @@ using namespace std;
 #include "manipulation/BoundingBox.h"
 #include "manipulation/CheckPlacement.h"
 
+#define corner_test_scale 1.5
+
 class OctomapPlacementChecker {
  private:
   ros::ServiceServer check_placement_service;
@@ -71,7 +73,9 @@ class OctomapPlacementChecker {
 
         for (int ii: coef){
             for (int jj: coef){
-                origin = octomap::point3d(_origin.x + ii * dims.x / 2, _origin.y + jj * dims.y / 2, _origin.z);
+                origin = octomap::point3d(_origin.x + ii * corner_test_scale * dims.x / 2,
+                                          _origin.y + jj * corner_test_scale * dims.y / 2,
+                                          _origin.z);
                 octomap::point3d end = octomap::point3d(0, 0, 0);
                 bool tempFlag = octree->castRay(origin, octomap::point3d(0, 0, -1), end, true, maxRange);
 
