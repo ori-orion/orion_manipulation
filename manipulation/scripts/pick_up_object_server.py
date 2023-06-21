@@ -117,6 +117,7 @@ class PickUpObjectAction(ManipulationAction):
             individual_tf.header.stamp = rospy.Time.now();
             individual_tf.child_frame_id = self.TF_PUBLISHED_NAME;
             individual_tf.transform.translation = result_of_interest.obj_position.position;
+            individual_tf.transform.rotation.w = 1;
             
             tf_list = [individual_tf];
             self.transform_broadcaster.sendTransform(tf_list);
