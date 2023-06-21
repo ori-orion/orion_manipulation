@@ -149,9 +149,9 @@ class PickUpObjectAction(ManipulationAction):
         if trans is None:
             rospy.logerr("Unable to find TF frame")
             self.tts_say("I don't know the object you want picked up.", duration=2.0)
-            self.abandon_action()
 
             _result.failure_mode = msg.PickUpObjectResult.TF_NOT_FOUND
+            self.abandon_action(_result)
             return
 
         pregrasp_pose = self.PREGRASP_POSE
@@ -176,6 +176,7 @@ class PickUpObjectAction(ManipulationAction):
             print(e);
             _result.failure_mode = msg.PickUpObjectResult.TF_TIMEOUT;
             _result.result = False;
+            self.abandon_action(_result);
             return;
 
 
@@ -192,7 +193,7 @@ class PickUpObjectAction(ManipulationAction):
             self.tts_say("I can't see the object you want picked up.", duration=2.0)
 
             _result.failure_mode = msg.PickUpObjectResult.TF_TIMEOUT
-            self.abandon_action(_result)
+            self.abandon_action(_result);
 
             return
 
