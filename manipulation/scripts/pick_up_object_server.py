@@ -122,6 +122,7 @@ class PickUpObjectAction(ManipulationAction):
             self.transform_broadcaster.sendTransform(tf_list);
             
             goal_tf = self.TF_PUBLISHED_NAME;
+            rospy.loginfo("Trying to pick up the tf {0}".format(goal_tf));
             pass;
 
 
