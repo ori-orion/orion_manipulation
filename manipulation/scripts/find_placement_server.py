@@ -36,10 +36,14 @@ class PlacementFinder(ManipulationAction):
         goal_tf = goal_msg.goal_tf
         goal_pos = goal_msg.goal_pos
         dims = goal_msg.dims
-        maxHeight, radius, candidateNum = goal_msg.maxHeight, goal_msg.radius, goal_msg.candidateNum
+        maxHeight, radius, candidateNum, z_shift = goal_msg.maxHeight, goal_msg.radius, goal_msg.candidateNum, goal_msg.z_shift
 
         if goal_tf != "":
             (origin_tf, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
+            if origin_tf is None:
+                rospy.logerr("Unable to find TF frame")
+                self.tts_say("I don't know the object you want picked up.", duration=2.0)
+                return resp;
             origin_x, origin_y, origin_z = origin_tf.translation.x, origin_tf.translation.y, origin_tf.translation.z
         else:
             assert len(goal_pos) == 3, "Dimensions of the goal TF position not set correctly"
@@ -62,10 +66,12 @@ class PlacementFinder(ManipulationAction):
             angle_to_candidate = angle_to_base + ii * angleStep
             candidatePos = Point(origin_x + math.cos(angle_to_candidate) * radius,
                                  origin_y + math.sin(angle_to_candidate) * radius,
-                                 origin_z)
+                                 origin_z + z_shift)
 
             dimsInput = Point(*dims)
             checkerResp = self.placement_checking_service(candidatePos, dimsInput, maxHeight)
+
+            print("Is available:", checkerResp.isAvailable, "Is supported:", checkerResp.isSupported);
 
             if (checkerResp.isAvailable and checkerResp.isSupported):
                 tf_name = "placement_candidate"+str(ii);

@@ -5,6 +5,7 @@ float32[] goal_pos
 float32[] dims
 float32 maxHeight
 float32 radius
+float32 z_shift
 int32 candidateNum
 ---
 # The position (in global coordinates) at which the placement is suggested.
