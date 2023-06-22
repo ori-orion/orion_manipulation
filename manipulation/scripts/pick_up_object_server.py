@@ -418,9 +418,10 @@ class PickUpObjectAction(ManipulationAction):
             except:
                 BASE_ROTATION = math.pi/2;
                 rospy.logwarn("Initial planning failed.");
+                self.whole_body.move_to_neutral();
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    # 'arm_flex_joint':-0.9*math.pi/2,
+                    'arm_flex_joint':-0.1*math.pi/2,
                     'head_pan_joint':-BASE_ROTATION});
                 self.omni_base.go_rel(0,0,BASE_ROTATION,10);
 
