@@ -40,6 +40,10 @@ class PlacementFinder(ManipulationAction):
 
         if goal_tf != "":
             (origin_tf, _) = self.lookup_transform(self.MAP_FRAME, goal_tf)
+            if origin_tf is None:
+                rospy.logerr("Unable to find TF frame")
+                self.tts_say("I don't know the object you want picked up.", duration=2.0)
+                return resp;
             origin_x, origin_y, origin_z = origin_tf.translation.x, origin_tf.translation.y, origin_tf.translation.z
         else:
             assert len(goal_pos) == 3, "Dimensions of the goal TF position not set correctly"
