@@ -423,6 +423,7 @@ class PickUpObjectAction(ManipulationAction):
                     # 'arm_flex_joint':-0.9*math.pi/2,
                     'head_pan_joint':-BASE_ROTATION});
                 self.omni_base.go_rel(0,0,BASE_ROTATION,10);
+
                 rospy.loginfo("Recomputing");
                 base_target_pose = self.get_relative_effector_pose(
                     goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis
