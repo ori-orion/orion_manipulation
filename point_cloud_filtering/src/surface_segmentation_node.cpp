@@ -17,8 +17,9 @@
 int main(int argc, char** argv) {
   ros::init(argc, argv, "surface_segmentation_node");
   ros::NodeHandle nh;
-
+  ROS_INFO("Starting surface_segmentation_node");
   point_cloud_filtering::SurfaceSegmenter surface_segmenter(&nh);
+  ROS_INFO("Starting surface_segmentation_node 2");
   surface_segmenter.StartServices();
 
   ros::spin();
