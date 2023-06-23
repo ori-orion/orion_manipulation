@@ -423,7 +423,10 @@ class PickUpObjectAction(ManipulationAction):
                     'arm_lift_joint':0.5,
                     'arm_flex_joint':-0.1*math.pi/2,
                     'head_pan_joint':-BASE_ROTATION});
-                self.omni_base.follow_trajectory([geometry.pose(ek=BASE_ROTATION)])
+                self.omni_base.follow_trajectory(
+                    [geometry.pose(ek=BASE_ROTATION)],
+                    time_from_starts=[10],
+                    ref_frame_id='base_footprint');
                 # self.omni_base.go_rel(0,0,BASE_ROTATION,10);
                 # self.look_at_object(goal_tf);
 
