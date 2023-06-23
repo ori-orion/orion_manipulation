@@ -421,9 +421,11 @@ class PickUpObjectAction(ManipulationAction):
                 self.whole_body.move_to_neutral();
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    'arm_flex_joint':-0.1*math.pi/2});
-                self.omni_base.go_rel(0,0,BASE_ROTATION,10);
-                self.look_at_object(goal_tf);
+                    'arm_flex_joint':-0.1*math.pi/2,
+                    'head_pan_joint':-BASE_ROTATION});
+                self.omni_base.follow_trajectory([geometry.pose(ek=BASE_ROTATION)])
+                # self.omni_base.go_rel(0,0,BASE_ROTATION,10);
+                # self.look_at_object(goal_tf);
 
                 rospy.loginfo("Recomputing");
                 base_target_pose = self.get_relative_effector_pose(
