@@ -417,25 +417,35 @@ class PickUpObjectAction(ManipulationAction):
             except:
                 BASE_ROTATION = math.pi/2;
                 rospy.logwarn("Initial planning failed.");
+                print(dir(self.whole_body));
                 self.whole_body.move_to_neutral();
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    'arm_flex_joint':-0.1*math.pi/2});
-                self.omni_base.go_rel(0,0,BASE_ROTATION,10);
-                self.look_at_object(goal_tf);
+                    'arm_flex_joint':-0.1*math.pi/2,
+                    'head_pan_joint':-BASE_ROTATION,
+                    'head_tilt_joint':-math.pi/6});
+                self.omni_base.follow_trajectory(
+                    [geometry.pose(ek=BASE_ROTATION)],
+                    time_from_starts=[10],
+                    ref_frame_id='base_footprint');
+                # self.omni_base.go_rel(0,0,BASE_ROTATION,10);
+                # self.look_at_object(goal_tf);
 
                 rospy.loginfo("Recomputing");
-                base_target_pose = self.get_relative_effector_pose(
-                    goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis
-                )
-                self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
+                try:
+                    rospy.loginfo("\tGetting relative effector pose.");
+                    base_target_pose = self.get_relative_effector_pose(
+                        goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis)
+                    rospy.loginfo("\tMoving to pre grasp (again).");
+                    self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
+                except:
+                    return False;
 
         # Move to grasp pose without collision checking
         rospy.loginfo("%s: Moving to grasp." % (self._action_name))
         self.tts_say("Moving to grasp.")
         self.whole_body.move_end_effector_pose(
-            chosen_grasp_pose, self.whole_body.end_effector_frame
-        )
+            chosen_grasp_pose, self.whole_body.end_effector_frame);
         return True
 
     def suck_object(self, goal_tf, collision_world):

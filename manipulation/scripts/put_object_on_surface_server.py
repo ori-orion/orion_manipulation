@@ -97,6 +97,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         place_success = False
 
+        object_half_height = goal_msg.object_half_height if goal_msg.object_half_height!=0 else 0.1;
+
         try:
             place_success = self.do_placement(
                 goal_tf,
@@ -105,6 +107,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                 goal_msg.abandon_action_if_no_plane_found,
                 goal_msg.drop_object_by_metres,
                 goal_msg.check_weight_grams,
+                object_half_height=object_half_height
             )
 
         except Exception as e:
@@ -142,6 +145,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         abandon_action_if_no_plane_found,
         drop_by,
         check_weight_grams,
+        object_half_height=0.05
     ):
 
         rospy.loginfo("%s: Running surface detection" % self._action_name)
@@ -166,7 +170,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             )
             return False
 
-        rel_placement_pose = self.get_relative_placement(drop_by=drop_by)
+        rel_placement_pose = self.get_relative_placement(drop_by=drop_by, object_half_height=object_half_height)
         base_target_pose = self.get_relative_effector_pose(
             target_id, relative=rel_placement_pose, publish_tf="goal_pose"
         )
