@@ -38,7 +38,7 @@ class SurfaceDetectionTester(ManipulationAction):
         rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
         self.look_at_object(goal_tf)
 
-        (rgbd_goal_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf)
+        (rgbd_goal_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf, rospy.Duration(0.3))
 
         if rgbd_goal_transform is None:
             rospy.logerr("%s: Unable to find TF frame." % self._action_name)
@@ -53,6 +53,7 @@ class SurfaceDetectionTester(ManipulationAction):
             return
 
         rospy.loginfo("%s: Received a plane transform: %s" % (self._action_name, str(plane_transform)))
+        self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, "placement_plane")
         return
 
     def detect_plane_surface(self, plane_search_transform_in_head_frame):
@@ -65,7 +66,7 @@ class SurfaceDetectionTester(ManipulationAction):
             res = self.detect_surface_service(
                 plane_search_transform_in_head_frame,
                 10.0,  # EPS plane search angle tolerance in degrees
-                0.15,  # Box crop size to search for plane in. Axis aligned w/ head frame.
+                0.5,  # Box crop size to search for plane in. Axis aligned w/ head frame.
             )
             if res.success:
                 return res.plane_axis

@@ -90,11 +90,21 @@ class SurfaceSegmenter {
   bool ServiceCallback(point_cloud_filtering::DetectSurface::Request& req,
                        point_cloud_filtering::DetectSurface::Response& res);
 
-  bool SeparatePointCloudByPlane(Eigen::Vector3d query_point, Eigen::Vector3d search_axis,
-                                 float eps_degrees_tolerance, float crop_box_dimension,
-                                 Eigen::Isometry3d& plane_pose,
-                                 pcl::ModelCoefficients::Ptr plane_coeff,
-                                 PointCloudC::Ptr non_surface_cloud);
+  bool SeparatePointCloudByPlanePipeline(
+                        Eigen::Vector3d query_point, Eigen::Vector3d search_axis, float eps_degrees_tolerance,
+                        float crop_box_dimension, Eigen::Isometry3d& plane_pose,
+                        pcl::ModelCoefficients::Ptr plane_coeff, PointCloudC::Ptr non_surface_cloud);
+
+  bool SeparatePointCloudByPlane(PointCloudC::Ptr input_cloud, Eigen::Vector3d query_point, Eigen::Vector3d search_axis,
+                                float eps_degrees_tolerance, float crop_box_dimension,
+                                pcl::ModelCoefficients::Ptr& plane_coeff, PointCloudC::Ptr& non_surface_cloud);
+
+  bool GetCroppedRGBDCloud(PointCloudC::Ptr& first_cropped_cloud, float crop_box_dimension, Eigen::Vector3d query_point);
+
+  void GetTransformOnPlane(Eigen::Isometry3d& plane_pose, 
+                                        pcl::ModelCoefficients::Ptr plane_coeff,
+                                        Eigen::Vector3d query_point,
+                                        Eigen::Vector3d search_axis);
 
   void CalculatePlaneProjection(pcl::ModelCoefficients::Ptr plane_coeff,
                                 Eigen::Vector3d point, Eigen::Vector3d& closest_point);
