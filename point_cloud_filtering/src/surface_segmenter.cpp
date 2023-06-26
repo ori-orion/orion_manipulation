@@ -56,7 +56,6 @@ bool SurfaceSegmenter::ServiceCallback(
   Eigen::Isometry3d plane_pose;
   pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
   PointCloudC::Ptr non_surface_cloud(new PointCloudC());
-
   bool success = SeparatePointCloudByPlanePipeline(
       query_point, search_axis, eps_degrees_tolerance, crop_box_dimension,
       plane_pose, plane_coeff, non_surface_cloud);

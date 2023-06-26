@@ -7,13 +7,13 @@ import sys
 import argparse
 from manipulation.srv import FindPlacement
 
-def find_placement_client(goal_tf, goal_pos, dims, maxHeight, radius, candidateNum):
+def find_placement_client(goal_tf, goal_pos, dims, maxHeight, radius, candidateNum, zShift):
     print("Waiting for server")
     rospy.wait_for_service('find_placement_around')
     print("Finished waiting for server")
     try:
         find_placement = rospy.ServiceProxy('find_placement_around', FindPlacement)
-        resp = find_placement(goal_tf, goal_pos, dims, maxHeight, radius, candidateNum)
+        resp = find_placement(goal_tf, goal_pos, dims, maxHeight, radius, zShift, candidateNum)
         return resp.position
     except rospy.ServiceException as e:
         print("Service call failed: %s"%e)
@@ -29,6 +29,7 @@ def arg_parser():
     parser.add_argument('-m', '--maxHeight', type=float, default=0.1)
     parser.add_argument('-r', '--radius', type=float, default=0.1)
     parser.add_argument('-n', '--candidateNum', type=int, default=8)
+    parser.add_argument('-z', '--zShift', type=float, default=0.05)
 
     return parser
 
@@ -60,6 +61,7 @@ if __name__ == "__main__":
     h = args.maxHeight
     r = args.radius
     n = args.candidateNum
+    z = args.zShift
 
-    result = find_placement_client(goal_tf, goal_pos, dims, h, r, n)
+    result = find_placement_client(goal_tf, goal_pos, dims, h, r, n, z)
     print("Result:" + str(result))
