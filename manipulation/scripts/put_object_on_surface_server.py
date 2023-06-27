@@ -103,6 +103,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                 goal_msg.abandon_action_if_no_plane_found,
                 goal_msg.drop_object_by_metres,
                 goal_msg.check_weight_grams,
+                goal_msg.shelf_tf_ref
             )
 
         except Exception as e:
@@ -135,6 +136,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         abandon_action_if_no_plane_found,
         drop_by,
         check_weight_grams,
+        shelf_tf_ref
     ):
 
         rospy.loginfo("%s: Running surface detection" % self._action_name)
@@ -151,8 +153,16 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             rospy.loginfo(
                 "%s: Did not receive a plane transform, continuing" % self._action_name
             )
-            target_id = goal_tf
-
+            if shelf_tf_ref == "":
+                rospy.loginfo("Considering plane at goal_tf")
+                target_id = goal_tf
+            else:
+                rospy.loginfo("Considering plane at {}".format(shelf_tf_ref))
+                target_id = "placement_plane"
+                (shelf_goal_trans, _) = self.lookup_transform(goal_tf, shelf_tf_ref, timeout=rospy.Duration(0.5))
+                shelf_goal_trans.translation.x = 0
+                shelf_goal_trans.translation.y = 0
+                self.publish_tf(shelf_goal_trans, goal_tf, target_id)
         else:
             rospy.loginfo(
                 "%s: Did not receive a plane transform, stopping" % self._action_name
