@@ -100,7 +100,7 @@ class PickUpObjectAction(ManipulationAction):
         """
         _result = msg.PickUpObjectResult()
         _result.result = False
-        _result.failure_mode = 0
+        _result.failure_mode = msg.PickUpObjectResult.SUCCESS
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo("%s: Requested to pick up tf %s" % (self._action_name, goal_tf))
@@ -120,10 +120,10 @@ class PickUpObjectAction(ManipulationAction):
             individual_tf.child_frame_id = self.TF_PUBLISHED_NAME;
             individual_tf.transform.translation = result_of_interest.obj_position.position;
             individual_tf.transform.rotation.w = 1;
-            
+
             tf_list = [individual_tf];
             self.transform_broadcaster.sendTransform(tf_list);
-            
+
             goal_tf = self.TF_PUBLISHED_NAME;
             rospy.loginfo("Trying to pick up the tf {0}".format(goal_tf));
 
@@ -194,7 +194,6 @@ class PickUpObjectAction(ManipulationAction):
 
             _result.failure_mode = msg.PickUpObjectResult.TF_TIMEOUT
             self.abandon_action(_result);
-
             return
 
         if self.handle_possible_preemption():
@@ -418,25 +417,35 @@ class PickUpObjectAction(ManipulationAction):
             except:
                 BASE_ROTATION = math.pi/2;
                 rospy.logwarn("Initial planning failed.");
+                print(dir(self.whole_body));
                 self.whole_body.move_to_neutral();
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    'arm_flex_joint':-0.1*math.pi/2});
-                self.omni_base.go_rel(0,0,BASE_ROTATION,10);
-                self.look_at_object(goal_tf);
+                    'arm_flex_joint':-0.1*math.pi/2,
+                    'head_pan_joint':-BASE_ROTATION,
+                    'head_tilt_joint':-math.pi/6});
+                self.omni_base.follow_trajectory(
+                    [geometry.pose(ek=BASE_ROTATION)],
+                    time_from_starts=[10],
+                    ref_frame_id='base_footprint');
+                # self.omni_base.go_rel(0,0,BASE_ROTATION,10);
+                # self.look_at_object(goal_tf);
 
                 rospy.loginfo("Recomputing");
-                base_target_pose = self.get_relative_effector_pose(
-                    goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis
-                )
-                self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
+                try:
+                    rospy.loginfo("\tGetting relative effector pose.");
+                    base_target_pose = self.get_relative_effector_pose(
+                        goal_tf, relative=chosen_pregrasp_pose, publish_tf="goal_pose", approach_axis=approach_axis)
+                    rospy.loginfo("\tMoving to pre grasp (again).");
+                    self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
+                except:
+                    return False;
 
         # Move to grasp pose without collision checking
         rospy.loginfo("%s: Moving to grasp." % (self._action_name))
         self.tts_say("Moving to grasp.")
         self.whole_body.move_end_effector_pose(
-            chosen_grasp_pose, self.whole_body.end_effector_frame
-        )
+            chosen_grasp_pose, self.whole_body.end_effector_frame);
         return True
 
     def suck_object(self, goal_tf, collision_world):

@@ -57,6 +57,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         _result = msg.PutObjectOnSurfaceResult()
         _result.result = False
+        _result.failure_mode = msg.PutObjectOnSurfaceResult.SUCCESS
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo(
@@ -77,6 +78,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             rospy.logerr("%s: Unable to find TF frame." % self._action_name)
             self.tts_say("I don't know the surface frame you want to put object down.")
             self.abandon_action()
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.TF_TIMEOUT
             return
 
         if self.handle_possible_preemption():
@@ -95,6 +97,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         place_success = False
 
+        object_half_height = goal_msg.object_half_height if goal_msg.object_half_height!=0 else 0.1;
+
         try:
             place_success = self.do_placement(
                 goal_tf,
@@ -104,12 +108,16 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                 goal_msg.drop_object_by_metres,
                 goal_msg.check_weight_grams,
                 goal_msg.shelf_tf_ref
+                object_half_height=object_half_height
             )
 
         except Exception as e:
             rospy.logerr("%s: Encountered exception %s." % (self._action_name, str(e)))
             rospy.logerr(traceback.format_exc())
             self.abandon_action()
+
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.PLACING_EXCEPTION
+            return
 
         if place_success:
             self.tts_say("Place successful.")
@@ -126,6 +134,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         else:
             rospy.loginfo("%s: Placing failed" % self._action_name)
             _result.result = False
+
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.PLACING_FAILED
             self._as.set_aborted()
 
     def do_placement(
@@ -137,6 +147,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         drop_by,
         check_weight_grams,
         shelf_tf_ref
+        object_half_height=0.05
     ):
 
         rospy.loginfo("%s: Running surface detection" % self._action_name)
@@ -169,7 +180,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             )
             return False
 
-        rel_placement_pose = self.get_relative_placement(drop_by=drop_by)
+        rel_placement_pose = self.get_relative_placement(drop_by=drop_by, object_half_height=object_half_height)
         base_target_pose = self.get_relative_effector_pose(
             target_id, relative=rel_placement_pose, publish_tf="goal_pose"
         )
