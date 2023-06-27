@@ -7,7 +7,7 @@ import sys
 import rospy
 
 from manipulation.manipulation_header import ManipulationAction
-from point_cloud_filtering.srv import DetectSurface
+from point_cloud_filtering.srv import DetectSurface, DetectSurfaceIterative
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
@@ -31,9 +31,13 @@ class SurfaceDetectionTester(ManipulationAction):
         self.detect_surface_service = rospy.ServiceProxy(
             "/detect_surface", DetectSurface
         )
+        rospy.wait_for_service("/detect_surface_iterative")
+        self.detect_surface_iterative_service = rospy.ServiceProxy(
+            "/detect_surface_iterative", DetectSurfaceIterative
+        )
         rospy.loginfo("%s: Subscribed to /detect_surface" % (self._action_name))
 
-    def execute(self, goal_tf):
+    def execute(self, goal_tf, iterative=False):
 
         rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
         self.look_at_object(goal_tf)
@@ -46,14 +50,26 @@ class SurfaceDetectionTester(ManipulationAction):
 
         rospy.loginfo("Segmenting surface...")
         # Segment surface
-        plane_transform = self.detect_plane_surface(rgbd_goal_transform)
+        if not iterative:
+            plane_transform = self.detect_plane_surface(rgbd_goal_transform)
 
-        if plane_transform is None:
-            rospy.logerr("Unable to detect a surface")
-            return
+            if plane_transform is None:
+                rospy.logerr("Unable to detect a surface")
+                return
 
-        rospy.loginfo("%s: Received a plane transform: %s" % (self._action_name, str(plane_transform)))
-        self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, "placement_plane")
+            rospy.loginfo("%s: Received a plane transform: %s" % (self._action_name, str(plane_transform)))
+            self.publish_tf(plane_transform, self.RGBD_CAMERA_FRAME, "placement_plane")
+        else:
+            rospy.loginfo("Segmenting surface Iteratively...")
+            try:
+                res = self.detect_surface_iterative_service(
+                    rgbd_goal_transform,
+                    10.0,  # EPS plane search angle tolerance in degrees
+                    0.5,  # Box crop size to search for plane in. Axis aligned w/ head frame.
+                )
+
+            except rospy.ServiceException as e:
+                rospy.logerr("%s: Service call failed: %s" % (self._action_name, e))
         return
 
     def detect_plane_surface(self, plane_search_transform_in_head_frame):
@@ -85,6 +101,12 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         goal_tf = sys.argv[1]
         tester.execute(goal_tf)
+
+    if len(sys.argv) == 3:
+        goal_tf = sys.argv[1]
+        iterative = int(sys.argv[2])
+        iterative = (iterative > 0)
+        tester.execute(goal_tf, iterative)
 
     else:
         print("TFs available to test in manipulation_test_sim world:")

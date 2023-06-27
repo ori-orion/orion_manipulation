@@ -33,6 +33,8 @@ SurfaceSegmenter::SurfaceSegmenter(ros::NodeHandle* nh) {
 void SurfaceSegmenter::StartServices(void) {
   service_server = ros_node_handle->advertiseService(
       "detect_surface", &SurfaceSegmenter::ServiceCallback, this);
+  iterative_service_server = ros_node_handle->advertiseService(
+      "detect_surface_iterative", &SurfaceSegmenter::IterativeServiceCallback, this);
   ROS_INFO("%s: /detect_surface service ready", ros::this_node::getName().c_str());
 }
 
@@ -73,12 +75,86 @@ bool SurfaceSegmenter::ServiceCallback(
   }
 }
 
+bool SurfaceSegmenter::IterativeServiceCallback(
+    point_cloud_filtering::DetectSurfaceIterative::Request& req,
+    point_cloud_filtering::DetectSurfaceIterative::Response& res) {
+  res.success = false;
+
+  //------ Reset any visualisation --------
+  visual_tools->deleteAllMarkers();
+  // PublishTransformMarker(req.search_axis);
+
+  //------ Extract variables from request --------
+  float eps_degrees_tolerance = req.eps_degrees_tolerance;
+  float crop_box_dimension = req.search_box_dimension;
+  Eigen::Vector3d query_point;
+  tf::vectorMsgToEigen(req.search_axis.translation, query_point);
+  Eigen::Vector3d search_axis = Vector3dFromZRotation(req.search_axis.rotation);
+
+  //------ Process point cloud, expecting a surface --------
+  Eigen::Isometry3d plane_pose;
+  pcl::ModelCoefficients::Ptr plane_coeff(new pcl::ModelCoefficients);
+  PointCloudC::Ptr non_surface_cloud(new PointCloudC());
+  PointCloudC::Ptr surface_cloud(new PointCloudC());
+  PointCloudC::Ptr input_cloud(new PointCloudC());
+  PointCloudC::Ptr combined_surface_cloud(new PointCloudC());
+
+  bool crop_success = GetCroppedRGBDCloud(input_cloud, crop_box_dimension, query_point);
+
+  if (crop_success == false){
+    res.success = false;
+    return true;
+  }
+  int total_cloud_size = input_cloud->size();
+
+  ROS_INFO("Total cloud size: %d", total_cloud_size);
+
+  bool flag, success;
+  int surface_count = 0;
+  flag = true;
+  while (flag == true){
+    success = SeparatePointCloudByPlane(input_cloud, query_point, search_axis,
+                                        eps_degrees_tolerance, crop_box_dimension,
+                                        plane_coeff, non_surface_cloud, surface_cloud, false);
+    flag = false;
+    if (success == true){
+        flag = true;
+        if (surface_cloud->size() > float(total_cloud_size)*0.04) {
+            *combined_surface_cloud += *surface_cloud;
+            surface_count ++;
+        }
+    }
+    if (non_surface_cloud->size() < float(total_cloud_size)*0.3){
+        flag = false;
+    }
+    input_cloud = non_surface_cloud;
+  }
+
+  ROS_INFO("Surface count: %d", surface_count);
+  ROS_INFO("Combined surface size: %ld", combined_surface_cloud->size());
+
+  if (surface_count > 0) {
+    sensor_msgs::PointCloud2 msg_cloud_out;
+    pcl::toROSMsg(*combined_surface_cloud, msg_cloud_out);
+    msg_cloud_out.header.frame_id = "head_rgbd_sensor_link";
+    surface_point_cloud_pub.publish(msg_cloud_out);
+
+    res.success = true;
+
+    ROS_INFO("This is the iterative version");
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool SurfaceSegmenter::SeparatePointCloudByPlanePipeline(
     Eigen::Vector3d query_point, Eigen::Vector3d search_axis, float eps_degrees_tolerance,
     float crop_box_dimension, Eigen::Isometry3d& plane_pose,
     pcl::ModelCoefficients::Ptr plane_coeff, PointCloudC::Ptr non_surface_cloud) {
 
   PointCloudC::Ptr cropped_cloud(new PointCloudC());
+  PointCloudC::Ptr surface_cloud(new PointCloudC());
 
   bool crop_success = GetCroppedRGBDCloud(cropped_cloud, crop_box_dimension, query_point);
 
@@ -86,7 +162,7 @@ bool SurfaceSegmenter::SeparatePointCloudByPlanePipeline(
   if (crop_success == true) {
     success = SeparatePointCloudByPlane(cropped_cloud, query_point, search_axis,
                                         eps_degrees_tolerance, crop_box_dimension,
-                                        plane_coeff, non_surface_cloud);
+                                        plane_coeff, non_surface_cloud, surface_cloud);
   } else {
     success = false;
   }
@@ -103,7 +179,7 @@ bool SurfaceSegmenter::SeparatePointCloudByPlanePipeline(
 bool SurfaceSegmenter::SeparatePointCloudByPlane(
     PointCloudC::Ptr input_cloud, Eigen::Vector3d query_point, Eigen::Vector3d search_axis, float eps_degrees_tolerance,
     float crop_box_dimension,
-    pcl::ModelCoefficients::Ptr& plane_coeff, PointCloudC::Ptr& non_surface_cloud) {
+    pcl::ModelCoefficients::Ptr& plane_coeff, PointCloudC::Ptr& non_surface_cloud, PointCloudC::Ptr& surface_cloud, bool display_flag) {
   // Carry out cropping, plane detection, plane segmentation
 
 
@@ -112,19 +188,24 @@ bool SurfaceSegmenter::SeparatePointCloudByPlane(
   SegmentPlane(input_cloud, plane_inliers, search_axis, eps_degrees_tolerance,
                plane_coeff);
 
+  Eigen::Vector3d plane_normal (plane_coeff->values[0], plane_coeff->values[1], plane_coeff->values[2]);
+
+  ROS_INFO("Dot product: %f", search_axis.normalized().dot(plane_normal.normalized()));
+
   if (plane_inliers->indices.empty()) {
     ROS_ERROR("%s: could not estimate a planar model for the given dataset.", node_name);
     return false;
   }
 
   //------ Extract the plane subset of cropped cloud into surface_cloud --------
-  PointCloudC::Ptr surface_cloud(new PointCloudC());
   FilterCloudByIndices(input_cloud, surface_cloud, plane_inliers, false);
   ROS_INFO("%s: surface cloud has %ld points", node_name, surface_cloud->size());
 
-  sensor_msgs::PointCloud2 msg_cloud_out;
-  pcl::toROSMsg(*surface_cloud, msg_cloud_out);
-  surface_point_cloud_pub.publish(msg_cloud_out);
+  if (display_flag == true){
+      sensor_msgs::PointCloud2 msg_cloud_out;
+      pcl::toROSMsg(*surface_cloud, msg_cloud_out);
+      surface_point_cloud_pub.publish(msg_cloud_out);
+  }
 
   //------ Extract the non-plane subset of cropped cloud into non_surface_cloud --------
   FilterCloudByIndices(input_cloud, non_surface_cloud, plane_inliers, true);
@@ -313,6 +394,8 @@ void SegmentPlane(PointCloudC::Ptr cloud, pcl::PointIndices::Ptr indices,
   // Set the distance to the plane for a point to be a plane inlier.
   seg.setDistanceThreshold(0.01);
   seg.setInputCloud(cloud);
+
+  seg.setMaxIterations(500);
 
   // Make sure that the plane is perpendicular to given axis, given some degree tolerance.
   seg.setAxis(axis.cast<float>());

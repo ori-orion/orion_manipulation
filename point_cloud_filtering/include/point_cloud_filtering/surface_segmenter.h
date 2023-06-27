@@ -27,6 +27,7 @@
 #include "pcl/sample_consensus/model_types.h"
 #include "pcl/segmentation/extract_clusters.h"
 #include "point_cloud_filtering/DetectSurface.h"
+#include "point_cloud_filtering/DetectSurfaceIterative.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 
@@ -83,12 +84,16 @@ class SurfaceSegmenter {
 
   ros::NodeHandle* ros_node_handle;
   ros::ServiceServer service_server;
+  ros::ServiceServer iterative_service_server;
   ros::Publisher surface_point_cloud_pub;
 
   rviz_visual_tools::RvizVisualToolsPtr visual_tools;
 
   bool ServiceCallback(point_cloud_filtering::DetectSurface::Request& req,
                        point_cloud_filtering::DetectSurface::Response& res);
+
+  bool IterativeServiceCallback(point_cloud_filtering::DetectSurfaceIterative::Request& req,
+                                point_cloud_filtering::DetectSurfaceIterative::Response& res);
 
   bool SeparatePointCloudByPlanePipeline(
                         Eigen::Vector3d query_point, Eigen::Vector3d search_axis, float eps_degrees_tolerance,
@@ -97,7 +102,8 @@ class SurfaceSegmenter {
 
   bool SeparatePointCloudByPlane(PointCloudC::Ptr input_cloud, Eigen::Vector3d query_point, Eigen::Vector3d search_axis,
                                 float eps_degrees_tolerance, float crop_box_dimension,
-                                pcl::ModelCoefficients::Ptr& plane_coeff, PointCloudC::Ptr& non_surface_cloud);
+                                pcl::ModelCoefficients::Ptr& plane_coeff, PointCloudC::Ptr& non_surface_cloud, PointCloudC::Ptr& surface_cloud,
+                                bool display_flag=true);
 
   bool GetCroppedRGBDCloud(PointCloudC::Ptr& first_cropped_cloud, float crop_box_dimension, Eigen::Vector3d query_point);
 

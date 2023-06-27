@@ -68,6 +68,7 @@ add_service_files(
    DetectDrawerHandles.srv
    SegmentObject.srv
    DetectSurface.srv
+   DetectSurfaceIterative.srv
    GetSurfaceGoal.srv
 )
 
