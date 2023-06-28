@@ -7,7 +7,7 @@ import sys
 import rospy
 
 from manipulation.manipulation_header import ManipulationAction
-from point_cloud_filtering.srv import DetectSurface, DetectSurfaceIterative
+from point_cloud_filtering.srv import DetectSurface, DetectSurfaceIterative, SelectSurface
 
 # Enable robot interface
 from hsrb_interface import robot as _robot
@@ -34,6 +34,10 @@ class SurfaceDetectionTester(ManipulationAction):
         rospy.wait_for_service("/detect_surface_iterative")
         self.detect_surface_iterative_service = rospy.ServiceProxy(
             "/detect_surface_iterative", DetectSurfaceIterative
+        )
+        rospy.wait_for_service("/detect_surface_iterative")
+        self.select_surface_service = rospy.ServiceProxy(
+            "/select_surface", SelectSurface
         )
         rospy.loginfo("%s: Subscribed to /detect_surface" % (self._action_name))
 
@@ -62,10 +66,18 @@ class SurfaceDetectionTester(ManipulationAction):
         else:
             rospy.loginfo("Segmenting surface Iteratively...")
             try:
-                res = self.detect_surface_iterative_service(
+                # res = self.detect_surface_iterative_service(
+                #     rgbd_goal_transform,
+                #     10.0,  # EPS plane search angle tolerance in degrees
+                #     0.5,  # Box crop size to search for plane in. Axis aligned w/ head frame.
+                #     False
+                # )
+
+                res = self.select_surface_service(
                     rgbd_goal_transform,
                     10.0,  # EPS plane search angle tolerance in degrees
                     0.5,  # Box crop size to search for plane in. Axis aligned w/ head frame.
+                    0.45
                 )
 
             except rospy.ServiceException as e:

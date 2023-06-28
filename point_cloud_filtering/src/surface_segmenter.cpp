@@ -39,9 +39,9 @@ void SurfaceSegmenter::StartServices(void) {
       "detect_surface_iterative", &SurfaceSegmenter::IterativeServiceCallback, this);
   ROS_INFO("%s: /detect_surface_iterative service ready", ros::this_node::getName().c_str());
 
-//  surface_selection_server = ros_node_handle->advertiseService(
-//      "select_surface", &SurfaceSegmenter::SurfaceSelectionCallback, this);
-//  ROS_INFO("%s: /select_surface service ready", ros::this_node::getName().c_str());
+  surface_selection_server = ros_node_handle->advertiseService(
+      "select_surface", &SurfaceSegmenter::SurfaceSelectionCallback, this);
+  ROS_INFO("%s: /select_surface service ready", ros::this_node::getName().c_str());
 }
 
 bool SurfaceSegmenter::ServiceCallback(
@@ -146,9 +146,11 @@ bool SurfaceSegmenter::IterativeServiceCallback(
   ROS_INFO("Combined surface size: %ld", combined_surface_cloud->size());
 
   if (surface_count > 0) {
-    sensor_msgs::PointCloud2 msg_cloud_out;
-    PointCloudPtrToMsg(combined_surface_cloud, msg_cloud_out);
-    surface_point_cloud_pub.publish(msg_cloud_out);
+    if (req.hide_display == false) {
+        sensor_msgs::PointCloud2 msg_cloud_out;
+        PointCloudPtrToMsg(combined_surface_cloud, msg_cloud_out);
+        surface_point_cloud_pub.publish(msg_cloud_out);
+    }
 
     res.success = true;
     res.surfaces = surface_vect;
@@ -160,36 +162,86 @@ bool SurfaceSegmenter::IterativeServiceCallback(
   }
 }
 
-//bool SurfaceSegmenter::IterativeServiceCallback(
-//    point_cloud_filtering::DetectSurfaceIterative::Request& req,
-//    point_cloud_filtering::DetectSurfaceIterative::Response& res) {
-//  res.success = false;
-//
-//  //------ Extract variables from request --------
-//  point_cloud_filtering::DetectSurfaceIterative::Request& iter_service_req;
-//  point_cloud_filtering::DetectSurfaceIterative::Response& iter_service_res;
-//
-//  iter_service_req.search_axis = req.search_axis;
-//  iter_service_req.eps_degrees_tolerance = req.eps_degrees_tolerance;
-//  iter_service_req.search_box_dimension = req.search_box_dimension;
-//
-//  bool iter_success = IterativeServiceCallback(iter_service_req, iter_service_res);
-//
-//  if (iter_success == false){
-//    ROS_ERROR("%s: Failed to find surfaces.", node_name);
-//    return false;
-//  }
-//
-//  // https://github.com/stereolabs/zed-ros-wrapper/issues/393
-//  tf::TransformListener listener;
-//  try{
-//      listener.lookupTransform("map", "head_rgbd_sensor_rgb_frame", ros::Time(), transform);
-//  }
-//  catch (tf::TransformException ex){
-//      ROS_ERROR("%s: %s", node_name, ex.what());
-//      return false;
-//  }
-//}
+bool SurfaceSegmenter::SurfaceSelectionCallback(
+    point_cloud_filtering::SelectSurface::Request& req,
+    point_cloud_filtering::SelectSurface::Response& res) {
+  res.success = false;
+
+  PointCloudC::Ptr surface_cloud(new PointCloudC());
+  PointCloudC::Ptr transformed_cloud(new PointCloudC());
+  float min_z, max_z;
+
+  //------ Extract variables from request --------
+  point_cloud_filtering::DetectSurfaceIterative::Request iter_service_req;
+  point_cloud_filtering::DetectSurfaceIterative::Response iter_service_res;
+
+  iter_service_req.search_axis = req.search_axis;
+  iter_service_req.eps_degrees_tolerance = req.eps_degrees_tolerance;
+  iter_service_req.search_box_dimension = req.search_box_dimension;
+  iter_service_req.hide_display = true;
+
+  float min_height = req.min_height;
+
+  ROS_INFO("%s: performing iterative search for horizontal surfaces", node_name);
+  bool iter_success = IterativeServiceCallback(iter_service_req, iter_service_res);
+
+  if (iter_success == false){
+    ROS_ERROR("%s: Failed to find surfaces.", node_name);
+    return false;
+  }
+
+  // https://github.com/stereolabs/zed-ros-wrapper/issues/393
+  ROS_INFO("%s: new ver", node_name);
+  ROS_INFO("%s: looking up transform from map to camera frame", node_name);
+//  tf2_ros::Buffer tfBuffer;
+//  tf2_ros::TransformListener tfListener(tfBuffer);
+//  geometry_msgs::TransformStamped transformStamped;
+//  tf2::Stamped<tf2::Transform> to_map_transform;
+  tf::TransformListener listener;
+  tf::StampedTransform to_map_transform;
+  try{
+    listener.waitForTransform("/map", "/head_rgbd_sensor_rgb_frame", ros::Time(), ros::Duration(5.0));
+    listener.lookupTransform("/map", "/head_rgbd_sensor_rgb_frame", ros::Time(), to_map_transform);
+//    transformStamped = tfBuffer.lookupTransform("map", "head_rgbd_sensor_rgb_frame", ros::Time(0));
+  }
+  catch (tf::TransformException ex){
+    ROS_ERROR("%s: %s", node_name, ex.what());
+    return false;
+  }
+
+//  tf2::fromMsg(transformStamped, to_map_transform);
+
+  ROS_INFO("%s: selecting prefered area", node_name);
+  std::vector<sensor_msgs::PointCloud2> surface_vect = iter_service_res.surfaces;
+  float max_area = std::numeric_limits<float>::min();
+  float now_area;
+  int max_area_idx = -1;
+  int idx = 0;
+  for(sensor_msgs::PointCloud2 surface_cloud_msg : surface_vect){
+    MsgToPointCloud(surface_cloud_msg, surface_cloud);
+    pcl_ros::transformPointCloud(*surface_cloud, *transformed_cloud, to_map_transform);
+
+    GetCloudMinMaxZ(transformed_cloud, min_z, max_z);
+
+    if (min_z > min_height){
+      now_area = transformed_cloud->size();
+      if (now_area > max_area){
+        max_area = now_area;
+        max_area_idx = idx;
+      }
+    }
+    idx++;
+  }
+
+  if (max_area_idx >= 0){
+    sensor_msgs::PointCloud2 msg_cloud_out;
+    MsgToPointCloud(surface_vect[max_area_idx], surface_cloud);
+    PointCloudPtrToMsg(surface_cloud, msg_cloud_out);
+    surface_point_cloud_pub.publish(msg_cloud_out);
+  }
+
+  return true;
+}
 
 
 bool SurfaceSegmenter::SeparatePointCloudByPlanePipeline(
@@ -407,7 +459,7 @@ void GetCloudMinMaxY(const PointCloudC::Ptr cloud, float& min_y, float& max_y) {
   }
 }
 
-void GetCloudMinMaxz(const PointCloudC::Ptr cloud, float& min_z, float& max_z) {
+void GetCloudMinMaxZ(const PointCloudC::Ptr cloud, float& min_z, float& max_z) {
   // Get the min and max x/z/z values of a point cloud
   max_z = std::numeric_limits<float>::min();
   min_z = std::numeric_limits<float>::max();
