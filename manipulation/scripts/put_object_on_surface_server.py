@@ -213,9 +213,12 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
             # Move the gripper back a bit then return to go
             self.whole_body.linear_weight = 100
-            self.whole_body.move_end_effector_pose(
-                geometry.pose(z=-0.2), "hand_palm_link"
-            )
+            try:
+                self.whole_body.move_end_effector_pose(
+                    geometry.pose(z=-0.2), "hand_palm_link"
+                )
+            except:
+                rospy.logwarn("Error when moving the arm backwards");
 
         return True
 
