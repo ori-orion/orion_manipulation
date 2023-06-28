@@ -421,7 +421,7 @@ class PickUpObjectAction(ManipulationAction):
                 self.whole_body.move_to_neutral();
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    'arm_flex_joint':-70*math.pi/180,
+                    'arm_flex_joint':-100*math.pi/180,
                     'head_pan_joint':0,
                     'head_tilt_joint':-math.pi/6,
                     'wrist_flex_joint':0
