@@ -63,7 +63,6 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         rospy.loginfo(
             "%s: Requested to put object on surface %s" % (self._action_name, goal_tf)
         )
-
         # Look at the goal - make sure that we get all of the necessary collision map
         rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
         self.look_at_object(goal_tf)
@@ -146,7 +145,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         abandon_action_if_no_plane_found,
         drop_by,
         check_weight_grams,
-        shelf_tf_ref
+        shelf_tf_ref,
         object_half_height=0.05
     ):
 
