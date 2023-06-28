@@ -63,11 +63,11 @@ find_package(catkin REQUIRED COMPONENTS
 # Generate services in the 'srv' folder
 add_service_files(
    FILES
+   DetectSurface.srv
    DetectHandle.srv
    DetectBinHandle.srv
    DetectDrawerHandles.srv
-   SegmentObject.srv
-   DetectSurface.srv
+   SegmentObject.srv   
    GetSurfaceGoal.srv
 )
 
