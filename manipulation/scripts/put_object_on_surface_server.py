@@ -106,7 +106,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                 goal_msg.abandon_action_if_no_plane_found,
                 goal_msg.drop_object_by_metres,
                 goal_msg.check_weight_grams,
-                goal_msg.shelf_tf_ref
+                goal_msg.shelf_tf_ref,
                 object_half_height=object_half_height
             )
 
