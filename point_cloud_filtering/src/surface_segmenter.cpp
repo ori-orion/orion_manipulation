@@ -191,25 +191,17 @@ bool SurfaceSegmenter::SurfaceSelectionCallback(
   }
 
   // https://github.com/stereolabs/zed-ros-wrapper/issues/393
-  ROS_INFO("%s: new ver", node_name);
   ROS_INFO("%s: looking up transform from map to camera frame", node_name);
-//  tf2_ros::Buffer tfBuffer;
-//  tf2_ros::TransformListener tfListener(tfBuffer);
-//  geometry_msgs::TransformStamped transformStamped;
-//  tf2::Stamped<tf2::Transform> to_map_transform;
   tf::TransformListener listener;
   tf::StampedTransform to_map_transform;
   try{
     listener.waitForTransform("/map", "/head_rgbd_sensor_rgb_frame", ros::Time(), ros::Duration(5.0));
     listener.lookupTransform("/map", "/head_rgbd_sensor_rgb_frame", ros::Time(), to_map_transform);
-//    transformStamped = tfBuffer.lookupTransform("map", "head_rgbd_sensor_rgb_frame", ros::Time(0));
   }
   catch (tf::TransformException ex){
     ROS_ERROR("%s: %s", node_name, ex.what());
     return false;
   }
-
-//  tf2::fromMsg(transformStamped, to_map_transform);
 
   ROS_INFO("%s: selecting prefered area", node_name);
   std::vector<sensor_msgs::PointCloud2> surface_vect = iter_service_res.surfaces;
@@ -238,6 +230,14 @@ bool SurfaceSegmenter::SurfaceSelectionCallback(
     MsgToPointCloud(surface_vect[max_area_idx], surface_cloud);
     PointCloudPtrToMsg(surface_cloud, msg_cloud_out);
     surface_point_cloud_pub.publish(msg_cloud_out);
+
+    res.success = true;
+    res.surface = msg_cloud_out;
+    return true;
+  }
+  else{
+    ROS_ERROR("%s: No surface matches requirement.", node_name);
+    return false;
   }
 
   return true;

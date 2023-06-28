@@ -4,3 +4,4 @@ float32 search_box_dimension
 float32 min_height
 ---
 bool success
+sensor_msgs/PointCloud2 surface
