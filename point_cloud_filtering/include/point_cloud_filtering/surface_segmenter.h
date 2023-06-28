@@ -74,6 +74,9 @@ void GetLargestCluster(std::vector<pcl::PointIndices>* clusters,
 void GetClosestCluster(std::vector<pcl::PointIndices>* clusters, Eigen::Vector3d query_p,
                        PointCloudC::Ptr in_cloud, PointCloudC::Ptr out_cloud);
 
+void PointCloudPtrToMsg(PointCloudC::Ptr cloud, sensor_msgs::PointCloud2& msg);
+void MsgToPointCloud(sensor_msgs::PointCloud2 msg, PointCloudC::Ptr& cloud_ptr);
+
 class SurfaceSegmenter {
  public:
   explicit SurfaceSegmenter(ros::NodeHandle* nh);

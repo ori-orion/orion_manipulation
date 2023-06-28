@@ -33,9 +33,15 @@ SurfaceSegmenter::SurfaceSegmenter(ros::NodeHandle* nh) {
 void SurfaceSegmenter::StartServices(void) {
   service_server = ros_node_handle->advertiseService(
       "detect_surface", &SurfaceSegmenter::ServiceCallback, this);
+  ROS_INFO("%s: /detect_surface service ready", ros::this_node::getName().c_str());
+
   iterative_service_server = ros_node_handle->advertiseService(
       "detect_surface_iterative", &SurfaceSegmenter::IterativeServiceCallback, this);
-  ROS_INFO("%s: /detect_surface service ready", ros::this_node::getName().c_str());
+  ROS_INFO("%s: /detect_surface_iterative service ready", ros::this_node::getName().c_str());
+
+//  surface_selection_server = ros_node_handle->advertiseService(
+//      "select_surface", &SurfaceSegmenter::SurfaceSelectionCallback, this);
+//  ROS_INFO("%s: /select_surface service ready", ros::this_node::getName().c_str());
 }
 
 bool SurfaceSegmenter::ServiceCallback(
@@ -99,6 +105,8 @@ bool SurfaceSegmenter::IterativeServiceCallback(
   PointCloudC::Ptr input_cloud(new PointCloudC());
   PointCloudC::Ptr combined_surface_cloud(new PointCloudC());
 
+  std::vector<sensor_msgs::PointCloud2> surface_vect;
+
   bool crop_success = GetCroppedRGBDCloud(input_cloud, crop_box_dimension, query_point);
 
   if (crop_success == false){
@@ -122,6 +130,10 @@ bool SurfaceSegmenter::IterativeServiceCallback(
         if (surface_cloud->size() > float(total_cloud_size)*0.04) {
             *combined_surface_cloud += *surface_cloud;
             surface_count ++;
+
+            sensor_msgs::PointCloud2 msg_tmp_cloud;
+            PointCloudPtrToMsg(surface_cloud, msg_tmp_cloud);
+            surface_vect.push_back(msg_tmp_cloud);
         }
     }
     if (non_surface_cloud->size() < float(total_cloud_size)*0.3){
@@ -135,11 +147,11 @@ bool SurfaceSegmenter::IterativeServiceCallback(
 
   if (surface_count > 0) {
     sensor_msgs::PointCloud2 msg_cloud_out;
-    pcl::toROSMsg(*combined_surface_cloud, msg_cloud_out);
-    msg_cloud_out.header.frame_id = "head_rgbd_sensor_link";
+    PointCloudPtrToMsg(combined_surface_cloud, msg_cloud_out);
     surface_point_cloud_pub.publish(msg_cloud_out);
 
     res.success = true;
+    res.surfaces = surface_vect;
 
     ROS_INFO("This is the iterative version");
     return true;
@@ -147,6 +159,38 @@ bool SurfaceSegmenter::IterativeServiceCallback(
     return false;
   }
 }
+
+//bool SurfaceSegmenter::IterativeServiceCallback(
+//    point_cloud_filtering::DetectSurfaceIterative::Request& req,
+//    point_cloud_filtering::DetectSurfaceIterative::Response& res) {
+//  res.success = false;
+//
+//  //------ Extract variables from request --------
+//  point_cloud_filtering::DetectSurfaceIterative::Request& iter_service_req;
+//  point_cloud_filtering::DetectSurfaceIterative::Response& iter_service_res;
+//
+//  iter_service_req.search_axis = req.search_axis;
+//  iter_service_req.eps_degrees_tolerance = req.eps_degrees_tolerance;
+//  iter_service_req.search_box_dimension = req.search_box_dimension;
+//
+//  bool iter_success = IterativeServiceCallback(iter_service_req, iter_service_res);
+//
+//  if (iter_success == false){
+//    ROS_ERROR("%s: Failed to find surfaces.", node_name);
+//    return false;
+//  }
+//
+//  // https://github.com/stereolabs/zed-ros-wrapper/issues/393
+//  tf::TransformListener listener;
+//  try{
+//      listener.lookupTransform("map", "head_rgbd_sensor_rgb_frame", ros::Time(), transform);
+//  }
+//  catch (tf::TransformException ex){
+//      ROS_ERROR("%s: %s", node_name, ex.what());
+//      return false;
+//  }
+//}
+
 
 bool SurfaceSegmenter::SeparatePointCloudByPlanePipeline(
     Eigen::Vector3d query_point, Eigen::Vector3d search_axis, float eps_degrees_tolerance,
@@ -511,6 +555,15 @@ void GetClosestCluster(std::vector<pcl::PointIndices>* clusters, Eigen::Vector3d
   indices_extracter.setInputCloud(in_cloud);
   indices_extracter.setIndices(indices);
   indices_extracter.filter(*out_cloud);
+}
+
+void PointCloudPtrToMsg(PointCloudC::Ptr cloud, sensor_msgs::PointCloud2& msg){
+    pcl::toROSMsg(*cloud, msg);
+    msg.header.frame_id = "head_rgbd_sensor_link";
+}
+
+void MsgToPointCloud(sensor_msgs::PointCloud2 msg, PointCloudC::Ptr& cloud_ptr){
+    pcl::fromROSMsg(msg, *cloud_ptr);
 }
 
 }  // namespace point_cloud_filtering

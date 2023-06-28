@@ -70,6 +70,7 @@ add_service_files(
    DetectSurface.srv
    DetectSurfaceIterative.srv
    GetSurfaceGoal.srv
+   SelectSurface.srv
 )
 
 ## Generate actions in the 'action' folder
