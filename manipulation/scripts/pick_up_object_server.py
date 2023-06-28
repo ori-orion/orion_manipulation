@@ -92,6 +92,8 @@ class PickUpObjectAction(ManipulationAction):
             )
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
+        print(dir(self.whole_body));
+
         self.transform_broadcaster = tf2_ros.StaticTransformBroadcaster();
 
     def _execute_cb(self, goal_msg:msg.PickUpObjectGoal):
