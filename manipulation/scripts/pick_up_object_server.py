@@ -421,9 +421,11 @@ class PickUpObjectAction(ManipulationAction):
                 self.whole_body.move_to_neutral();
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    'arm_flex_joint':-0.1*math.pi/2,
+                    'arm_flex_joint':-110*math.pi/180,
                     'head_pan_joint':-BASE_ROTATION,
-                    'head_tilt_joint':-math.pi/6});
+                    'head_tilt_joint':-math.pi/6,
+                    'wrist_flex_joint':1.22
+                    });
                 self.omni_base.follow_trajectory(
                     [geometry.pose(ek=BASE_ROTATION)],
                     time_from_starts=[10],
