@@ -12,8 +12,12 @@ from find_placement_server import PlacementFinder;
 if __name__ == '__main__':
     rospy.init_node("manipulation_node_general");
 
+    if not rospy.has_param('use_grasping_synthesis'):
+        rospy.logwarn("Waiting for rospy.param['use_grasping_synthesis']")
+        rospy.sleep(5);
+
     pick_up_object = PickUpObjectAction(
-        "pick_up_object", use_collision_map=True, use_grasp_synthesis=False
+        "pick_up_object", use_collision_map=True, use_grasp_synthesis=rospy.has_param('use_grasping_synthesis')
     )
 
     put_object_down = PutObjectOnSurfaceAction(
