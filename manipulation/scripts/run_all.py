@@ -17,7 +17,7 @@ if __name__ == '__main__':
         rospy.sleep(5);
 
     pick_up_object = PickUpObjectAction(
-        "pick_up_object", use_collision_map=True, use_grasp_synthesis=rospy.has_param('use_grasping_synthesis')
+        "pick_up_object", use_collision_map=True, use_grasp_synthesis=rospy.get_param('use_grasping_synthesis')
     )
 
     put_object_down = PutObjectOnSurfaceAction(
