@@ -233,7 +233,7 @@ class PickUpObjectAction(ManipulationAction):
             return
 
         if grasp_success:
-            self.tts_say("Object grasped successfully.")
+            # self.tts_say("Object grasped successfully.")
             # Now return to moving position
             self.finish_position(collision_world)
         else:
