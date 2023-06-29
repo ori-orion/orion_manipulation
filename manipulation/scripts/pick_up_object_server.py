@@ -132,7 +132,7 @@ class PickUpObjectAction(ManipulationAction):
             lookup_timeout = rospy.Duration(5);
             pass;
 
-        self.whole_body.angular_weight = 1;
+        self.whole_body.angular_weight = 10;
         self.whole_body.linear_weight = 100;
 
 
@@ -422,15 +422,17 @@ class PickUpObjectAction(ManipulationAction):
             except:
                 BASE_ROTATION = math.pi/2;
                 rospy.logwarn("Initial planning failed.");
-                print(dir(self.whole_body));
-                self.whole_body.move_to_neutral();
-                self.whole_body.move_to_joint_positions({
-                    'arm_lift_joint':0.5,
-                    'arm_flex_joint':-100*math.pi/180,
-                    'head_pan_joint':0,
-                    'head_tilt_joint':-math.pi/6,
-                    'wrist_flex_joint':0
-                    });
+                # print(dir(self.whole_body));
+                self.whole_body.linear_weight = 50;
+                # self.whole_body.angular_weight = 
+                # self.whole_body.move_to_neutral();
+                # self.whole_body.move_to_joint_positions({
+                #     'arm_lift_joint':0.5,
+                #     'arm_flex_joint':-100*math.pi/180,
+                #     'head_pan_joint':0,
+                #     'head_tilt_joint':-math.pi/6,
+                #     'wrist_flex_joint':0
+                #     });
                 # self.omni_base.follow_trajectory(
                 #     [geometry.pose(ek=BASE_ROTATION)],
                 #     time_from_starts=[10],
