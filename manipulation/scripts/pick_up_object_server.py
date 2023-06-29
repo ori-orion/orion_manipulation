@@ -92,6 +92,8 @@ class PickUpObjectAction(ManipulationAction):
             )
         rospy.loginfo("%s: Initialised. Ready for clients." % self._action_name)
 
+        print(dir(self.whole_body));
+
         self.transform_broadcaster = tf2_ros.StaticTransformBroadcaster();
 
     def _execute_cb(self, goal_msg:msg.PickUpObjectGoal):
@@ -129,6 +131,8 @@ class PickUpObjectAction(ManipulationAction):
 
             lookup_timeout = rospy.Duration(5);
             pass;
+
+        self.whole_body.linear_weight = 1
 
 
         approach_axis = goal_msg.approach_axis
@@ -418,10 +422,10 @@ class PickUpObjectAction(ManipulationAction):
                 BASE_ROTATION = math.pi/2;
                 rospy.logwarn("Initial planning failed.");
                 print(dir(self.whole_body));
-                # self.whole_body.move_to_neutral();
+                self.whole_body.move_to_neutral();
                 self.whole_body.move_to_joint_positions({
                     'arm_lift_joint':0.5,
-                    'arm_flex_joint':-90*math.pi/180,
+                    'arm_flex_joint':-100*math.pi/180,
                     'head_pan_joint':0,
                     'head_tilt_joint':-math.pi/6,
                     'wrist_flex_joint':0
@@ -431,7 +435,7 @@ class PickUpObjectAction(ManipulationAction):
                 #     time_from_starts=[10],
                 #     ref_frame_id='base_footprint');
                 # self.omni_base.go_rel(0,0,BASE_ROTATION,10);
-                # self.look_at_object(goal_tf);
+                self.look_at_object(goal_tf);
 
                 rospy.loginfo("Recomputing");
                 try:
