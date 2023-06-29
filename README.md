@@ -6,26 +6,32 @@ Currently maintained by Kim Tien Ly.
 
 ## Build / Installation
 * See the Wiki for TMC package [installation](https://github.com/ori-orion/orion-documentation/wiki/Installing-HSR-Packages-and-Simulator-Locally) and ORIon package [initial environment setup, prerequisite installation, and building](https://github.com/ori-orion/orion-documentation/wiki/Installing-ORIon-Packages-Locally).
+* Find manipulation installation guide [here](https://github.com/ori-orion/orion-documentation/wiki/Manipulation-Setup)
+* Clone required ORIon packages:
+``` 
+git clone git@github.com:ori-orion/orion_actions.git
+git clone git@github.com:ori-orion/orion_speech_recognition.git
+```
 * GPG and GPD are used for (optional) object grasp pose synthesis. Without grasp pose synthesis enabled, the HSR will choose a grasp which is hard coded relative to the target tf.
 
 ## Running a manipulation demo in simulation:
 This simulation demo works with only manipulation components running. If you want to run it on the real robot, you should run perception's tf publisher node or use the AR tags and [`tmc_stereo_marker_recognizer`](https://docs.hsr.io/hsr_develop_manual_en/reference/packages/tmc_stereo_marker_recognizer/PKGDOC.html?highlight=ar%20marker#ros-interface), to ensure tfs are published for manipulation to use. You can use Rviz to display the TF tree to confirm the name of the TF and that it is located correctly.
 
-* `$ roslaunch orion_simulation manipulation_test_sim.launch`
+* `roslaunch orion_simulation manipulation_test_sim.launch`
   * Starts the Gazebo simulation. This manipulation test environment includes several static tf publishers. These are useful for testing: for example, the `target` tf is placed in the same way on the glass jar as if perception image recognition had published that tf. Note that all HSR Gazebo worlds vibrate at high frequency (?) and objects will randomly wander over time. If you leave the simulator running for ~5 minutes, the `target` tf will no longer be on the glass jar.
   * This launchfile also starts a manipulation-specific rviz setup, with visualisation of manipulation systems.
   
-* `$ roslaunch manipulation manipulation_servers.launch`
+* `roslaunch manipulation manipulation_servers.launch`
   * Starts up manipulation system basic components, including pick_up_object and put_object_on_surface actions.
 
 * Watch the Gazebo and Rviz windows for the next two commands, which make the robot do things.
 
-* `$ rosrun manipulation pick_up_object_client.py target`
+* `rosrun manipulation pick_up_object_client.py target`
   * When run, the robot should successfully pick up the glass jar that it spawns facing.
   
 * Use Rviz goal pose tool to turn the robot 180 degrees so it faces the worktop.
 
-* `$ rosrun manipulation put_object_on_surface.py surface_placement_l`
+* `rosrun manipulation put_object_on_surface.py surface_placement_l`
   * When run, the robot should successfully place the glass jar at the specified tf on the worktop.
 
 ## manipulation Package

@@ -11,6 +11,7 @@ import hsrb_interface.geometry as geometry
 
 import orion_actions.msg as msg
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import WrenchStamped
 
 # Enable robot interface
 from hsrb_interface import robot as _robot

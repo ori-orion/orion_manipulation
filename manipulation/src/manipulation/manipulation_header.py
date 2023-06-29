@@ -5,6 +5,7 @@
 from functools import partial
 import rospy
 import actionlib
+import numpy as np
 import math
 import tf2_ros
 import hsrb_interface
@@ -175,7 +176,7 @@ class ManipulationAction(object):
                 x=action_start_pose[0],
                 y=action_start_pose[1],
                 yaw=action_start_pose[2],
-                timeout=10.0,
+                timeout=20.0,
             )
 
         if self.RETURN_TO_START_GAZE_AFTER_ACTION:
@@ -200,13 +201,16 @@ class ManipulationAction(object):
 
         return retval
 
-    def abandon_action(self):
+    def abandon_action(self, result=None):
         """
         Abandon manipulation action: move robot to go position and abort action server.
         """
         rospy.loginfo("%s: Aborted. Moving to go and exiting." % self._action_name)
         self.whole_body.move_to_go()
-        self._as.set_aborted()
+        if result==None:
+            self._as.set_aborted()
+        else:
+            self._as.set_aborted(result);
 
     def preempt_action(self):
         """
@@ -265,7 +269,7 @@ class ManipulationAction(object):
         )
 
     def get_relative_effector_pose(
-        self, goal_tf, relative=geometry.pose(), override_yaw=True, publish_tf=None,
+        self, goal_tf, relative=geometry.pose(), override_yaw=True, publish_tf=None, approach_axis=None
     ):
         """
         Get a hsrb_interface.geometry Pose tuple representing a relative pose from the
@@ -296,7 +300,20 @@ class ManipulationAction(object):
             # roll pitch yaw
             # hard coded values are to ensure z direction points away from robot, with x
             # direction pointing upwards
-            q = tf.transformations.quaternion_from_euler(1.57, -1.57, 1.57 + yaw)
+            base_matrix = tf.transformations.euler_matrix(1.57, -1.57, 1.57 + yaw)
+
+            rotation_matrix = tf.transformations.identity_matrix()
+            if approach_axis is not None:
+                z_axis = base_matrix[:3, 2]
+
+                # Calculate the rotation matrix to let robot aproach from the specified direction
+                rotation_axis = np.cross(z_axis, approach_axis)
+                rotation_angle = np.arccos(np.dot(z_axis, approach_axis) / (np.linalg.norm(z_axis) * np.linalg.norm(approach_axis)))
+                rotation_matrix = tf.transformations.rotation_matrix(rotation_angle, rotation_axis)
+
+            # Apply Rotation
+            q = tf.transformations.quaternion_from_matrix(np.dot(rotation_matrix, base_matrix))
+
             trans.rotation.x = q[0]
             trans.rotation.y = q[1]
             trans.rotation.z = q[2]
