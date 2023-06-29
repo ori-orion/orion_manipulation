@@ -424,6 +424,7 @@ class PickUpObjectAction(ManipulationAction):
                 rospy.logwarn("Initial planning failed.");
                 # print(dir(self.whole_body));
                 self.whole_body.linear_weight = 50;
+                self.whole_body.joint_weights = {'arm_lift_joint':0.1}
                 # self.whole_body.angular_weight = 
                 # self.whole_body.move_to_neutral();
                 # self.whole_body.move_to_joint_positions({
@@ -438,7 +439,7 @@ class PickUpObjectAction(ManipulationAction):
                 #     time_from_starts=[10],
                 #     ref_frame_id='base_footprint');
                 # self.omni_base.go_rel(0,0,BASE_ROTATION,10);
-                self.look_at_object(goal_tf);
+                self.look_at_object(goal_tf, rotate_to_face = True);
 
                 rospy.loginfo("Recomputing");
                 try:
