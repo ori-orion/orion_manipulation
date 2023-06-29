@@ -9,6 +9,7 @@
 #include <pcl/ModelCoefficients.h>
 #include <pcl/filters/plane_clipper3D.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/random_sample.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -32,6 +33,7 @@
 #include "point_cloud_filtering/DetectSurface.h"
 #include "point_cloud_filtering/DetectSurfaceIterative.h"
 #include "point_cloud_filtering/SelectSurface.h"
+#include "point_cloud_filtering/SampleCloud.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 
@@ -93,6 +95,7 @@ class SurfaceSegmenter {
   ros::ServiceServer service_server;
   ros::ServiceServer iterative_service_server;
   ros::ServiceServer surface_selection_server;
+  ros::ServiceServer sample_service_server;
   ros::Publisher surface_point_cloud_pub;
 
   rviz_visual_tools::RvizVisualToolsPtr visual_tools;
@@ -105,6 +108,9 @@ class SurfaceSegmenter {
 
   bool SurfaceSelectionCallback(point_cloud_filtering::SelectSurface::Request& req,
                                 point_cloud_filtering::SelectSurface::Response& res);
+
+  bool SampleServiceCallback(point_cloud_filtering::SampleCloud::Request& req,
+                             point_cloud_filtering::SampleCloud::Response& res);
 
   bool SeparatePointCloudByPlanePipeline(
                         Eigen::Vector3d query_point, Eigen::Vector3d search_axis, float eps_degrees_tolerance,

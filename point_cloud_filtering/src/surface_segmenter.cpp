@@ -42,6 +42,10 @@ void SurfaceSegmenter::StartServices(void) {
   surface_selection_server = ros_node_handle->advertiseService(
       "select_surface", &SurfaceSegmenter::SurfaceSelectionCallback, this);
   ROS_INFO("%s: /select_surface service ready", ros::this_node::getName().c_str());
+
+  sample_service_server = ros_node_handle->advertiseService(
+      "sample_cloud", &SurfaceSegmenter::SampleServiceCallback, this);
+  ROS_INFO("%s: /sample_cloud service ready", ros::this_node::getName().c_str());
 }
 
 bool SurfaceSegmenter::ServiceCallback(
@@ -226,6 +230,7 @@ bool SurfaceSegmenter::SurfaceSelectionCallback(
   }
 
   if (max_area_idx >= 0){
+    ROS_INFO("%s: surface found", node_name);
     sensor_msgs::PointCloud2 msg_cloud_out;
     MsgToPointCloud(surface_vect[max_area_idx], surface_cloud);
     PointCloudPtrToMsg(surface_cloud, msg_cloud_out);
@@ -243,6 +248,40 @@ bool SurfaceSegmenter::SurfaceSelectionCallback(
     ROS_ERROR("%s: No surface matches requirement.", node_name);
     return false;
   }
+
+  return true;
+}
+
+bool SurfaceSegmenter::SampleServiceCallback(
+    point_cloud_filtering::SampleCloud::Request& req,
+    point_cloud_filtering::SampleCloud::Response& res) {
+  res.success = false;
+
+  std::vector<geometry_msgs::Point> samples;
+
+  ROS_INFO("%s: Sampling point cloud", node_name);
+
+  PointCloudC::Ptr cloud(new PointCloudC());
+  PointCloudC::Ptr sampled_cloud(new PointCloudC());
+  point_cloud_filtering::MsgToPointCloud(req.cloud, cloud);
+  pcl::RandomSample <pcl::PointXYZRGB> random;
+  random.setInputCloud(cloud);
+  random.setSeed (std::rand ());
+  random.setSample((unsigned int)(req.sample_num));
+  random.filter(*sampled_cloud);
+
+  bool found_flag = false;
+  for (auto point : sampled_cloud->points){
+      geometry_msgs::Point sample_position;
+      sample_position.x = point.x;
+      sample_position.y = point.y;
+      sample_position.z = point.z;
+
+      samples.push_back(sample_position);
+  }
+
+  res.samples = samples;
+  res.success = true;
 
   return true;
 }
