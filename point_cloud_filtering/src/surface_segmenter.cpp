@@ -213,6 +213,10 @@ bool SurfaceSegmenter::SurfaceSelectionCallback(
   float now_area;
   int max_area_idx = -1;
   int idx = 0;
+
+  float sampled_max_height = std::numeric_limits<float>::min();
+  int max_height_idx;
+
   for(sensor_msgs::PointCloud2 surface_cloud_msg : surface_vect){
     MsgToPointCloud(surface_cloud_msg, surface_cloud);
     pcl_ros::transformPointCloud(*surface_cloud, *transformed_cloud, to_map_transform);
@@ -226,28 +230,36 @@ bool SurfaceSegmenter::SurfaceSelectionCallback(
         max_area_idx = idx;
       }
     }
+
+    if (sampled_max_height < min_z){
+        max_height_idx = idx;
+        sampled_max_height = min_z;
+    }
+
     idx++;
   }
 
+  int selection_idx;
   if (max_area_idx >= 0){
-    ROS_INFO("%s: surface found", node_name);
-    sensor_msgs::PointCloud2 msg_cloud_out;
-    MsgToPointCloud(surface_vect[max_area_idx], surface_cloud);
-    PointCloudPtrToMsg(surface_cloud, msg_cloud_out);
-    surface_point_cloud_pub.publish(msg_cloud_out);
-
-    sensor_msgs::PointCloud2 msg_transformed_cloud_out;
-    pcl_ros::transformPointCloud(*surface_cloud, *transformed_cloud, to_map_transform);
-    PointCloudPtrToMsg(transformed_cloud, msg_transformed_cloud_out);
-
-    res.success = true;
-    res.surface = msg_transformed_cloud_out;
-    return true;
+    selection_idx = max_area_idx;
   }
   else{
-    ROS_ERROR("%s: No surface matches requirement.", node_name);
-    return false;
+    ROS_ERROR("%s: No surface matches requirement, using highest surface.", node_name);
+    selection_idx = max_height_idx;
   }
+
+  ROS_INFO("%s: surface found", node_name);
+  sensor_msgs::PointCloud2 msg_cloud_out;
+  MsgToPointCloud(surface_vect[selection_idx], surface_cloud);
+  PointCloudPtrToMsg(surface_cloud, msg_cloud_out);
+  surface_point_cloud_pub.publish(msg_cloud_out);
+
+  sensor_msgs::PointCloud2 msg_transformed_cloud_out;
+  pcl_ros::transformPointCloud(*surface_cloud, *transformed_cloud, to_map_transform);
+  PointCloudPtrToMsg(transformed_cloud, msg_transformed_cloud_out);
+
+  res.success = true;
+  res.surface = msg_transformed_cloud_out;
 
   return true;
 }
