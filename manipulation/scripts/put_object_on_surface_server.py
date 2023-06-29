@@ -57,12 +57,12 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         _result = msg.PutObjectOnSurfaceResult()
         _result.result = False
+        _result.failure_mode = msg.PutObjectOnSurfaceResult.SUCCESS
 
         goal_tf = goal_msg.goal_tf
         rospy.loginfo(
             "%s: Requested to put object on surface %s" % (self._action_name, goal_tf)
         )
-
         # Look at the goal - make sure that we get all of the necessary collision map
         rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
         self.look_at_object(goal_tf)
@@ -77,6 +77,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             rospy.logerr("%s: Unable to find TF frame." % self._action_name)
             self.tts_say("I don't know the surface frame you want to put object down.")
             self.abandon_action()
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.TF_TIMEOUT
             return
 
         if self.handle_possible_preemption():
@@ -95,6 +96,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
 
         place_success = False
 
+        object_half_height = goal_msg.object_half_height if goal_msg.object_half_height!=0 else 0.1;
+
         try:
             place_success = self.do_placement(
                 goal_tf,
@@ -103,12 +106,17 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                 goal_msg.abandon_action_if_no_plane_found,
                 goal_msg.drop_object_by_metres,
                 goal_msg.check_weight_grams,
+                goal_msg.shelf_tf_ref,
+                object_half_height=object_half_height
             )
 
         except Exception as e:
             rospy.logerr("%s: Encountered exception %s." % (self._action_name, str(e)))
             rospy.logerr(traceback.format_exc())
             self.abandon_action()
+
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.PLACING_EXCEPTION
+            return
 
         if place_success:
             self.tts_say("Place successful.")
@@ -125,6 +133,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         else:
             rospy.loginfo("%s: Placing failed" % self._action_name)
             _result.result = False
+
+            _result.failure_mode = msg.PutObjectOnSurfaceResult.PLACING_FAILED
             self._as.set_aborted()
 
     def do_placement(
@@ -135,6 +145,8 @@ class PutObjectOnSurfaceAction(ManipulationAction):
         abandon_action_if_no_plane_found,
         drop_by,
         check_weight_grams,
+        shelf_tf_ref,
+        object_half_height=0.05
     ):
 
         rospy.loginfo("%s: Running surface detection" % self._action_name)
@@ -151,15 +163,23 @@ class PutObjectOnSurfaceAction(ManipulationAction):
             rospy.loginfo(
                 "%s: Did not receive a plane transform, continuing" % self._action_name
             )
-            target_id = goal_tf
-
+            if shelf_tf_ref == "":
+                rospy.loginfo("Considering plane at goal_tf")
+                target_id = goal_tf
+            else:
+                rospy.loginfo("Considering plane at {}".format(shelf_tf_ref))
+                target_id = "placement_plane"
+                (shelf_goal_trans, _) = self.lookup_transform(goal_tf, shelf_tf_ref, timeout=rospy.Duration(0.5))
+                shelf_goal_trans.translation.x = 0
+                shelf_goal_trans.translation.y = 0
+                self.publish_tf(shelf_goal_trans, goal_tf, target_id)
         else:
             rospy.loginfo(
                 "%s: Did not receive a plane transform, stopping" % self._action_name
             )
             return False
 
-        rel_placement_pose = self.get_relative_placement(drop_by=drop_by)
+        rel_placement_pose = self.get_relative_placement(drop_by=drop_by, object_half_height=object_half_height)
         base_target_pose = self.get_relative_effector_pose(
             target_id, relative=rel_placement_pose, publish_tf="goal_pose"
         )
@@ -192,10 +212,14 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                     self.shake_gripper()
 
             # Move the gripper back a bit then return to go
-            self.whole_body.linear_weight = 100
-            self.whole_body.move_end_effector_pose(
-                geometry.pose(z=-0.2), "hand_palm_link"
-            )
+            self.whole_body.angular_weight = 10;
+            self.whole_body.linear_weight = 100;
+            try:
+                self.whole_body.move_end_effector_pose(
+                    geometry.pose(z=-0.2), "hand_palm_link"
+                )
+            except:
+                rospy.logwarn("Error when moving the arm backwards");
 
         return True
 
