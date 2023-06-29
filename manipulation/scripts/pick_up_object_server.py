@@ -132,7 +132,7 @@ class PickUpObjectAction(ManipulationAction):
             lookup_timeout = rospy.Duration(5);
             pass;
 
-        self.whole_body.linear_weight = 10;
+        self.whole_body.linear_weight = 100;
 
 
         approach_axis = goal_msg.approach_axis
