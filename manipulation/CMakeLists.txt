@@ -79,6 +79,7 @@ add_message_files(
    GetReconstruction.srv
    CheckPlacement.srv
    FindPlacement.srv
+   FindPlacementOnEmptySurface.srv
  )
 
 ## Generate actions in the 'action' folder
@@ -168,6 +169,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/manipulation_node.cpp)
 add_executable(octomap_to_reconstruction_service src/octomap_to_reconstruction_service.cpp)
 add_executable(octomap_check_placement_service src/octomap_check_placement_service.cpp)
+add_executable(find_placement_on_empty_surface_service src/find_placement_on_empty_surface_service.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -176,6 +178,7 @@ add_executable(octomap_check_placement_service src/octomap_check_placement_servi
 # set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
 set_target_properties(octomap_to_reconstruction_service PROPERTIES OUTPUT_NAME octomap_to_reconstruction PREFIX "")
 set_target_properties(octomap_check_placement_service PROPERTIES OUTPUT_NAME octomap_check_placement PREFIX "")
+set_target_properties(find_placement_on_empty_surface_service PROPERTIES OUTPUT_NAME find_placement_on_empty_surface_service PREFIX "")
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -188,6 +191,7 @@ set_target_properties(octomap_check_placement_service PROPERTIES OUTPUT_NAME oct
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(octomap_to_reconstruction_service ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(octomap_check_placement_service ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(find_placement_on_empty_surface_service ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -197,6 +201,9 @@ target_link_libraries(octomap_to_reconstruction_service
         ${catkin_LIBRARIES}
         )
 target_link_libraries(octomap_check_placement_service
+        ${catkin_LIBRARIES}
+        )
+target_link_libraries(find_placement_on_empty_surface_service
         ${catkin_LIBRARIES}
         )
 
