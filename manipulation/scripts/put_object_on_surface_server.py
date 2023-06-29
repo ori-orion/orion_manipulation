@@ -212,6 +212,7 @@ class PutObjectOnSurfaceAction(ManipulationAction):
                     self.shake_gripper()
 
             # Move the gripper back a bit then return to go
+            self.whole_body.angular_weight = 1;
             self.whole_body.linear_weight = 100;
             try:
                 self.whole_body.move_end_effector_pose(
