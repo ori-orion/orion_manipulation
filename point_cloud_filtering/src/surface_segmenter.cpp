@@ -231,8 +231,12 @@ bool SurfaceSegmenter::SurfaceSelectionCallback(
     PointCloudPtrToMsg(surface_cloud, msg_cloud_out);
     surface_point_cloud_pub.publish(msg_cloud_out);
 
+    sensor_msgs::PointCloud2 msg_transformed_cloud_out;
+    pcl_ros::transformPointCloud(*surface_cloud, *transformed_cloud, to_map_transform);
+    PointCloudPtrToMsg(transformed_cloud, msg_transformed_cloud_out);
+
     res.success = true;
-    res.surface = msg_cloud_out;
+    res.surface = msg_transformed_cloud_out;
     return true;
   }
   else{
