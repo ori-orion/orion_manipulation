@@ -67,8 +67,12 @@ add_service_files(
    DetectHandle.srv
    DetectBinHandle.srv
    DetectDrawerHandles.srv
-   SegmentObject.srv   
+   SegmentObject.srv
+   DetectSurface.srv
+   DetectSurfaceIterative.srv
    GetSurfaceGoal.srv
+   SelectSurface.srv
+   SampleCloud.srv
 )
 
 ## Generate actions in the 'action' folder
