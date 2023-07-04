@@ -26,7 +26,7 @@ from actionlib_msgs.msg import GoalStatus
 from manipulation.manipulation_header import ManipulationAction
 from manipulation.collision_mapping import CollisionWorld
 from point_cloud_filtering.srv import SegmentObject
-from gpd.msg import GraspConfigList
+# from gpd.msg import GraspConfigList
 from tmc_suction.msg import SuctionControlAction, SuctionControlGoal
 
 # Enable robot interface

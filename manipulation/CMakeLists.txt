@@ -23,7 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   octomap_ros
   octomap_msgs
   orion_actions
-  gpd
+  # gpd
   orion_hri
 )
 
