@@ -39,7 +39,7 @@ class FindPlacementOnEmptySurfaceTester(ManipulationAction):
         rospy.loginfo("%s: Moving head to look at the location." % self._action_name)
         self.look_at_object(goal_tf)
 
-        (rgbd_goal_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf, rospy.Duration(0.3))
+        (rgbd_goal_transform, _) = self.lookup_transform(self.RGBD_CAMERA_FRAME, goal_tf, rospy.Duration(5))
 
         if rgbd_goal_transform is None:
             rospy.logerr("%s: Unable to find TF frame." % self._action_name)
@@ -73,7 +73,7 @@ class FindPlacementOnEmptySurfaceTester(ManipulationAction):
                 plane_search_transform_in_head_frame,
                 10.0,  # EPS plane search angle tolerance in degrees
                 0.5,  # Box crop size to search for plane in. Axis aligned w/ head frame.
-                0.3
+                0
             )
             if res.success:
                 return res.position

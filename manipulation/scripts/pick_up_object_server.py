@@ -419,6 +419,7 @@ class PickUpObjectAction(ManipulationAction):
         with collision_world:
             try:
                 self.whole_body.joint_weights = {'arm_lift_joint':1}
+                print("base_target_pose:" ,base_target_pose)
                 self.whole_body.move_end_effector_pose(base_target_pose, self.BASE_FRAME);
             except:
                 BASE_ROTATION = math.pi/2;
