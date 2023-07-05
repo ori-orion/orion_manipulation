@@ -70,6 +70,7 @@ class CollisionMapper:
         if stl_storage_dir is not None:
             self.stl_storage_dir = stl_storage_dir
         else:
+            print("self.ROBOT_STL_STORAGE_DIR = {0}".format(self.ROBOT_STL_STORAGE_DIR));
             if os.path.isdir(self.ROBOT_STL_STORAGE_DIR):
                 print("Saving the collision map file into {0}".format(self.ROBOT_STL_STORAGE_DIR));
                 self.stl_storage_dir = self.ROBOT_STL_STORAGE_DIR
