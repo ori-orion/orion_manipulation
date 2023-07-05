@@ -15,9 +15,14 @@ if __name__ == '__main__':
     if not rospy.has_param('use_grasping_synthesis'):
         rospy.logwarn("Waiting for rospy.param['use_grasping_synthesis']")
         rospy.sleep(5);
+    if not rospy.has_param('use_collision_mapping'):
+        rospy.logwarn("Waiting for rospy.param['use_collision_mapping']");
+        rospy.sleep(5);
 
     pick_up_object = PickUpObjectAction(
-        "pick_up_object", use_collision_map=True, use_grasp_synthesis=rospy.get_param('use_grasping_synthesis')
+        "pick_up_object", 
+        use_collision_map=rospy.get_param('use_collision_mapping'), 
+        use_grasp_synthesis=rospy.get_param('use_grasping_synthesis')
     )
 
     put_object_down = PutObjectOnSurfaceAction(
