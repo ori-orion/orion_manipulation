@@ -71,8 +71,10 @@ class CollisionMapper:
             self.stl_storage_dir = stl_storage_dir
         else:
             if os.path.isdir(self.ROBOT_STL_STORAGE_DIR):
+                print("Saving the collision map file into {0}".format(self.ROBOT_STL_STORAGE_DIR));
                 self.stl_storage_dir = self.ROBOT_STL_STORAGE_DIR
             else:
+                print("Saving the collision map file into {0}".format(self.BACKUP_STL_STORAGE_DIR));
                 self.stl_storage_dir = self.BACKUP_STL_STORAGE_DIR
 
     def reset_collision_map(self):
