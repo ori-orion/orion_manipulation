@@ -74,6 +74,7 @@ class PickUpObjectAction(ManipulationAction):
         )
 
         self.use_grasp_synthesis = use_grasp_synthesis
+        print("Using grasp pose synthesis: ", self.use_grasp_synthesis);
 
         if self.use_grasp_synthesis:
             rospy.loginfo("%s: Grasp pose synthesis is enabled" % self._action_name)
